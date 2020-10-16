@@ -14,7 +14,7 @@ const mapExtensionTest = new RegExp("(\.map)|(\.rgb)|(\.tga)|(\.png)$", "i");
 //These are the extensions expected in the collection of mod files
 const modExtensionTest = new RegExp("(\.dm)|(\.rgb)|(\.tga)|(\.png)|(\.sw)$", "i");
 
-const zipMaxSize = config.maxMapSizeInMB * 1000000;  //100MB in bytes
+const zipMaxSize = config.maxFileSizeInMB * 1000000;  //100MB in bytes
 
 if (fs.existsSync(config.tmpDownloadPath) === false)
 {
