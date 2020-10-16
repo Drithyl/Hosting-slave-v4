@@ -1,0 +1,11 @@
+*.ini
+*.bat
+*.txt
+
+# Sensitive config data
+config.json
+
+#node modules
+node_modules/
+
+package-lock.json
