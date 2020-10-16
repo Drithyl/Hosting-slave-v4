@@ -1,35 +1,35 @@
 {
-  "name": "hosting-slave-v4-indev",
-  "version": "4.0.0",
-  "description": "The slave server package that communicates with the master server hosting Mr. Clockwork.",
-  "main": "app.js",
-  "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
-  },
-  "repository": {
-    "type": "git",
-    "url": "git+ssh://git@github.com/Drithyl/Hosting-slave-v4.git"
-  },
-  "keywords": [
-    "slave",
-    "server",
-    "Dominions",
-    "5",
-    "Mr.",
-    "Clockwork",
-    "master",
-    "hosting",
-    "game"
-  ],
-  "author": "Drithyl",
-  "license": "ISC",
-  "bugs": {
-    "url": "https://github.com/Drithyl/Hosting-slave-v4/issues"
-  },
-  "homepage": "https://github.com/Drithyl/Hosting-slave-v4#readme",
-  "dependencies": {
-    "googleapis": "^61.0.0",
-    "socket.io": "^2.3.0",
-    "yauzl": "^2.10.0"
-  }
+	"name": "hosting-slave-v4-indev",
+	"version": "4.0.0",
+	"description": "The slave server package that communicates with the master server hosting Mr. Clockwork.",
+	"main": "app.js",
+	"scripts": {
+		"test": "echo \"Error: no test specified\" && exit 1"
+	},
+	"repository": {
+		"type": "git",
+		"url": "git+ssh://git@github.com/Drithyl/Hosting-slave-v4.git"
+	},
+	"keywords": [
+		"slave",
+		"server",
+		"Dominions",
+		"5",
+		"Mr.",
+		"Clockwork",
+		"master",
+		"hosting",
+		"game"
+	],
+	"author": "Drithyl",
+	"license": "ISC",
+	"bugs": {
+		"url": "https://github.com/Drithyl/Hosting-slave-v4/issues"
+	},
+	"homepage": "https://github.com/Drithyl/Hosting-slave-v4#readme",
+	"dependencies": {
+		"googleapis": "^61.0.0",
+		"socket.io": "^2.3.0",
+		"yauzl": "^2.10.0"
+	}
 }

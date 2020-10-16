@@ -1,62 +1,62 @@
 
 Array.prototype.forEachAsync = function(asyncFn, callback)
 {
-  var index = 0;
+	var index = 0;
 
-  //the context of 'this' will change in the loop
-  var array = this;
+	//the context of 'this' will change in the loop
+	var array = this;
 
-  (function loop()
-  {
-    if (index >= array.length)
-    {
-      if (callback != null)
-      {
-        callback();
-      }
+	(function loop()
+	{
+		if (index >= array.length)
+		{
+			if (callback != null)
+			{
+				callback();
+			}
 
-      return;
-    }
+			return;
+		}
 
-    asyncFn(array[index], index++, function()
-    {
-      loop();
-    });
-  })();
+		asyncFn(array[index], index++, function()
+		{
+			loop();
+		});
+	})();
 };
 
 Array.prototype.forEachPromise = function(asyncFn, callback)
 {
-  var index = 0;
+	var index = 0;
 
-  //the context of 'this' will change in the loop
-  var array = this;
+	//the context of 'this' will change in the loop
+	var array = this;
 
-  return new Promise((resolve) =>
-  {
-    (function loop()
-    {
-      if (index >= array.length)
-      {
-        if (typeof callback === "function")
-          return callback();
+	return new Promise((resolve) =>
+	{
+		(function loop()
+		{
+			if (index >= array.length)
+			{
+				if (typeof callback === "function")
+					return callback();
 
-        else return resolve();
-      }
+				else return resolve();
+			}
 
-      asyncFn(array[index], index++, () => loop());
-    })();
-  });
+			asyncFn(array[index], index++, () => loop());
+		})();
+	});
 };
 
 Object.defineProperty(Object.prototype, "forEachPromise",
 {
-  value: function(asyncFn)
-  {
-    var array = this.convertToArray();
+	value: function(asyncFn)
+	{
+		var array = this.convertToArray();
 
-    return array.forEachPromise(asyncFn);
-  }
+		return array.forEachPromise(asyncFn);
+	}
 });
 
 String.prototype.extract = function(regex)

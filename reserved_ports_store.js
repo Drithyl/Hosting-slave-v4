@@ -7,31 +7,31 @@ var reservedPorts = [];
 
 module.exports.reservePort = function(cb)
 {
-  var reservedPort = config.gamePortRange.first.toString();
-  var usedPorts = gameInterface.getUsedPorts().concat(reservedPorts);
+	var reservedPort = config.gamePortRange.first.toString();
+	var usedPorts = gameInterface.getUsedPorts().concat(reservedPorts);
 
-  while (usedPorts.includes(reservedPort.toString()) === true)
-  {
-    reservedPort++;
+	while (usedPorts.includes(reservedPort.toString()) === true)
+	{
+		reservedPort++;
 
-    if (reservedPort > config.gamePortRange.last)
-    {
-      cb(`There are no free ports.`);
-      return;
-    }
-  }
+		if (reservedPort > config.gamePortRange.last)
+		{
+			cb(`There are no free ports.`);
+			return;
+		}
+	}
 
-  reservedPorts.push(reservedPort);
-  cb(null, +reservedPort);
+	reservedPorts.push(reservedPort);
+	cb(null, +reservedPort);
 };
 
 module.exports.releasePort = function(port)
 {
-  reservedPorts.splice(reservedPorts.indexOf(port), 1);
+	reservedPorts.splice(reservedPorts.indexOf(port), 1);
 };
 
 module.exports.releaseAllPorts = function()
 {
-  reservedPorts = [];
-  rw.log("general", `Released reserved assistted hosting instance ports.`);
+	reservedPorts = [];
+	rw.log("general", `Released reserved assistted hosting instance ports.`);
 };

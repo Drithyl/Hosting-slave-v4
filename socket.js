@@ -8,7 +8,7 @@ const { TimeoutError, SocketResponseError } = require(".errors.js");
 var _socketIoObject = require('socket._socketIoObject-client');
 var socket = _socketIoObject.connect(`http://${config.masterIP}:${config.masterPort}/`,
 {
-  reconnection: true
+    reconnection: true
 });
 
 exports.on = (trigger, handler) =>
