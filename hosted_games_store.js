@@ -16,13 +16,15 @@ var hostedGames;
 //queue of games pending hosting
 var gameHostRequests = [];
 
-module.exports.populate = function(gameDataArray, serverCb)
+module.exports.populate = function(gameDataArray)
 {
+    console.log(`Game data received:`, gameDataArray);
+    
 	//first connection to master server
 	if (hostedGames == null)
 	{
-		hostedGames = gameDataReceived;
-		return serverCb();
+		hostedGames = gameDataArray;
+		return Promise.resolve();
 	}
 
 	//not the first connection, some data from master server already exists
@@ -46,7 +48,9 @@ module.exports.populate = function(gameDataArray, serverCb)
 			existingGame.instance.disconnect();
 			deleteGameReferences(port);
 		}
-	}
+    }
+    
+    return Promise.resolve();
 }
 
 module.exports.getUsedPorts = function()
@@ -54,21 +58,21 @@ module.exports.getUsedPorts = function()
 	return Object.keys(hostedGames);
 };
 
-module.exports.isGameNameUsed = function(name, cb)
+module.exports.isGameNameUsed = function(name)
 {
 	var savePath = `${config.dom5DataPath}/savedgames/${name}`;
 
 	if (fs.existsSync(savePath) === true)
-		cb(null, true);
+		return Promise.resolve(true);
 
-	else cb(null, false);
+	else return Promise.resolve(false);
 };
 
-module.exports.killGame = function(port, cb)
+module.exports.killGame = function(port)
 {
-	kill(hostedGames[port], cb)
-	.then(() => cb())
-	.catch((err) => cb(err));
+	return kill(hostedGames[port])
+	.then(() => Promise.resolve())
+	.catch((err) => Promise.reject(err));
 };
 
 module.exports.killAllGames = function(cb)
@@ -83,11 +87,11 @@ module.exports.killAllGames = function(cb)
 		return kill(game)
 		.then(() => nextPromise());
 	})
-	.then(() => cb(null))
-	.catch((err) => cb(err.message));
+	.then(() => Promise.resolve())
+	.catch((err) => Promise.reject(err));
 };
 
-module.exports.requestHosting = function(game, cb)
+module.exports.requestHosting = function(game)
 {
 	return kill(game)
 	.then(() =>
@@ -95,21 +99,26 @@ module.exports.requestHosting = function(game, cb)
 		rw.log("general", `Requesting hosting for ${game.name}...`);
 		gameHostRequests.push(game.port);
 
-		//sets a delay so that when many host requests are received, the server
-		//does not get overloaded
-		setTimeout(() =>
-		{
-			gameHostRequests.splice(gameHostRequests.indexOf(game.port), 1);
-			spawn(game)
-			.then(() => 
-			{
-				hostedGames[game.port] = game;
-				cb(null);
-			})
-			.catch((err) => cb(err.message));
+        return new Promise((resolve, reject) =>
+        {
+            //sets a delay so that when many host requests are received, the server
+            //does not get overloaded
+            setTimeout(() =>
+            {
+                gameHostRequests.splice(gameHostRequests.indexOf(game.port), 1);
+                spawn(game)
+                .then(() => 
+                {
+                    hostedGames[game.port] = game;
+                    resolve();
+                })
+                .catch((err) => reject(err));
 
-		}, config.gameHostMsDelay * gameHostRequests.length);
-	});
+            }, config.gameHostMsDelay * gameHostRequests.length);
+        });
+    })
+    .then(() => Promise.resolve())
+    .catch((err) => Promise.reject(err));
 };
 
 module.exports.isGameOnline = function(port)
@@ -117,32 +126,32 @@ module.exports.isGameOnline = function(port)
 	return hostedGames[port] != null && hostedGames[port].instance != null && hostedGames[port].instance.killed === false;
 };
 
-module.exports.deleteGameSavefiles = function(data, cb)
+module.exports.deleteGameSavefiles = function(data)
 {
 	return kill(hostedGames[data.port])
-	.then(() => dom5Interface.deleteGameSavefiles(data, cb))
-	.then(() => cb())
-	.catch((err) => cb(err.message));
+	.then(() => dom5Interface.deleteGameSavefiles(data))
+	.then(() => Promise.resolve())
+	.catch((err) => Promise.reject(err));
 };
 
-module.exports.deleteGameData = function(data, cb)
+module.exports.deleteGameData = function(data)
 {
 	return kill(hostedGames[data.port])
 	.then(() => 
 	{
 		delete hostedGames[data.port];
-		cb();
+		return Promise.resolve();
 	})
-	.catch((err) => cb(err.message));
+	.catch((err) => Promise.reject(err));
 };
 
-module.exports.overwriteSettings = function(data, cb)
+module.exports.overwriteSettings = function(data)
 {
 	let game = hostedGames[data.port];
 	delete game.args;
 
 	game.args = [...data.args];
-	cb();
+	return Promise.resolve();
 }
 
 function deleteGameReferences(port)

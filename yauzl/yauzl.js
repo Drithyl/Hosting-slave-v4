@@ -59,7 +59,7 @@ function _fetchZipEntries(zipfile)
     });
 
     //last entry was read, we can resolve now
-    zipfile.on("end", () => resolve(entries);
+    zipfile.on("end", () => resolve(entries));
   });
 }
 

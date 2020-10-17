@@ -5,7 +5,7 @@ const gameInterface = require("./hosted_games_store.js");
 
 var reservedPorts = [];
 
-module.exports.reservePort = function(cb)
+module.exports.reservePort = function()
 {
 	var reservedPort = config.gamePortRange.first.toString();
 	var usedPorts = gameInterface.getUsedPorts().concat(reservedPorts);
@@ -15,19 +15,17 @@ module.exports.reservePort = function(cb)
 		reservedPort++;
 
 		if (reservedPort > config.gamePortRange.last)
-		{
-			cb(`There are no free ports.`);
-			return;
-		}
+		    return Promise.reject(new Error(`There are no free ports.`));
 	}
 
 	reservedPorts.push(reservedPort);
-	cb(null, +reservedPort);
+	return Promise.resolve(+reservedPort);
 };
 
 module.exports.releasePort = function(port)
 {
-	reservedPorts.splice(reservedPorts.indexOf(port), 1);
+    reservedPorts.splice(reservedPorts.indexOf(port), 1);
+    return Promise.resolve();
 };
 
 module.exports.releaseAllPorts = function()

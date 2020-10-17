@@ -9,18 +9,18 @@ const readFileBuffer = require("./read_file_buffer.js");
 const provCountFn = require("./dom5/parse_province_count.js");
 const { fetchStatusDump } = require("./dom5/status_dump_wrapper.js");
 
-module.exports.getModList = function(cb)
+module.exports.getModList = function()
 {
-	rw.getDirFilenames(`${config.dom5DataPath}/mods`, ".dm")
-	.then((filenames) => cb(null, filenames))
-	.catch((err) => cb(err.message));
+	return rw.getDirFilenames(`${config.dom5DataPath}/mods`, ".dm")
+	.then((filenames) => Promise.resolve(filenames))
+	.catch((err) => Promise.reject(err));
 };
 
-module.exports.getMapList = function(cb)
+module.exports.getMapList = function()
 {
 	let mapsWithProvinceCount = [];
 
-	rw.getDirFilenames(config.dom5DataPath + "/maps", ".map")
+	return rw.getDirFilenames(config.dom5DataPath + "/maps", ".map")
 	.then((filenames) =>
 	{
 		filenames.forEach((file) =>
@@ -33,42 +33,42 @@ module.exports.getMapList = function(cb)
 			}
 		});
 
-		cb(null, mapsWithProvinceCount);
+		Promise.resolve(mapsWithProvinceCount);
 	})
-	.catch((err) => cb(err.message));
+	.catch((err) => Promise.reject(err));
 };
 
-module.exports.getTurnFile = function(data, cb)
+module.exports.getTurnFile = function(data)
 {
     var gameName = data.name;
     var nationFilename = data.nationFilename;
     var path = `${config.dom5DataPath}/savedgames/${gameName}/${nationFilename}`;
 
-    readFileBuffer(path)
-    .then((buffer) => cb(null, buffer))
-    .catch((err) => cb(err.message));
+    return readFileBuffer(path)
+    .then((buffer) => Promise.resolve(buffer))
+    .catch((err) => Promise.reject(err));
 };
 
-module.exports.getScoreFile = function(data, cb)
+module.exports.getScoreFile = function(data)
 {
     var gameName = data.name;
     var path = `${config.dom5DataPath}/savedgames/${gameName}/scores.html`;
 
-    readFileBuffer(path)
-    .then((buffer) => cb(null, buffer))
-    .catch((err) => cb(err.message));
+    return readFileBuffer(path)
+    .then((buffer) => Promise.resolve(buffer))
+    .catch((err) => Promise.reject(err));
 };
 
-module.exports.start = function(data, cb)
+module.exports.start = function(data)
 {
 	var path = `${config.dom5DataPath}/savedgames/${games[data.port].name}/domcmd`;
 
-	fsp.writeFile(path, "settimeleft " + data.timer)
-	.then(() => cb())
-	.catch((err) => cb(err.message));
+	return fsp.writeFile(path, "settimeleft " + data.timer)
+	.then(() => Promise.resolve())
+	.catch((err) => Promise.reject(err));
 }
 
-module.exports.restart = function(data, cb)
+module.exports.restart = function(data)
 {
 	var game = games[data.port];
 	var path = `${config.dom5DataPath}/savedgames/${game.name}`;
@@ -77,46 +77,46 @@ module.exports.restart = function(data, cb)
 
 	//kill game first so it doesn't automatically regenerate the statuspage file
 	//as soon as it gets deleted
-	kill(game)
+	return kill(game)
 	.then(() => rw.atomicRmDir(path))
 	.then(() => spawn(game.port, game.args, game))
-	.then(() => cb())
-	.catch((err) => cb(err.message));
+	.then(() => Promise.resolve())
+	.catch((err) => Promise.reject(err));
 };
 
-module.exports.getSubmittedPretenders = function(data, cb)
+module.exports.getSubmittedPretenders = function(data)
 {
 	return fetchStatusDump(data.name)
-	.then((statusDumpWrapper) => cb(null, statusDumpWrapper.getSubmittedPretenders()));
+	.then((statusDumpWrapper) => Promise.resolve(statusDumpWrapper.getSubmittedPretenders()));
 };
 
-module.exports.removePretender = function(data, cb)
+module.exports.removePretender = function(data)
 {
 	var game = games[data.port];
 	var path = config.dom5DataPath + "/savedgames/" + game.name + "/" + data.nationFile;
 
 	if (fs.existsSync(path) === false)
-        return cb("Could not find the pretender file. Has it already been deleted? You can double-check in the lobby. If not, you can try rebooting the game.");
+        return Promise.reject(new Error("Could not find the pretender file. Has it already been deleted? You can double-check in the lobby. If not, you can try rebooting the game."));
 
-	fsp.unlink(path)
-	.then(() => cb())
-	.catch((err) => cb(err.message));
+    return fsp.unlink(path)
+	.then(() => Promise.resolve())
+	.catch((err) => Promise.reject(err));
 };
 
-module.exports.getStales = function(data, cb)
+module.exports.getStales = function(data)
 {
 	return fetchStatusDump(data.name)
 	.then((statusDumpWrapper) => statusDumpWrapper.fetchStales())
-	.then((stales) => cb(null, stales));
+	.then((stales) => Promise.resolve(stales));
 };
 
-module.exports.getDump = function(data, cb)
+module.exports.getStatusDump = function(data)
 {
 	return fetchStatusDump(data.name)
-	.then((statusDumpWrapper) => cb(null, statusDumpWrapper));
+	.then((statusDumpWrapper) => Promise.resolve(statusDumpWrapper));
 };
 
-module.exports.backupSavefiles = function(data, cb)
+module.exports.backupSavefiles = function(data)
 {
 	var game = games[data.port];
 	var source = `${config.dom5DataPath}/savedgames/${game.name}`;
@@ -129,10 +129,12 @@ module.exports.backupSavefiles = function(data, cb)
 
 	else target += `${config.latestTurnBackupDirName}/${game.name}/Turn ${data.turnNbr}`;
 
-	rw.copyDir(source, target, false, ["", ".2h", ".trn"], cb);
+	return rw.copyDir(source, target, false, ["", ".2h", ".trn"])
+	.then(() => Promise.resolve())
+	.catch((err) => Promise.reject(err));
 };
 
-module.exports.rollback = function(data, cb)
+module.exports.rollback = function(data)
 {
 	var game = games[data.port];
 	var source = `${config.dataFolderPath}/backups/${config.latestTurnBackupDirName}/${game.name}/Turn ${data.turnNbr}`;
@@ -143,73 +145,75 @@ module.exports.rollback = function(data, cb)
 		source = `${config.dataFolderPath}/backups/${config.newTurnsBackupDirName}/${game.name}/Turn ${data.turnNbr}`;
 
 		if (fs.existsSync(source) === false)
-			return cb(`No backup of the previous turn was found to be able to rollback.`);
+			return Promise.reject(new Error(`No backup of the previous turn was found to be able to rollback.`));
 	}
 
-	rw.copyDir(source, target, false, ["", ".2h", ".trn"])
+	return rw.copyDir(source, target, false, ["", ".2h", ".trn"])
 	.then(() => kill(game))
 	.then(() => spawn(game))
-	.then(() => cb())
-	.catch((err) => cb(err.message));
+	.then(() => Promise.resolve())
+	.catch((err) => Promise.reject(err));
 };
 
-module.exports.deleteGameSavefiles = function(data, cb)
+module.exports.deleteGameSavefiles = function(data)
 {
 	var game = games[data.port];
 	var path = `${config.dom5DataPath}/savedgames/${game.name}`;
 
-	fsp.readdir(path)
+	return fsp.readdir(path)
 	.then((filenames) =>
 	{
-		filenames.forEach(function(file)
+		return filenames.forEachPromise((file, index, nextPromise) =>
 		{
-			fs.unlinkSync(path + "/" + file);
+            return fsp.unlink(path + "/" + file)
+            .then(() => nextPromise())
+            .catch((err) => Promise.reject(err));
 		});
-
-		fs.rmdirSync(path);
-		cb(null, `${game.name}: deleted the dom save files.`);
-	})
-	.catch((err) => cb(err.message));
+    })
+    .then(() => fsp.rmdirSync(path))
+    .then(() => Promise.resolve(`${game.name}: deleted the dom save files.`))
+	.catch((err) => Promise.reject(err));
 };
 
-module.exports.getLastHostedTime = function(data, cb)
+module.exports.getLastHostedTime = function(data)
 {
 	return fetchStatusDump(data.name)
-	.then((statusDumpWrapper) => cb(null, statusDumpWrapper.lastHostedTime));
+    .then((statusDumpWrapper) => Promise.resolve(statusDumpWrapper.lastHostedTime))
+    .catch((err) => Promise.reject(err));
 };
 
-module.exports.validateMapfile = function(mapfile, cb)
+module.exports.validateMapfile = function(mapfile)
 {
 	var dataPath = config.dom5DataPath;
 	var rootPath = config.dom5RootPath;
 	var mapfileRelPath = (/\.map$/i.test(mapfile) === false) ? `/maps/${mapfile}.map` : `/maps/${mapfile}`;
 
 	if (typeof mapfile !== "string")
-		return cb(`Invalid argument type provided; expected string path, got ${mapfile}`);
+		return Promise.reject(new Error(`Invalid argument type provided; expected string path, got ${mapfile}`));
 
 	if (fs.existsSync(`${dataPath}${mapfileRelPath}`) === true || fs.existsSync(`${rootPath}${mapfileRelPath}`) === true)
-		return cb();
+		return Promise.resolve();
 
-	else cb("The map file could not be found.");
+	else Promise.reject(new Error("The map file could not be found."));
 };
 
-module.exports.validateMods = function(modfiles, cb)
+module.exports.validateMods = function(modfiles)
 {
 	var path = config.dom5DataPath;
 
 	if (Array.isArray(modfiles) === false)
-		return cb(`Invalid argument type provided; expected array of string paths, got ${modfiles}`);
+		return Promise.reject(new Error(`Invalid argument type provided; expected array of string paths, got ${modfiles}`));
 
 	for (var i = 0; i < modfiles.length; i++)
 	{
 		var modfile = modfiles[i];
 
 		if (typeof modfile !== "string")
-			return cb(`Invalid modfiles element; expected path string, got ${modfile}`);
+			return Promise.reject(new Error(`Invalid modfiles element; expected path string, got ${modfile}`));
 
 		if (fs.existsSync(`${path}/mods/${modfile}`) === false)
-			return cb(`The mod file ${modfile} could not be found.`);
+			return Promise.reject(new Error(`The mod file ${modfile} could not be found.`));
 	}
 
-	cb();
+	return Promise.resolve();
 };

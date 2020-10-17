@@ -1,7 +1,7 @@
 
 const fs = require("fs");
 const fsp = require("fs").promises;
-const unzip = require("./yauzl.js");
+const unzip = require("./yauzl/yauzl.js");
 const config = require("./config.json");
 const rw = require("./reader_writer.js");
 

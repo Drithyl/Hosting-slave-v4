@@ -3,7 +3,7 @@ const fs = require("fs");
 const config = require("./config.json");
 const rw = require("./reader_writer.js");
 const spawn = require('child_process').spawn;
-const socket = require("./socket.js");
+const socket = require("./socket_wrapper.js");
 
 //BEWARE: do not try to pass a master server callback directly to the function or
 //the returning instance will cause a RangeError: Maximum call stack size exceeded
