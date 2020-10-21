@@ -15,15 +15,13 @@ module.exports.spawn = function(game)
 	//Arguments must be passed in an array with one element at a time. Even a flag like
 	//--mapfile needs to be its own element, followed by a separate element with its value,
 	//i.e. peliwyr.map
-	const finalArgs = [...game.args].concat(_getAdditionalArgs(game));
+	const finalArgs = _getAdditionalArgs(game).concat([...game.args]);
 
 	if (fs.existsSync(path) === false)
 		return Promise.reject(`The path ${path} is incorrect. Cannot host game ${game.name} (${game.gameType}).`);
 
 	if (finalArgs == null)
 		return Promise.reject(`No args were provided to host the game ${game.name} (${game.gameType}).`);
-
-	console.log(finalArgs);
 
 	//instances get overloaded if they spent ~24h with their stdio being listened to,
 	//and end up freezing (in windows server 2012), according to tests in previous bot versions
@@ -138,18 +136,17 @@ function _attachStdioListener(type, game)
 
 function _getAdditionalArgs(game)
 {
-	let args = [];
-		
-	if (process.platform === "win32")
-	{
-		args.push("--nocrashbox");
-	}
-
-	return args.concat([
-		"--nosteam",
+    let args = [
+        "--nosteam",
+        "--statusdump",
 		..._backupCmd("--preexec", game.name), 
 		..._backupCmd("--postexec", game.name)
-	]);
+    ];
+		
+	if (process.platform === "win32")
+	    args.push("--nocrashbox");
+
+	return args;
 }
 
 function _backupCmd(type, gameName)
