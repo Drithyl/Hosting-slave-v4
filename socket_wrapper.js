@@ -48,8 +48,11 @@ exports.on = (trigger, handler) =>
                 //If handler rejects promise, send the message of the resulting error
                 //(cannot send the error object as a whole back to master server)
                 //and reject the higher promise
+                console.log(`Error when fulfilling request: ${err.message}`);
                 serverCallback(err.message);
-                reject();
+                
+                /** Could reject here but would need to handle it in every single handler attached
+                reject();*/
             });
         });
     });
