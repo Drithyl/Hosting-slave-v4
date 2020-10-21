@@ -11,7 +11,7 @@ const dom5Interface = require("./dom5_interface.js");
 *             {name, port, gameType, instance}              *
 *     Indexed by port numbers, received from master server  *
 ************************************************************/
-var hostedGames;
+var hostedGames = {};
 
 //queue of games pending hosting
 var gameHostRequests = [];
@@ -19,11 +19,11 @@ var gameHostRequests = [];
 module.exports.populate = function(gameDataArray)
 {
     console.log(`Game data received:`, gameDataArray);
-    
+
 	//first connection to master server
-	if (hostedGames == null)
+	if (Object.keys(hostedGames).length <= 0)
 	{
-		hostedGames = gameDataArray;
+        gameDataArray.forEach((gameData) => hostedGames[gameData.port] = gameData);
 		return Promise.resolve();
 	}
 
@@ -39,14 +39,21 @@ module.exports.populate = function(gameDataArray)
 	});
 
 	//check for hostedGames that exist in memory here but not on the master server and delete those
-	for (var port in hostedGames)
-	{
-		var existingGame = hostedGames[port];
+    for (var port in hostedGames)
+    {
+        const existingGame = hostedGames[port];
+        
+        console.log(`Checking if existing game ${existingGame.name} in port ${existingGame.port} does no longer exist on master...`);
 
-		if (gameDataArray.find((gameData) => gameData.port === port) == null)
+        if (gameDataArray.find((gameData) => gameData.port === existingGame.port) == null)
 		{
-			existingGame.instance.disconnect();
-			deleteGameReferences(port);
+            console.log(`${existingGame.name} not found on master data, deleting!`);
+
+            //remove game from array
+            delete hostedGames[port];
+            
+            kill(existingGame)
+            .catch((err) => console.log(`Could not kill abandoned game: ${err.message}`));
 		}
     }
     
@@ -154,7 +161,7 @@ module.exports.overwriteSettings = function(data)
 	return Promise.resolve();
 }
 
-function deleteGameReferences(port)
+function deleteGameReferences(game)
 {
 	delete hostedGames[port];
 }
