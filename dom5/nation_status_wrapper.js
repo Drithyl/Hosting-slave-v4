@@ -1,4 +1,5 @@
 
+module.exports = NationStatusWrapper;
 
 function NationStatusWrapper(nationRawData)
 {
@@ -74,7 +75,7 @@ function _extractNationShortName(rawData)
 
 function _extractNationWords(rawData)
 {
-    return rawData.replace(/^Nation.+\w+.+$/ig, "").split(/\s+/);
+    return rawData.replace(/^Nation\s*(\d+\s+)+/ig, "").split(/\t+/);
 }
 
 function _extractNationNumbers(rawData)

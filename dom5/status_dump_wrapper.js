@@ -8,25 +8,22 @@ exports.fetchStatusDump = (gameName) =>
 {
     var rawData;
     const gameDataPath = `${config.dom5DataPath}/savedgames/${gameName}`;
+    const statusDumpPath = `${gameDataPath}/statusdump.txt`;
 
-    if (fs.existsSync(path) === false)
+    if (fs.existsSync(statusDumpPath) === false)
         return Promise.reject(new Error(`Could not find ${gameName}'s statusdump.`));
 
-    return fsp.readFile(`${gameDataPath}/statusdump.txt`, "utf8")
+    return fsp.readFile(statusDumpPath, "utf8")
     .then((statusDumpRawData) =>
     {
         rawData = statusDumpRawData;
-        return fsp.stat(`${gameDataPath}/ftherlnd`);
-    })
-    .then((statusDumpStat) =>
-    {
-        var lastHostedTime = statusDumpStat.mtime.getTime();
-        return Promise.resolve(new StatusDump(gameName, rawData, lastHostedTime));
+        
+        return Promise.resolve(new StatusDump(gameName, rawData));
     })
     .catch((err) => Promise.reject(new Error(`Could not create statusdump object:\n\n${err.message}`)));
 };
 
-function StatusDump(gameName, rawData, lastHostedTime)
+function StatusDump(gameName, rawData)
 {
     const _gameName = gameName;
     const _parsedData = _parseDumpData(rawData);
@@ -35,13 +32,14 @@ function StatusDump(gameName, rawData, lastHostedTime)
     this.eraNbr = _parsedData.eraNbr;
     this.nbrOfMods = _parsedData.nbrOfMods;
     this.turnLimitNbr = _parsedData.turnLimitNbr;
-    this.lastHostedTime = lastHostedTime;
 
     this.nationStatusArray = [];
 
     _parsedData.nationsRawData.forEach((nationRawData) =>
     {
-        this.nationStatusArray.push(new NationStatusWrapper(nationRawData));
+        //avoid bad types and empty strings from splitting
+        if (typeof nationRawData === "string" && /\S+/.test(nationRawData) === true)
+            this.nationStatusArray.push(new NationStatusWrapper(nationRawData));
     });
 
     this.getSubmittedPretenders = () =>
@@ -52,13 +50,13 @@ function StatusDump(gameName, rawData, lastHostedTime)
         this.nationStatusArray.forEach((nationStatus) =>
         {
             if (fs.existsSync(`${path}/${nationStatus.filename}`) === true)
-                submittedNationNames.push(nationStatus);
+                submittedNationStatuses.push(nationStatus);
         });
 
         return submittedNationStatuses;
     };
 
-    this.fetchStales = () =>
+    this.fetchStales = (lastHostedTime) =>
     {
         const staleArrayByName = [];
         const goneAiArrayByName = [];
@@ -79,7 +77,7 @@ function StatusDump(gameName, rawData, lastHostedTime)
                 return fsp.stat(nationFilePath)
                 .then((nationFileStats) =>
                 {
-                    if (nationFileStats.mtime.getTime() >= this.lastHostedTime)
+                    if (nationFileStats.mtime.getTime() >= lastHostedTime)
                         staleArrayByName.push(nationStatus.filename);
 
                     return nextPromise();
@@ -101,10 +99,10 @@ function _parseDumpData(rawData)
     const data = {};
 
     data.nationsRawData = lines.slice(1);
-    data.turnNbr = +turnInfoLine.replace(/^turn (\d+).+$/ig, "$1");
-    data.eraNbr = +turnInfoLine.replace(/^.+era (\d+).+$/ig, "$1");
-    data.nbrOfMods = +turnInfoLine.replace(/^.+mods (\d+).+$/ig, "$1");
-    data.turnLimitNbr = +turnInfoLine.replace(/^.+turnlimit (\d+).+$/ig, "$1");
+    data.turnNbr = +turnInfoLine.replace(/^turn (-?\d+).*$/ig, "$1");
+    data.eraNbr = +turnInfoLine.replace(/^.+era (\d+).*$/ig, "$1");
+    data.nbrOfMods = +turnInfoLine.replace(/^.+mods (\d+).*$/ig, "$1");
+    data.turnLimitNbr = +turnInfoLine.replace(/^.+turnlimit (\d+).*$/ig, "$1");
 
     return data;
 }
