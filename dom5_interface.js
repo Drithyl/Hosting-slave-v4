@@ -87,7 +87,7 @@ module.exports.restart = function(data)
 module.exports.getSubmittedPretenders = function(data)
 {
 	return fetchStatusDump(data.name)
-	.then((statusDumpWrapper) => Promise.resolve(statusDumpWrapper.getSubmittedPretenders()));
+    .then((statusDumpWrapper) => Promise.resolve(statusDumpWrapper.getSubmittedPretenders()));
 };
 
 module.exports.removePretender = function(data)
@@ -105,8 +105,15 @@ module.exports.removePretender = function(data)
 
 module.exports.getStales = function(data)
 {
-	return fetchStatusDump(data.name)
-	.then((statusDumpWrapper) => statusDumpWrapper.fetchStales())
+    var _lastHostedTime;
+
+    return exports.getLastHostedTime(data.name)
+    .then((lastHostedTime) =>
+    {
+        _lastHostedTime = lastHostedTime;
+        return exports.getStatusDump(data);
+    })
+	.then((statusDumpWrapper) => statusDumpWrapper.fetchStales(_lastHostedTime))
 	.then((stales) => Promise.resolve(stales));
 };
 
@@ -175,11 +182,13 @@ module.exports.deleteGameSavefiles = function(data)
 	.catch((err) => Promise.reject(err));
 };
 
-module.exports.getLastHostedTime = function(data)
+module.exports.getLastHostedTime = function(gameName)
 {
-	return fetchStatusDump(data.name)
-    .then((statusDumpWrapper) => Promise.resolve(statusDumpWrapper.lastHostedTime))
-    .catch((err) => Promise.reject(err));
+    const gameDataPath = `${config.dom5DataPath}/savedgames/${gameName}`;
+    const ftherlndPath = `${gameDataPath}/ftherlnd`;
+
+    return fsp.stat(ftherlndPath)
+    .then((ftherlndStat) => Promise.resolve(ftherlndStat.mtime.getTime()));
 };
 
 module.exports.validateMapfile = function(mapfile)
