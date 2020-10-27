@@ -42,7 +42,7 @@ module.exports.listen = function(socketWrapper)
     socketWrapper.on("RESTART_GAME", (data) => dom5Interface.restart(data));
     socketWrapper.on("BACKUP_SAVEFILES", (data) => dom5Interface.backupSavefiles(data));
     socketWrapper.on("ROLLBACK", (data) => dom5Interface.rollback(data));
-    socketWrapper.on("REMOVE_PRETENDER", (data) => dom5Interface.removePretender(data));
+    socketWrapper.on("REMOVE_NATION", (data) => dom5Interface.removePretender(data));
 };
 
 /************************************

@@ -122,8 +122,8 @@ module.exports.getSubmittedPretenders = function(data)
 
 module.exports.removePretender = function(data)
 {
-	var game = games[data.port];
-	var path = config.dom5DataPath + "/savedgames/" + game.name + "/" + data.nationFile;
+	const gameName = data.name;
+	const path = `${config.dom5DataPath}/savedgames/${gameName}/${data.nationFilename}`;
 
 	if (fs.existsSync(path) === false)
         return Promise.reject(new Error("Could not find the pretender file. Has it already been deleted? You can double-check in the lobby. If not, you can try rebooting the game."));
