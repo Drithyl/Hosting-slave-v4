@@ -3,6 +3,7 @@ const fs = require("fs");
 const fsp = require("fs").promises;
 const config = require("./config.json");
 const rw = require("./reader_writer.js");
+const socketWrapper = require("./socket_wrapper.js");
 const preexecRegex = new RegExp("^\\-\\-preexec$", "i");
 const postexecRegex = new RegExp("^\\-\\-postexec$", "i");
 const statusDump = require("./dom5/status_dump_wrapper.js");
@@ -26,7 +27,11 @@ if (preexecRegex.test(type) === true)
     target += `${config.latestTurnBackupDirName}/${gameName}`;
 
 else if (postexecRegex.test(type) === true)
+{
+    console.log(`${gameName}: new turn!`);
     target += `${config.newTurnsBackupDirName}/${gameName}`;
+    socketWrapper.emit("NEW_TURN", { gameName: gameName });
+}
 
 else
     return rw.log(["error", "backup"], true, `Backup type received is invalid; expected --preexec or --postexec: ${type}`);

@@ -4,6 +4,7 @@ const config = require("./config.json");
 const rw = require("./reader_writer.js");
 const spawn = require('child_process').spawn;
 const socket = require("./socket_wrapper.js");
+const stream = require("stream");
 
 //BEWARE: do not try to pass a master server callback directly to the function or
 //the returning instance will cause a RangeError: Maximum call stack size exceeded
@@ -26,7 +27,7 @@ module.exports.spawn = function(game)
 	//instances get overloaded if they spent ~24h with their stdio being listened to,
 	//and end up freezing (in windows server 2012), according to tests in previous bot versions
 	//TODO: testing not ignoring the stdio again
-	game.instance = spawn(path, finalArgs/*, {stdio: 'ignore'}*/);
+    game.instance = spawn(path, finalArgs, { stdio: "pipe" });
 
 	_attachOnExitListener(game);
 	_attachOnCloseListener(game);
@@ -94,7 +95,7 @@ function _attachOnCloseListener(game)
 		//must have run already, so don't ping the master server again
 		if (game.instance != null && game.instance.killed === false && code !== 0)
 		{
-			socket.emit("stdioClosed", {name: game.name, code: code, signal: signal});
+			socket.emit("STDIO_CLOSED", {name: game.name, code: code, signal: signal});
 			rw.log(["general"], `${game.name}'s stdio closed:\n`, {port: game.port, args: game.args, code: code, signal: signal});
 		}
 	});
@@ -119,7 +120,18 @@ function _attachStdioListener(type, game)
 	//overflow and the instances hanging when it's not being ignored nor caught
 	if (game.instance[type] != null)
 	{
-		game.instance[type].setEncoding("utf8");
+        const writeStream = new stream.Writable();
+
+        writeStream._write = (data) => 
+        {
+            console.log(`${game.name}\t${data}`);
+            socket.emit("STDIO_DATA", {name: game.name, data: data, type: type});
+        };
+
+        game.instance[type].setEncoding("utf8");
+        game.instance[type].pipe(writeStream);
+        console.log(`Listening to ${game.name}'s ${type} stream.`);
+
 		game.instance[type].on('data', function (data)
 		{
 			rw.log(["general"], `${game.name}'s ${type} "data" event triggered:\n`, data);

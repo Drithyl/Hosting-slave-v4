@@ -59,6 +59,36 @@ module.exports.getScoreFile = function(data)
     .catch((err) => Promise.reject(err));
 };
 
+//Timer is received in ms but must be written in seconds in domcmd
+module.exports.changeCurrentTimer = function(data)
+{
+    const gameName = data.name;
+    const seconds = data.timer * 0.001;
+    const domcmd = "settimeleft " + seconds;
+    const path = `${config.dom5DataPath}/savedgames/${gameName}/domcmd`;
+
+    return fsp.writeFile(path, domcmd)
+	.then(() => Promise.resolve())
+    .catch((err) => Promise.reject(err));
+};
+
+//Timer is received in ms but must be written in minutes in domcmd
+module.exports.changeDefaultTimer = function(data)
+{
+    const gameName = data.name;
+    const minutes = data.timer / 60000;
+    var domcmd = "setinterval " + minutes;
+    const path = `${config.dom5DataPath}/savedgames/${gameName}/domcmd`;
+
+    //set currentTimer to what it was again, because setinterval changes the current timer as well
+    if (data.currentTimer != null)
+        domcmd += `\nsettimeleft ${data.currentTimer * 0.001}`;
+
+    return fsp.writeFile(path, domcmd)
+	.then(() => Promise.resolve())
+    .catch((err) => Promise.reject(err));
+};
+
 module.exports.start = function(data)
 {
 	var path = `${config.dom5DataPath}/savedgames/${games[data.port].name}/domcmd`;
