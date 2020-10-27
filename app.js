@@ -16,15 +16,15 @@ googleDriveApi.authorize()
 
 //will get called when an error will cause node to crash
 //this way it can be properly logged
-/*process.on("uncaughtException", (err, origin) =>
+process.on("uncaughtException", (err, origin) =>
 {
 	let message = `\n\n####################\n\n` +
-	`Caught exception:\n${err}\n` +
+	`Caught exception:\n${err.message}\n` +
 	`Exception origin:\n${origin}\n\n` +
+	`Stack:\n${err.stack}\n` +
 	`####################\n\n`;
 
 	console.log(message);
-	console.trace();
 
 	fs.appendFileSync(
 		config.errorLogPath,
@@ -32,4 +32,4 @@ googleDriveApi.authorize()
 	);
 
 	throw err;
-});*/
+});
