@@ -21,7 +21,7 @@ function _killAttempt(game, attempts, maxAttempts)
 	rw.log("general", `Attempt ${attempts}. Max attempts ${maxAttempts}.`);
 
 	if (game.instance != null)
-		_kill(game);
+		_kill(game, attempts, maxAttempts);
 	
 	return new Promise((resolve, reject) =>
 	{
@@ -36,7 +36,7 @@ function _killAttempt(game, attempts, maxAttempts)
 }
 
 //Sends the necessary kill signals to the game
-function _kill(game)
+function _kill(game, attempts, maxAttempts)
 {
 	//destroy all data streams before killing the instance
 	if (game.instance.stderr != null)

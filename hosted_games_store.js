@@ -58,7 +58,12 @@ module.exports.populate = function(gameDataArray)
     }
     
     return Promise.resolve();
-}
+};
+
+module.exports.getGame = function(port)
+{
+    return hostedGames[port];
+};
 
 module.exports.getUsedPorts = function()
 {

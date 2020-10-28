@@ -3,7 +3,7 @@ const fs = require("fs");
 const fsp = require("fs").promises;
 const config = require("./config.json");
 
-const tmpDataPath = `${config.dataFolderPath}/tmp`;
+const _tmpDataPath = `${config.dataFolderPath}/tmp`;
 const logTagsToPaths =
 {
 	"default": `${config.dataFolderPath}/logs/general.txt`,
@@ -13,7 +13,7 @@ const logTagsToPaths =
 	"upload": `${config.dataFolderPath}/logs/upload.txt`
 }
 
-if (fs.existsSync(tmpDataPath) === false)
+if (fs.existsSync(_tmpDataPath) === false)
 {
 	throw `tmpDir doesn't exist, please create it at the path specified in the config file.`;
 }
@@ -77,7 +77,14 @@ module.exports.atomicRmDir = function(target, filter = null)
 		
 		return Promise.resolve();
 	})
-	.then(() => fsp.mkdir(`${tmpDataPath}/${targetName}`))
+    .then(() => 
+    {
+        //Create tmp dir for the files if it doesn't exist
+        if (fs.existsSync(`${_tmpDataPath}/${targetName}`) === false)
+            return fsp.mkdir(`${_tmpDataPath}/${targetName}`);
+
+        else return Promise.resolve();
+    })
 	.then(() => fsp.readdir(target))
 	.then((filenames) =>
 	{
@@ -86,17 +93,17 @@ module.exports.atomicRmDir = function(target, filter = null)
 			return fsp.stat(`${target}/${filename}`)
 			.then((stats) =>
 			{
-				if (stats.isFile() === false || _doesExtensionMatchFilter(filename, extensionFilter) === false)
+				if (stats.isFile() === false || _doesExtensionMatchFilter(filename, filter) === false)
 				{
 					wasDirLeftEmpty = false;
 					return nextPromise();
 				}
 					
-				return fsp.rename(`${target}/${filename}`, `${tmpDataPath}/${targetName}/${filename}`)
+				return fsp.rename(`${target}/${filename}`, `${_tmpDataPath}/${targetName}/${filename}`)
 				.then(() => 
 				{
 					//keep track of the renamedFiles by pushing an array with [0] oldPath and [1] temp path to be removed later
-					renamedFiles.push([`${target}/${filename}`, `${config.tmpDir}/${targetName}/${filename}`]);
+					renamedFiles.push([`${target}/${filename}`, `${_tmpDataPath}/${targetName}/${filename}`]);
 					return nextPromise();
 				});
 			});
@@ -128,7 +135,7 @@ module.exports.atomicRmDir = function(target, filter = null)
 		
 		else return Promise.resolve();
 	})
-	.then(() => fsp.rmdir(`${tmpDataPath}/${targetName}`))
+	.then(() => fsp.rmdir(`${_tmpDataPath}/${targetName}`))
 	.catch((err) => 
 	{
 		console.log(`Error occurred: ${err.message}`);
@@ -148,8 +155,9 @@ module.exports.atomicRmDir = function(target, filter = null)
 			.catch((err) => Promise.reject(new Error(`Critical error during deletion; could not undo the files deleted so far: ${err.message}`)));
 		})
 		//remove leftover tmp dir
-		.then(() => fsp.rmdir(`${tmpDataPath}/${targetName}`))
-		.then(() => Promise.reject(new Error(`Deletion could not be performed: ${deleteErr.message}`)));
+		.then(() => fsp.rmdir(`${_tmpDataPath}/${targetName}`))
+        .then(() => Promise.reject(new Error(`Deletion could not be performed: ${deleteErr.message}`)))
+        .catch((err) => Promise.reject(new Error(`Deletion could not be performed; could not undo the files deleted so far: ${err.message}`)));
 	}
 };
 

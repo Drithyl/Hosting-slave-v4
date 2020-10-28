@@ -1,29 +1,4 @@
 
-Array.prototype.forEachAsync = function(asyncFn, callback)
-{
-	var index = 0;
-
-	//the context of 'this' will change in the loop
-	var array = this;
-
-	(function loop()
-	{
-		if (index >= array.length)
-		{
-			if (callback != null)
-			{
-				callback();
-			}
-
-			return;
-		}
-
-		asyncFn(array[index], index++, function()
-		{
-			loop();
-		});
-	})();
-};
 
 Array.prototype.forEachPromise = function(asyncFn, callback)
 {
@@ -32,7 +7,7 @@ Array.prototype.forEachPromise = function(asyncFn, callback)
 	//the context of 'this' will change in the loop
 	var array = this;
 
-	return new Promise((resolve) =>
+	return new Promise((resolve, reject) =>
 	{
 		(function loop()
 		{
@@ -44,19 +19,33 @@ Array.prototype.forEachPromise = function(asyncFn, callback)
 				else return resolve();
 			}
 
-			asyncFn(array[index], index++, () => loop());
+            asyncFn(array[index], index++, () => loop())
+            .catch((err) => reject(err));
 		})();
 	});
 };
 
 Object.defineProperty(Object.prototype, "forEachPromise",
 {
-	value: function(asyncFn)
-	{
-		var array = this.convertToArray();
+    value: function(asyncFn)
+    {
+        var index = 0;
+        var self = this;
+        var keyArray = Object.keys(self);
 
-		return array.forEachPromise(asyncFn);
-	}
+        return new Promise((resolve, reject) =>
+        {
+            (function loop()
+            {
+                if (index >= keyArray.length)
+                    return resolve();
+
+                //Pass the item, the key to the item, and the function to move to the next promise
+                Promise.resolve(asyncFn(self[keyArray[index]], keyArray[index++], () => loop()))
+                .catch((err) => reject(err));
+            })();
+        });
+    }
 });
 
 String.prototype.extract = function(regex)

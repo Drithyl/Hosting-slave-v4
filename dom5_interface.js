@@ -5,6 +5,7 @@ const config = require("./config.json");
 const rw = require("./reader_writer.js");
 const kill = require("./kill_instance.js");
 const spawn = require("./process_spawn.js").spawn;
+const gameStore = require("./hosted_games_store.js");
 const readFileBuffer = require("./read_file_buffer.js");
 const provCountFn = require("./dom5/parse_province_count.js");
 const { fetchStatusDump } = require("./dom5/status_dump_wrapper.js");
@@ -89,27 +90,30 @@ module.exports.changeDefaultTimer = function(data)
     .catch((err) => Promise.reject(err));
 };
 
+//Set 60 seconds to start the game
 module.exports.start = function(data)
 {
-	var path = `${config.dom5DataPath}/savedgames/${games[data.port].name}/domcmd`;
+    const gameName = data.name;
+	const path = `${config.dom5DataPath}/savedgames/${gameName}/domcmd`;
 
-	return fsp.writeFile(path, "settimeleft " + data.timer)
+	return fsp.writeFile(path, "settimeleft 60")
 	.then(() => Promise.resolve())
 	.catch((err) => Promise.reject(err));
 }
 
 module.exports.restart = function(data)
 {
-	var game = games[data.port];
-	var path = `${config.dom5DataPath}/savedgames/${game.name}`;
+    const gameName = data.name;
+    const path = `${config.dom5DataPath}/savedgames/${gameName}`;
+    const game = gameStore.getGame(data.port);
 
-	rw.log("general", `Killing ${game.name}'s process...`);
+	rw.log("general", `Killing ${gameName}'s process...`);
 
 	//kill game first so it doesn't automatically regenerate the statuspage file
 	//as soon as it gets deleted
 	return kill(game)
 	.then(() => rw.atomicRmDir(path))
-	.then(() => spawn(game.port, game.args, game))
+	.then(() => gameStore.requestHosting(game))
 	.then(() => Promise.resolve())
 	.catch((err) => Promise.reject(err));
 };
