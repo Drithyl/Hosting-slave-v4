@@ -20,10 +20,26 @@ Array.prototype.forEachPromise = function(asyncFn, callback)
 			}
 
             asyncFn(array[index], index++, () => loop())
-            .catch((err) => reject(err));
+            .catch((err) => 
+            {
+                index++;
+                reject(err);
+            });
 		})();
 	});
 };
+
+Object.defineProperty(Object.prototype, "forEachItem",
+{
+    value: function(asyncFn)
+    {
+        var self = this;
+        var keyArray = Object.keys(self);
+
+        //Pass the item, the key to the item, and the object
+        keyArray.forEach((key, index) => asyncFn(self[key], keyArray[index], self));
+    }
+});
 
 Object.defineProperty(Object.prototype, "forEachPromise",
 {
@@ -42,7 +58,11 @@ Object.defineProperty(Object.prototype, "forEachPromise",
 
                 //Pass the item, the key to the item, and the function to move to the next promise
                 Promise.resolve(asyncFn(self[keyArray[index]], keyArray[index++], () => loop()))
-                .catch((err) => reject(err));
+                .catch((err) => 
+                {
+                    index++;
+                    reject(err);
+                });
             })();
         });
     }
