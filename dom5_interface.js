@@ -10,9 +10,14 @@ const readFileBuffer = require("./read_file_buffer.js");
 const provCountFn = require("./dom5/parse_province_count.js");
 const { fetchStatusDump } = require("./dom5/status_dump_wrapper.js");
 
+const _mapPath = `${config.dom5DataPath}/maps`;
+const _modPath = `${config.dom5DataPath}/mods`;
+const _savedGamesPath = `${config.dom5DataPath}/savedgames`;
+
+
 module.exports.getModList = function()
 {
-	return rw.getDirFilenames(`${config.dom5DataPath}/mods`, ".dm")
+	return rw.getDirFilenames(_modPath, ".dm")
 	.then((filenames) => Promise.resolve(filenames))
 	.catch((err) => Promise.reject(err));
 };
@@ -21,20 +26,18 @@ module.exports.getMapList = function()
 {
 	let mapsWithProvinceCount = [];
 
-	return rw.getDirFilenames(config.dom5DataPath + "/maps", ".map")
-	.then((filenames) =>
+	return rw.readDirContents(_mapPath, ".map")
+	.then((filesContentsByName) =>
 	{
-		filenames.forEach((file) =>
+		filesContentsByName.forEachItem((content, filename) =>
 		{
-			let provs = provCountFn(file.content);
+			let provs = provCountFn(content);
 
 			if (provs != null)
-			{
-			  mapsWithProvinceCount.push({name: file.filename, ...provs});
-			}
+			    mapsWithProvinceCount.push({name: filename, ...provs});
 		});
 
-		Promise.resolve(mapsWithProvinceCount);
+		return Promise.resolve(mapsWithProvinceCount);
 	})
 	.catch((err) => Promise.reject(err));
 };
@@ -43,7 +46,7 @@ module.exports.getTurnFile = function(data)
 {
     var gameName = data.name;
     var nationFilename = data.nationFilename;
-    var path = `${config.dom5DataPath}/savedgames/${gameName}/${nationFilename}`;
+    var path = `${_savedGamesPath}/${gameName}/${nationFilename}`;
 
     return readFileBuffer(path)
     .then((buffer) => Promise.resolve(buffer))
@@ -53,7 +56,7 @@ module.exports.getTurnFile = function(data)
 module.exports.getScoreFile = function(data)
 {
     var gameName = data.name;
-    var path = `${config.dom5DataPath}/savedgames/${gameName}/scores.html`;
+    var path = `${_savedGamesPath}/${gameName}/scores.html`;
 
     return readFileBuffer(path)
     .then((buffer) => Promise.resolve(buffer))
@@ -66,7 +69,7 @@ module.exports.changeCurrentTimer = function(data)
     const gameName = data.name;
     const seconds = data.timer * 0.001;
     const domcmd = "settimeleft " + seconds;
-    const path = `${config.dom5DataPath}/savedgames/${gameName}/domcmd`;
+    const path = `${_savedGamesPath}/${gameName}/domcmd`;
 
     return fsp.writeFile(path, domcmd)
 	.then(() => Promise.resolve())
@@ -79,7 +82,7 @@ module.exports.changeDefaultTimer = function(data)
     const gameName = data.name;
     const minutes = data.timer / 60000;
     var domcmd = "setinterval " + minutes;
-    const path = `${config.dom5DataPath}/savedgames/${gameName}/domcmd`;
+    const path = `${_savedGamesPath}/${gameName}/domcmd`;
 
     //set currentTimer to what it was again, because setinterval changes the current timer as well
     if (data.currentTimer != null)
@@ -94,7 +97,7 @@ module.exports.changeDefaultTimer = function(data)
 module.exports.start = function(data)
 {
     const gameName = data.name;
-	const path = `${config.dom5DataPath}/savedgames/${gameName}/domcmd`;
+	const path = `${_savedGamesPath}/${gameName}/domcmd`;
 
 	return fsp.writeFile(path, "settimeleft 60")
 	.then(() => Promise.resolve())
@@ -104,7 +107,7 @@ module.exports.start = function(data)
 module.exports.restart = function(data)
 {
     const gameName = data.name;
-    const path = `${config.dom5DataPath}/savedgames/${gameName}`;
+    const path = `${_savedGamesPath}/${gameName}`;
     const game = gameStore.getGame(data.port);
 
 	rw.log("general", `Killing ${gameName}'s process...`);
@@ -127,7 +130,7 @@ module.exports.getSubmittedPretenders = function(data)
 module.exports.removePretender = function(data)
 {
 	const gameName = data.name;
-    var path = `${config.dom5DataPath}/savedgames/${gameName}/${data.nationFilename}`;
+    var path = `${_savedGamesPath}/${gameName}/${data.nationFilename}`;
     
     if (/\.2h$/i.test(data.nationFilename) === false)
         path += ".2h";
@@ -163,7 +166,7 @@ module.exports.getStatusDump = function(data)
 module.exports.backupSavefiles = function(data)
 {
 	var game = games[data.port];
-	var source = `${config.dom5DataPath}/savedgames/${game.name}`;
+	var source = `${_savedGamesPath}/${game.name}`;
 	var target = `${config.dataFolderPath}/backups`;
 
 	if (data.isNewTurn === true)
@@ -182,7 +185,7 @@ module.exports.rollback = function(data)
 {
 	var game = games[data.port];
 	var source = `${config.dataFolderPath}/backups/${config.latestTurnBackupDirName}/${game.name}/Turn ${data.turnNbr}`;
-	var target = `${config.dom5DataPath}/savedgames/${game.name}`;
+	var target = `${_savedGamesPath}/${game.name}`;
 
 	if (fs.existsSync(source) === false)
 	{
@@ -202,7 +205,7 @@ module.exports.rollback = function(data)
 module.exports.deleteGameSavefiles = function(data)
 {
 	const gameName = data.name;
-    const path = `${config.dom5DataPath}/savedgames/${gameName}`;
+    const path = `${_savedGamesPath}/${gameName}`;
     const backupPath = `${config.dataFolderPath}/${gameName}`;
 
 	return rw.deleteDir(path)
@@ -217,7 +220,7 @@ module.exports.deleteGameSavefiles = function(data)
 
 module.exports.getLastHostedTime = function(gameName)
 {
-    const gameDataPath = `${config.dom5DataPath}/savedgames/${gameName}`;
+    const gameDataPath = `${_savedGamesPath}/${gameName}`;
     const ftherlndPath = `${gameDataPath}/ftherlnd`;
 
     return fsp.stat(ftherlndPath)
