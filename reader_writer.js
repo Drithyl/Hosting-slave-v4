@@ -22,7 +22,8 @@ module.exports.copyFile = function(source, target)
 {
 	return exports.checkAndCreateFilepath(target)
 	.then(() => fsp.readFile(source))
-	.then((buffer) => fsp.writeFile(target, buffer));
+    .then((buffer) => fsp.writeFile(target, buffer))
+    .catch((err) => Promise.reject(err));
 };
 
 module.exports.copyDir = function(source, target, deepCopy, extensionFilter = null)
@@ -50,7 +51,35 @@ module.exports.copyDir = function(source, target, deepCopy, extensionFilter = nu
 			})
 			.then(() => nextPromise());
 		});
-	});
+    })
+    .catch((err) => Promise.reject(err));
+};
+
+module.exports.deleteDir = function(path)
+{
+    if (fs.existsSync(path) === false)
+        return Promise.resolve();
+        
+    return fsp.readdir(path)
+    .then((filenames) =>
+    {
+        return filenames.forEachPromise((filename, index, nextPromise) =>
+        {
+            const filepath = `${path}/${filename}`;
+
+            fsp.lstat(filepath)
+            .then((stats) =>
+            {
+                if (stats.isDirectory() === true)
+                    return exports.deleteDir(filepath);
+
+                return fsp.unlink(filepath);
+            })
+            .then(() => nextPromise());
+        })
+    })
+    .then(() => fsp.rmdir(path))
+    .catch((err) => Promise.reject(err));
 };
 
 //Guarantees that the targeted path will be left either completely deleted,
@@ -211,25 +240,6 @@ module.exports.getDirFilenames = function(path, extensionFilter = "")
 		})
 	})
 	.then(() => Promise.resolve(filenames));
-};
-
-module.exports.readDirContent = function(path, extensionFilter)
-{
-	var list = [];
-
-	if (fs.existsSync(path) === false)
-		return Promise.reject(new Error("This directory was not found on the server."));
-
-	return fsp.readdir(path, "utf8")
-	.then((filenames) => 
-	{
-		filenames.forEach((filename) =>
-		{
-			if (_doesExtensionMatchFilter(filename, extensionFilter) === true)
-				list.push({filename: files[i], content: fs.readFileSync(path + "/" + files[i], "utf8")});
-		});
-	})
-	.then(() => Promise.resolve(list));
 };
 
 module.exports.log = function(tags, trace, ...inputs)

@@ -138,11 +138,17 @@ module.exports.isGameOnline = function(port)
 	return hostedGames[port] != null && hostedGames[port].instance != null && hostedGames[port].instance.killed === false;
 };
 
-module.exports.deleteGameSavefiles = function(data)
+module.exports.deleteGame = function(data)
 {
-	return kill(hostedGames[data.port])
-	.then(() => dom5Interface.deleteGameSavefiles(data))
-	.then(() => Promise.resolve())
+    const port = data.port;
+
+	return kill(hostedGames[port])
+    .then(() => dom5Interface.deleteGameSavefiles(data))
+    .then(() =>
+    {
+        delete hostedGames[port];
+        return Promise.resolve();
+    })
 	.catch((err) => Promise.reject(err));
 };
 

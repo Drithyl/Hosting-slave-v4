@@ -201,21 +201,17 @@ module.exports.rollback = function(data)
 
 module.exports.deleteGameSavefiles = function(data)
 {
-	var game = games[data.port];
-	var path = `${config.dom5DataPath}/savedgames/${game.name}`;
+	const gameName = data.name;
+    const path = `${config.dom5DataPath}/savedgames/${gameName}`;
+    const backupPath = `${config.dataFolderPath}/${gameName}`;
 
-	return fsp.readdir(path)
-	.then((filenames) =>
-	{
-		return filenames.forEachPromise((file, index, nextPromise) =>
-		{
-            return fsp.unlink(path + "/" + file)
-            .then(() => nextPromise())
-            .catch((err) => Promise.reject(err));
-		});
+	return rw.deleteDir(path)
+    .then(() => rw.deleteDir(backupPath))
+    .then(() => 
+    {
+        console.log(`${game.name}: deleted the savedgames files and their backups.`);
+        return Promise.resolve();
     })
-    .then(() => fsp.rmdirSync(path))
-    .then(() => Promise.resolve(`${game.name}: deleted the dom save files.`))
 	.catch((err) => Promise.reject(err));
 };
 

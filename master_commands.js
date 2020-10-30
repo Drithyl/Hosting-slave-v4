@@ -23,8 +23,7 @@ module.exports.listen = function(socketWrapper)
 
     socketWrapper.on("IS_GAME_NAME_FREE", (data) => hostedGamesStore.isGameNameUsed(data.name));
     socketWrapper.on("CREATE_GAME", (data) => hostedGamesStore.create(data.name, data.port, data.gameType, data.args));
-    socketWrapper.on("DELETE_GAME_SAVEFILES", (data) => hostedGamesStore.deleteGameSavefiles(data));
-    socketWrapper.on("DELETE_GAME_DATA", (data) => hostedGamesStore.deleteGameData(data));
+    socketWrapper.on("DELETE_GAME", (data) => hostedGamesStore.deleteGame(data));
     socketWrapper.on("LAUNCH_GAME", (gameData) => hostedGamesStore.requestHosting(gameData));
     socketWrapper.on("KILL_GAME", (gameData) => hostedGamesStore.killGame(gameData.port));
     socketWrapper.on("CHANGE_CURRENT_TIMER", (data) => dom5Interface.changeCurrentTimer(data));
