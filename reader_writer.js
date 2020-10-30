@@ -223,7 +223,7 @@ module.exports.checkAndCreateFilepath = function(filepath)
 
 module.exports.getDirFilenames = function(path, extensionFilter = "")
 {
-	var filenames = [];
+	var readFilenames = [];
 
 	if (fs.existsSync(path) === false)
 		return Promise.reject(new Error("This directory was not found on the server."));
@@ -231,15 +231,38 @@ module.exports.getDirFilenames = function(path, extensionFilter = "")
 	return fsp.readdir(path, "utf8")
 	.then((filenames) =>
 	{
-		return filenames.forEachPromise((filename, index, nextPromise) =>
+		filenames.forEach((filename) =>
 		{
 			if (extensionFilter === "" || filename.lastIndexOf(extensionFilter) !== -1)
-				filenames.push(filename);
+                readFilenames.push(filename);
+        });
+        
+        return Promise.resolve(readFilenames);
+	});
+};
 
-			return nextPromise();
-		})
-	})
-	.then(() => Promise.resolve(filenames));
+module.exports.readDirContents = function(path, extensionFilter)
+{
+    var readFiles = {};
+
+	if (fs.existsSync(path) === false)
+        return Promise.reject(new Error("This directory was not found on the server."));
+        
+    return exports.getDirFilenames(path, extensionFilter)
+    .then((filenames) =>
+    {
+        return filenames.forEachPromise((filename, index, nextPromise) => 
+        {
+            return fsp.readFile(`${path}/${filename}`, "utf8")
+            .then((contents) =>
+            {
+                readFiles[filename] = contents;
+                nextPromise();
+            })
+            .catch((err) => Promise.reject(err));
+        });
+    })
+    .then(() => Promise.resolve(readFiles));
 };
 
 module.exports.log = function(tags, trace, ...inputs)
