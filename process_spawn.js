@@ -28,6 +28,7 @@ module.exports.spawn = function(game)
 	//and end up freezing (in windows server 2012), according to tests in previous bot versions
 	//TODO: testing not ignoring the stdio again
     game.instance = spawn(path, finalArgs, { stdio: "pipe" });
+    game.isRunning = true;
 
 	_attachOnExitListener(game);
 	_attachOnCloseListener(game);
@@ -45,6 +46,8 @@ function _attachOnExitListener(game)
 	//Fires when the process itself exits. See https://nodejs.org/api/child_process.html#child_process_event_exit
 	game.instance.on("exit", (code, signal) =>
 	{
+        game.isRunning = false;
+
 		//If process exited, code is its final code and signal is null;
 		//if it was terminated due to a signal, then code is null.
 		if (signal === "SIGKILL" || signal === "SIGTERM" || signal === "SIGINT")
@@ -69,8 +72,6 @@ function _attachOnExitListener(game)
 			rw.log(["error"], `${game.name}'s "exit" event triggered. Process was abnormally terminated:\n`, {signal: signal});
 			socket.emit("GAME_TERMINATED", {name: game.name, signal: signal});
 		}
-
-		game.instance = null;
 	});
 }
 

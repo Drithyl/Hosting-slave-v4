@@ -135,7 +135,7 @@ module.exports.requestHosting = function(game)
 
 module.exports.isGameOnline = function(port)
 {
-	return hostedGames[port] != null && hostedGames[port].instance != null && hostedGames[port].instance.killed === false;
+	return hostedGames[port] != null && hostedGames[port].instance != null && hostedGames[port].isRunning === true;
 };
 
 module.exports.deleteGame = function(data)
