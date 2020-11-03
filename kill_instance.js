@@ -27,7 +27,7 @@ function _killAttempt(game, attempts, maxAttempts)
 	{
 		setTimeout(() => 
 		{
-			_timeoutCheckIfKilled(game, attempts, maxAttempts)
+			return _timeoutCheckIfKilled(game, attempts, maxAttempts)
 			.then(() => resolve())
 			.catch((err) => reject(err));
 	
@@ -93,7 +93,7 @@ function _timeoutCheckIfKilled(game, attempts, maxAttempts)
 		rw.log("general", `isPortInUse returns ${isPortInUse}`);
 
 		//All good
-		if (isPortInUse === false && game.instance == null)
+		if (isPortInUse === false && (game.instance == null || game.instance.killed === true))
 		{
 			rw.log("general", "Port not in use, instance is null. Success.");
 			return Promise.resolve();
@@ -102,10 +102,10 @@ function _timeoutCheckIfKilled(game, attempts, maxAttempts)
 		rw.log("general", "Instance is not killed either.");
 
 		if (attempts < maxAttempts)
-			return killAttempt(game, ++attempts, 3);
+			return _killAttempt(game, ++attempts, 3);
 
 		//max attempts reached
-		if (isPortInUse === true && game.instance == null)
+		if (isPortInUse === true && (game.instance == null || game.instance.killed === true))
 		{
 			rw.log("error", `${game.name}'s instance was terminated but the port is still in use after ${maxAttempts} attempts.`);
 			return Promise.reject(`The game instance was terminated, but the port is still in use. You might have to wait a bit.`);
