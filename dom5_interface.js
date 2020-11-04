@@ -64,29 +64,23 @@ module.exports.getScoreFile = function(data)
 };
 
 //Timer is received in ms but must be written in seconds in domcmd
-module.exports.changeCurrentTimer = function(data)
+//for the current timer, and in minutes for the default timer
+//Always changing both current and default timer is necessary
+//to avoid unwanted default timers being set when games are loaded
+module.exports.changeTimer = function(data)
 {
     const gameName = data.name;
-    const seconds = data.timer * 0.001;
-    const domcmd = "settimeleft " + seconds;
+    const defaultTimer = data.timer / 60000;
+    const currentTimer = data.currentTimer * 0.001;
     const path = `${_savedGamesPath}/${gameName}/domcmd`;
 
-    return fsp.writeFile(path, domcmd)
-	.then(() => Promise.resolve())
-    .catch((err) => Promise.reject(err));
-};
+    var timerArguments = "";
 
-//Timer is received in ms but must be written in minutes in domcmd
-module.exports.changeDefaultTimer = function(data)
-{
-    const gameName = data.name;
-    const minutes = data.timer / 60000;
-    var domcmd = "setinterval " + minutes;
-    const path = `${_savedGamesPath}/${gameName}/domcmd`;
+    if (defaultTimer != null)
+        timerArguments += `setinterval ${defaultTimer}\n`;
 
-    //set currentTimer to what it was again, because setinterval changes the current timer as well
-    if (data.currentTimer != null)
-        domcmd += `\nsettimeleft ${data.currentTimer * 0.001}`;
+    if (currentTimer != null)
+        timerArguments += `settimeleft ${currentTimer}\n`;
 
     return fsp.writeFile(path, domcmd)
 	.then(() => Promise.resolve())
