@@ -82,7 +82,7 @@ module.exports.changeTimer = function(data)
     if (currentTimer != null)
         timerArguments += `settimeleft ${currentTimer}\n`;
 
-    return fsp.writeFile(path, domcmd)
+    return fsp.writeFile(path, timerArguments)
 	.then(() => Promise.resolve())
     .catch((err) => Promise.reject(err));
 };
