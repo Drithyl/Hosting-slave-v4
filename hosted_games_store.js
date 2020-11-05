@@ -103,31 +103,17 @@ module.exports.killAllGames = function(cb)
 	.catch((err) => Promise.reject(err));
 };
 
-module.exports.requestHosting = function(game)
+module.exports.requestHosting = function(gameData)
 {
-	return kill(game)
+    const delay = config.gameHostMsDelay * gameHostRequests.length;
+
+	return kill(gameData)
 	.then(() =>
 	{
-		rw.log("general", `Requesting hosting for ${game.name}...`);
-		gameHostRequests.push(game.port);
-
-        return new Promise((resolve, reject) =>
-        {
-            //sets a delay so that when many host requests are received, the server
-            //does not get overloaded
-            setTimeout(() =>
-            {
-                gameHostRequests.splice(gameHostRequests.indexOf(game.port), 1);
-                spawn(game)
-                .then(() => 
-                {
-                    hostedGames[game.port] = game;
-                    resolve();
-                })
-                .catch((err) => reject(err));
-
-            }, config.gameHostMsDelay * gameHostRequests.length);
-        });
+        gameHostRequests.push(gameData.port);
+		rw.log("general", `Requesting hosting for ${gameData.name}...`);
+        
+        return _setTimeoutPromise(delay, _host.bind(null, gameData));
     })
     .then(() => Promise.resolve())
     .catch((err) => Promise.reject(err));
@@ -172,7 +158,37 @@ module.exports.overwriteSettings = function(data)
 	return Promise.resolve();
 }
 
-function deleteGameReferences(game)
+function _setTimeoutPromise(delay, fnToCall)
 {
-	delete hostedGames[port];
+    return new Promise((resolve, reject) =>
+    {
+        const timeout = setTimeout(() =>
+        {
+            Promise.resolve(fnToCall())
+            .then(() => resolve(timeout))
+            .catch((err) => reject(err));
+
+        }, delay);
+    });
+}
+
+function _host(gameData)
+{
+    gameHostRequests.splice(gameHostRequests.indexOf(gameData.port), 1);
+
+    return spawn(gameData)
+    .then(() => 
+    {
+        hostedGames[gameData.port] = gameData;
+        
+        /** If the game is not in the lobby, then change the timer to the
+         *  default and current ones sent by the master server to ensure
+         *  that they are both correct even after a turn rolls.
+         */
+        if (dom5Interface.hasStarted(gameData) === true)
+            return dom5Interface.changeTimer(gameData);
+
+        else return Promise.resolve();
+    })
+    .catch((err) => Promise.reject(err));
 }
