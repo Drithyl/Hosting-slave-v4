@@ -70,16 +70,16 @@ module.exports.getScoreFile = function(data)
 module.exports.changeTimer = function(data)
 {
     const gameName = data.name;
-    const defaultTimer = data.timer / 60000;
-    const currentTimer = data.currentTimer * 0.001;
+    const defaultTimer = +data.timer / 60000;
+    const currentTimer = +data.currentTimer * 0.001;
     const path = `${_savedGamesPath}/${gameName}/domcmd`;
 
     var timerArguments = "";
 
-    if (defaultTimer != null)
+    if (isNaN(defaultTimer) === false)
         timerArguments += `setinterval ${defaultTimer}\n`;
 
-    if (currentTimer != null)
+    if (isNaN(currentTimer) === false)
         timerArguments += `settimeleft ${currentTimer}\n`;
 
     return fsp.writeFile(path, timerArguments)
@@ -96,7 +96,18 @@ module.exports.start = function(data)
 	return fsp.writeFile(path, "settimeleft 60")
 	.then(() => Promise.resolve())
 	.catch((err) => Promise.reject(err));
-}
+};
+
+module.exports.hasStarted = function(data)
+{
+    const gameName = data.name;
+    const path = `${_savedGamesPath}/${gameName}/ftherlnd`;
+
+    if (fs.existsSync(path) === true)
+        return true;
+
+    else return false;
+};
 
 module.exports.restart = function(data)
 {
@@ -164,9 +175,7 @@ module.exports.backupSavefiles = function(data)
 	var target = `${config.dataFolderPath}/backups`;
 
 	if (data.isNewTurn === true)
-	{
-		target += `${config.newTurnsBackupDirName}/${game.name}/Turn ${data.turnNbr}`;
-	}
+	    target += `${config.newTurnsBackupDirName}/${game.name}/Turn ${data.turnNbr}`;
 
 	else target += `${config.latestTurnBackupDirName}/${game.name}/Turn ${data.turnNbr}`;
 
