@@ -49,7 +49,7 @@ function StatusDump(gameName, rawData)
 
         this.nationStatusArray.forEach((nationStatus) =>
         {
-            if (fs.existsSync(`${path}/${nationStatus.filename}`) === true)
+            if (fs.existsSync(`${path}/${nationStatus.filename}.2h`) === true)
                 submittedNationStatuses.push(nationStatus);
         });
 
@@ -64,7 +64,7 @@ function StatusDump(gameName, rawData)
 
         return this.nationStatusArray.forEachPromise((nationStatus, index, nextPromise) =>
         {
-            const nationFilePath = `${path}/${nationStatus.filename}`;
+            const nationFilePath = `${path}/${nationStatus.filename}.2h`;
 
             if (nationStatus.wentAiThisTurn === true)
             {

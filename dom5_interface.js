@@ -24,14 +24,14 @@ module.exports.getModList = function()
 
 module.exports.getMapList = function()
 {
-	let mapsWithProvinceCount = [];
+	const mapsWithProvinceCount = [];
 
 	return rw.readDirContents(_mapPath, ".map")
 	.then((filesContentsByName) =>
 	{
 		filesContentsByName.forEachItem((content, filename) =>
 		{
-			let provs = provCountFn(content);
+			const provs = provCountFn(content);
 
 			if (provs != null)
 			    mapsWithProvinceCount.push({name: filename, ...provs});
@@ -44,9 +44,9 @@ module.exports.getMapList = function()
 
 module.exports.getTurnFile = function(data)
 {
-    var gameName = data.name;
-    var nationFilename = data.nationFilename;
-    var path = `${_savedGamesPath}/${gameName}/${nationFilename}`;
+    const gameName = data.name;
+    const nationFilename = data.nationFilename;
+    const path = `${_savedGamesPath}/${gameName}/${nationFilename}.trn`;
 
     return readFileBuffer(path)
     .then((buffer) => Promise.resolve(buffer))
@@ -55,8 +55,8 @@ module.exports.getTurnFile = function(data)
 
 module.exports.getScoreFile = function(data)
 {
-    var gameName = data.name;
-    var path = `${_savedGamesPath}/${gameName}/scores.html`;
+    const gameName = data.name;
+    const path = `${_savedGamesPath}/${gameName}/scores.html`;
 
     return readFileBuffer(path)
     .then((buffer) => Promise.resolve(buffer))

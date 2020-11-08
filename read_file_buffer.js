@@ -17,8 +17,8 @@ module.exports = function(filePath, maxSizeInMB = 8)
     {
         fileSizeInMB = stats.size / 1000000.0;
 
-        if (sizeInMB > maxSizeInMB)
-            return Promise.reject(`The turn file weighs ${sizeInMB}MB; max file size was set at ${maxSizeInMB}`);
+        if (fileSizeInMB > maxSizeInMB)
+            return Promise.reject(`The turn file weighs ${fileSizeInMB}MB; max file size was set at ${maxSizeInMB}`);
         
         return fsp.readFile(filePath);
     })

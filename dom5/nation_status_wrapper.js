@@ -53,7 +53,7 @@ function _extractNationFilename(rawData)
 {
     const words = _extractNationWords(rawData);
 
-    return words[0] + ".2h";
+    return words[0];
 }
 
 function _extractNationFullName(rawData)
