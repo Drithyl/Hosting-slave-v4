@@ -168,39 +168,39 @@ module.exports.getStatusDump = function(data)
 	.then((statusDumpWrapper) => Promise.resolve(statusDumpWrapper));
 };
 
-module.exports.backupSavefiles = function(data)
+module.exports.backupSavefiles = function(gameData)
 {
-	var game = games[data.port];
-	var source = `${_savedGamesPath}/${game.name}`;
+	const gameName = gameData.name;
+	const source = `${_savedGamesPath}/${gameName}`;
 	var target = `${config.dataFolderPath}/backups`;
 
-	if (data.isNewTurn === true)
-	    target += `${config.newTurnsBackupDirName}/${game.name}/Turn ${data.turnNbr}`;
+	if (gameData.isNewTurn === true)
+	    target += `${config.newTurnsBackupDirName}/${gameName}/Turn ${gameData.turnNbr}`;
 
-	else target += `${config.latestTurnBackupDirName}/${game.name}/Turn ${data.turnNbr}`;
+	else target += `${config.latestTurnBackupDirName}/${gameName}/Turn ${gameData.turnNbr}`;
 
 	return rw.copyDir(source, target, false, ["", ".2h", ".trn"])
 	.then(() => Promise.resolve())
 	.catch((err) => Promise.reject(err));
 };
 
-module.exports.rollback = function(data)
+module.exports.rollback = function(gameData)
 {
-	var game = games[data.port];
-	var source = `${config.dataFolderPath}/backups/${config.latestTurnBackupDirName}/${game.name}/Turn ${data.turnNbr}`;
-	var target = `${_savedGamesPath}/${game.name}`;
+	const gameName = gameData.name;
+	const target = `${_savedGamesPath}/${gameName}`;
+	var source = `${config.dataFolderPath}/backups/${config.latestTurnBackupDirName}/${gameName}/Turn ${gameData.turnNbr}`;
 
 	if (fs.existsSync(source) === false)
 	{
-		source = `${config.dataFolderPath}/backups/${config.newTurnsBackupDirName}/${game.name}/Turn ${data.turnNbr}`;
+		source = `${config.dataFolderPath}/backups/${config.newTurnsBackupDirName}/${gameName}/Turn ${gameData.turnNbr}`;
 
 		if (fs.existsSync(source) === false)
 			return Promise.reject(new Error(`No backup of the previous turn was found to be able to rollback.`));
 	}
 
 	return rw.copyDir(source, target, false, ["", ".2h", ".trn"])
-	.then(() => kill(game))
-	.then(() => spawn(game))
+	.then(() => kill(gameData))
+	.then(() => spawn(gameData))
 	.then(() => Promise.resolve())
 	.catch((err) => Promise.reject(err));
 };
@@ -215,7 +215,7 @@ module.exports.deleteGameSavefiles = function(data)
     .then(() => rw.deleteDir(backupPath))
     .then(() => 
     {
-        console.log(`${game.name}: deleted the savedgames files and their backups.`);
+        console.log(`${gameName}: deleted the savedgames files and their backups.`);
         return Promise.resolve();
     })
 	.catch((err) => Promise.reject(err));

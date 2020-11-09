@@ -67,7 +67,7 @@ module.exports.deleteDir = function(path)
         {
             const filepath = `${path}/${filename}`;
 
-            fsp.lstat(filepath)
+            return fsp.lstat(filepath)
             .then((stats) =>
             {
                 if (stats.isDirectory() === true)
@@ -301,7 +301,7 @@ module.exports.log = function(tags, trace, ...inputs)
 		console.log("\n\n");
 	}
 
-	tags.forEachPromise((tag, index, nextPromise) =>
+	return tags.forEachPromise((tag, index, nextPromise) =>
 	{
 		if (logTagsToPaths[tag] == null)
 			return nextPromise();
