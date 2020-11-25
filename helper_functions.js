@@ -19,7 +19,7 @@ Array.prototype.forEachPromise = function(asyncFn, callback)
 				else return resolve();
 			}
 
-            asyncFn(array[index], index++, () => loop())
+            Promise.resolve(asyncFn(array[index], index++, () => loop()))
             .catch((err) => 
             {
                 index++;
