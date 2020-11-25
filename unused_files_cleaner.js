@@ -17,7 +17,7 @@ module.exports.deleteUnusedMaps = function(mapsInUse)
         return fsp.readdir(`${config.dom5DataPath}/maps`)
     })
     .then((mapFilenames) => _deleteUnusedMaps(mapFilenames, filesInUse))
-    .catch((err) => cb({message: err.message}, []));
+    .catch((err, deletedFiles) => Promise.reject(err, deletedFiles));
 };
 
 /** uses the list of map names in use to check the file contents and add the
@@ -65,15 +65,12 @@ function _deleteUnusedMaps(filenames, mapfilesInUse)
     if (mapfilesInUse.includes(filename) === true)
       return nextPromise();
 
-    /*fsp.unlink(`${mapDirPath}/${filename}`)
+    return fsp.unlink(`${mapDirPath}/${filename}`)
     .then(() =>
     {
         deletedFiles.push(filename);
         return nextPromise();
-    });*/
-
-    deletedFiles.push(filename);
-    return nextPromise();
+    });
   })
   .then(() => Promise.resolve(deletedFiles))
   .catch((err) => Promise.reject(err, deletedFiles));
