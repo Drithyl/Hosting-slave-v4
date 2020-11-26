@@ -87,6 +87,18 @@ module.exports.changeTimer = function(data)
     .catch((err) => Promise.reject(err));
 };
 
+module.exports.forceHost = function(data)
+{
+    const gameName = data.name;
+    const defaultTimer = +data.timer / 60000;
+    const hostCountdownCmd = `setinterval ${defaultTimer}\nsettimeleft 5\n`;
+    const path = `${_savedGamesPath}/${gameName}/domcmd`;
+
+    return fsp.writeFile(path, hostCountdownCmd)
+	.then(() => Promise.resolve())
+    .catch((err) => Promise.reject(err));
+};
+
 //Set 60 seconds to start the game
 module.exports.start = function(data)
 {

@@ -29,6 +29,7 @@ module.exports.listen = function(socketWrapper)
     socketWrapper.on("LAUNCH_GAME", (gameData) => hostedGamesStore.requestHosting(gameData));
     socketWrapper.on("KILL_GAME", (gameData) => hostedGamesStore.killGame(gameData.port));
     socketWrapper.on("CHANGE_TIMER", (data) => dom5Interface.changeTimer(data));
+    socketWrapper.on("FORCE_HOST", (data) => dom5Interface.forceHost(data));
     socketWrapper.on("GET_LAST_HOSTED_TIME", (data) => dom5Interface.getLastHostedTime(data));
     socketWrapper.on("GET_MOD_LIST", (data) => dom5Interface.getModList());
     socketWrapper.on("GET_MAP_LIST", (data) => dom5Interface.getMapList());
