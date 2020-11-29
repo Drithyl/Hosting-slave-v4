@@ -1,6 +1,8 @@
 
 const { google } = require('googleapis');
 
+module.exports = MetadataQuery;
+
 function MetadataQuery(oAuth2Object)
 {
     const drive = google.drive({version:"v3", oAuth2Object});

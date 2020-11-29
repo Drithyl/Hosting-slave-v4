@@ -27,7 +27,7 @@ process.on("uncaughtException", (err, origin) =>
 	console.log(message);
 
 	fs.appendFileSync(
-		config.errorLogPath,
+		`${config.dataFolderPath}/logs/error.txt`,
 		message
 	);
 

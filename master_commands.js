@@ -11,8 +11,7 @@ module.exports.listen = function(socketWrapper)
 {
     socketWrapper.on("REQUEST_SERVER_DATA", _sendServerData);
     socketWrapper.on("GAME_DATA", _populateGameData);
-    socketWrapper.on("DOWNLOAD_MAP", _downloadMap);
-    socketWrapper.on("DOWNLOAD_MOD", _downloadMod);
+    socketWrapper.on("UPLOAD_FILE", _downloadFile);
 
     socketWrapper.on("RESERVE_PORT", (data) => reservedPortsStore.reservePort());
     socketWrapper.on("RELEASE_PORT", (data) => reservedPortsStore.releasePort(data.port));
@@ -77,42 +76,22 @@ function _populateGameData(gamesInfo)
 	else return hostedGamesStore.populate(gamesInfo);
 }
 
-function _downloadMap(data)
+function _downloadFile(data)
 {
 	if (typeof data.fileId !== "string")
 	  return Promise.reject(new Error("fileId must be specified."));
 
-    rw.log("upload", `Request to download map zipfile ${data.fileId} received.`);
-    
-	//confirm that request is valid
-	Promise.resolve();
+    rw.log("upload", `Request to download ${data.type} zipfile ${data.fileId} received.`);
 
-	return downloader.downloadMap(data.fileId)
-    .then((filesWritten) => 
+    return Promise.resolve()
+    .then(() =>
     {
-        //Do not return this .emit() promise as it will interfere with the Promise chain
-        //and no further action is needed after emitting the result to master server
-        socketWrapper.emit("DOWNLOAD_COMPLETE", filesWritten);
-    })
-    .catch((err) => socketWrapper.emit("DOWNLOAD_ERROR", err.message));
-}
+        if (/^map$/i.test(data.type) === true)
+            return downloader.downloadMap(data.fileId);
 
-function _downloadMod(data)
-{
-	if (typeof data.fileId !== "string")
-	  return Promise.reject(new Error("fileId must be specified."));
+        else if (/^mod$/i.test(data.type) === true)
+            return downloader.downloadMod(data.fileId);
 
-	//confirm that request is valid
-	Promise.resolve();
-
-	rw.log("upload", `Request to download mod zipfile ${data.fileId} received.`);
-
-	return downloader.downloadMod(data.fileId)
-    .then((filesWritten) => 
-    {
-        //Do not return this .emit() promise as it will interfere with the Promise chain
-        //and no further action is needed after emitting the result to master server
-        socketWrapper.emit("DOWNLOAD_COMPLETE", filesWritten);
-    })
-    .catch((err) => socketWrapper.emit("DOWNLOAD_ERROR", err.message));
+        else return Promise.reject(new Error("type must be 'map' or 'mod'"));
+    });
 }

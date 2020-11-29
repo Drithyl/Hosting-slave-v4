@@ -6,7 +6,6 @@ const config = require("./config.json");
 const rw = require("./reader_writer.js");
 
 const googleDriveAPI = require("./google_drive_api/index.js");
-//const steamWorkshopAPI = require("./steam_workshop_api/index.js");
 
 //These are the extensions expected in the collection of map files
 const mapExtensionTest = new RegExp("(\.map)|(\.rgb)|(\.tga)|(\.png)$", "i");
@@ -14,7 +13,7 @@ const mapExtensionTest = new RegExp("(\.map)|(\.rgb)|(\.tga)|(\.png)$", "i");
 //These are the extensions expected in the collection of mod files
 const modExtensionTest = new RegExp("(\.dm)|(\.rgb)|(\.tga)|(\.png)|(\.sw)$", "i");
 
-const zipMaxSize = config.maxFileSizeInMB * 1000000;  //100MB in bytes
+const zipMaxSize = config.maxFileSizeInMB * 2000000;  //200MB in bytes
 
 if (fs.existsSync(config.tmpDownloadPath) === false)
 {
@@ -25,23 +24,19 @@ if (fs.existsSync(config.tmpDownloadPath) === false)
 
 module.exports.downloadMap = (fileId) =>
 {
-    var path = `${config.dom5DataPath}/maps`;
-
+    const path = `${config.dom5DataPath}/maps`;
     return _downloadFile(fileId, path, mapExtensionTest);
 };
 
 module.exports.downloadMod = (fileId) =>
 {
-    var path = `${config.dom5DataPath}/mods`;
-
+    const path = `${config.dom5DataPath}/mods`;
     return _downloadFile(fileId, path, modExtensionTest);
 };
 
 
 function _downloadFile(fileId, targetPath, extensionFilter)
 {
-    const entriesToWrite = [];
-    const entriesWritten = [];
     const downloadPath = `${config.tmpDownloadPath}/${fileId}.zip`;
 
     rw.log("upload", `Obtaining metadata of file id ${fileId}...`);
@@ -69,53 +64,48 @@ function _downloadFile(fileId, targetPath, extensionFilter)
         //obtain the zipfile in proper form through yauzl
         return googleDriveAPI.downloadFile(fileId, downloadPath);
     })
-    .then(() => unzip.openZipfile(downloadPath))
-    .then((entries, zipfile) =>
-    {
-        entries.forEach((entry) =>
-        {
-            //.map files that begin with two underscores __ don't get found
-            //properly by the --mapfile flag, so make sure to remove them here
-            if (/^\_+/g.test(entry.fileName) === true)
-            {
-                rw.log("upload", `Data file ${entry.fileName} contains underscores at the beginning of its name, removing them.`);
-                entry.fileName = entry.fileName.replace(/^\_+/g, "");
-            }
-
-            if (fs.existsSync(`${targetPath}/${entry.fileName}`) === true)
-                rw.log("upload", `File ${entry.fileName} already exists; skipping.`);
-
-            //directories finish their name in /, keep these as well to preserve mod structure
-            else if (/\/$/.test(entry.fileName) === true)
-            {
-                rw.log("upload", `Keeping directory ${entry.fileName}.`);
-                entriesToWrite.push(entry);
-            }
-
-            //select only the relevant files to extract (directories are included
-            //so that a mod's structure can be preserved properly)
-            else if (extensionFilter.test(entry.fileName) === true)
-            {
-                rw.log("upload", `Keeping data file ${entry.fileName}.`);
-                entriesToWrite.push(entry);
-                entriesWritten.push(entry.fileName);
-            }
-
-            else rw.log("upload", `Skipping file ${entry.fileName}.`);
-        });
-
-        rw.log("upload", `Writing entries to disk...`);
-        return unzip.extractEntriesTo(entries, zipfile, dataPath);
-    })
-    .then(() => 
+    .then(() => unzip.extractTo(downloadPath, targetPath, (entry) => _filterEntry(entry, extensionFilter, targetPath)))
+    .then((result) =>
     {
         rw.log("upload", `Entries written successfully.`);
         
         _cleanupTmpFiles(fileId)
         .catch((err) => rw.log("upload", `Could not clear tmp files:\n\n${err.message}`));
 
-        return Promise.resolve({isDone: true, entriesWritten: entriesWritten});
+        return Promise.resolve(result);
     });
+}
+
+/** function used to filter the entries inside the zipfile. Must return true to be extracted */
+function _filterEntry(entry, extensionFilter, targetPath)
+{
+    //.map files that begin with two underscores __ don't get found
+    //properly by the --mapfile flag, so make sure to remove them here
+    if (/^\_+/g.test(entry.fileName) === true)
+    {
+        rw.log("upload", `Data file ${entry.fileName} contains underscores at the beginning of its name, removing them.`);
+        entry.fileName = entry.fileName.replace(/^\_+/g, "");
+    }
+
+    if (fs.existsSync(`${targetPath}/${entry.fileName}`) === true)
+        rw.log("upload", `File ${entry.fileName} already exists; skipping.`);
+
+    //directories finish their name in /, keep these as well to preserve mod structure
+    else if (/\/$/.test(entry.fileName) === true)
+    {
+        rw.log("upload", `Keeping directory ${entry.fileName}.`);
+        return true;
+    }
+
+    //select only the relevant files to extract (directories are included
+    //so that a mod's structure can be preserved properly)
+    else if (extensionFilter.test(entry.fileName) === true)
+    {
+        rw.log("upload", `Keeping data file ${entry.fileName}.`);
+        return true;
+    }
+
+    else rw.log("upload", `Skipping file ${entry.fileName}.`);
 }
 
 //We're not using a callback because if the execution fails, we'll just print it

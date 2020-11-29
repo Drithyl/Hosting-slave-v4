@@ -152,7 +152,7 @@ module.exports.downloadFile = function(fileId, downloadPath)
 	if (wasInitialized === false)
 		return Promise.reject(new Error("The module was not initialized properly."));
 
-	const downloadStream = DownloadStream(oAuth2Object, downloadPath);
+	const downloadStream = new DownloadStream(oAuth2Object, downloadPath);
 
 	//get file as a stream, then
 	//auth must be passed as option with the oAuth2 object that was obtained in the initialization
@@ -176,7 +176,7 @@ module.exports.downloadFile = function(fileId, downloadPath)
 		downloadStream.onReadError((err) => reject(err));
 		downloadStream.onReadEnd(() => console.log(`Finished reading file.`));
 		downloadStream.onReadClose(() => console.log(`Read stream closed.`));
-		downloadStream.onReadData(() => console.log(`Read chunk`, chunk));
+		downloadStream.onReadData((chunk) => console.log(`Read chunk`, chunk));
 
 		downloadStream.onWriteError((err) => reject(err));
 		downloadStream.onWriteClose(() => console.log(`Write stream closed.`));
