@@ -126,6 +126,9 @@ module.exports.requestHosting = function(gameData)
 {
     const delay = config.gameHostMsDelay * gameHostRequests.length;
 
+    if (exports.isGameOnline(gameData.port) === true)
+        return Promise.resolve();
+
 	return kill(gameData)
 	.then(() =>
 	{
