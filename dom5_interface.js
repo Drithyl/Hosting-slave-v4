@@ -91,11 +91,13 @@ module.exports.changeTimer = function(data)
 module.exports.forceHost = function(data)
 {
     const gameName = data.name;
-    const defaultTimer = +data.timer / 60000;
-    const hostCountdownCmd = `setinterval ${defaultTimer}\nsettimeleft 5\n`;
-    const path = `${_savedGamesPath}/${gameName}/domcmd`;
 
-    return fsp.writeFile(path, hostCountdownCmd)
+    // Change current timer to 5 seconds, which will make the start countdown begin;
+    // while reinforcing the default timer once again (important in case this is a 
+    // start after a restart, we don't want to keep old values)
+    const forceHostData = Object.assign(data, { timer: data.timer, currentTimer: 5000 });
+
+	return exports.changeTimer(forceHostData)
 	.then(() => Promise.resolve())
     .catch((err) => Promise.reject(err));
 };
@@ -104,9 +106,13 @@ module.exports.forceHost = function(data)
 module.exports.start = function(data)
 {
     const gameName = data.name;
-	const path = `${_savedGamesPath}/${gameName}/domcmd`;
+    
+    // Change current timer to 6 seconds, which will make the start countdown begin;
+    // while reinforcing the default timer once again (important in case this is a 
+    // start after a restart, we don't want to keep old values)
+    const startData = Object.assign(data, { timer: data.timer, currentTimer: 6000 });
 
-	return fsp.writeFile(path, "settimeleft 60")
+	return exports.changeTimer(startData)
 	.then(() => Promise.resolve())
 	.catch((err) => Promise.reject(err));
 };
@@ -134,7 +140,7 @@ module.exports.restart = function(data)
 	//as soon as it gets deleted
 	return kill(game)
 	.then(() => rw.atomicRmDir(path))
-	.then(() => cleaner.deleteAllTurnBackups(gameName))
+    .then(() => cleaner.deleteAllTurnBackups(gameName))
 	.then(() => gameStore.requestHosting(game))
 	.then(() => Promise.resolve())
 	.catch((err) => Promise.reject(err));
