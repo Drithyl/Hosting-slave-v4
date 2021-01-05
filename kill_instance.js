@@ -56,7 +56,7 @@ function _kill(game, attempts, maxAttempts)
 	//use SIGKILL as final attempt (SIGKILL closes a process without
 	//elegantly letting it end)
 	else if (attempts === maxAttempts - 1)
-		game.instance.kill("SIGKILL");
+		game.instance.kill(game.instance.pid);
 
 	else
 		game.instance.kill("SIGTERM");

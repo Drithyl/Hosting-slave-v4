@@ -157,7 +157,7 @@ function _getAdditionalArgs(game)
     ];
 		
 	if (process.platform === "win32")
-	    args.push("--nocrashbox");
+        args.push("--nocrashbox");
 
 	return args;
 }
@@ -167,9 +167,7 @@ function _backupCmd(type, gameName)
 	let backupModulePath = require.resolve("./backup_script.js");
 
 	if (typeof backupModulePath !== "string")
-	{
-		return [];
-	}
+	    return [];
 
 	//pass the dom5 flag (--preexec or --postexec) plus the cmd command to launch
 	//the node script, "node [path to backup_script.js]" plus the game's name and

@@ -1,4 +1,8 @@
 
+/** Required here for when the backup_script executes helper functions,
+/*  as they are called as a separate Node instance */
+require("./helper_functions.js");
+
 const fs = require("fs");
 const fsp = require("fs").promises;
 const config = require("./config.json");
@@ -226,7 +230,7 @@ module.exports.getDirFilenames = function(path, extensionFilter = "")
 	var readFilenames = [];
 
 	if (fs.existsSync(path) === false)
-		return Promise.reject(new Error("This directory was not found on the server."));
+		return Promise.reject(new Error(`The directory ${path} was not found on the server.`));
 
 	return fsp.readdir(path, "utf8")
 	.then((filenames) =>
@@ -308,7 +312,8 @@ module.exports.log = function(tags, trace, ...inputs)
 
 		return fsp.appendFile(logTagsToPaths[tag], `${msg}\r\n\n`)
 		.then(() => nextPromise());
-	});
+    })
+    .catch((err) => console.log(`Failed to log: ${err.message}\n\n${err.stack}`));
 };
 
 function _timestamp()

@@ -20,7 +20,7 @@
 	"dom5ExePath": "C:/SteamLibrary/steamapps/common/Dominions5/Dominions5.exe",
 	"dom5DataPath": "C:/Users/MistZ/AppData/Roaming/Dominions5",
 
-	"newTurnsBackupDirName": "New Turns",
-	"latestTurnBackupDirName": "Latest",
+	"newTurnsBackupDirName": "New Blank Turns",
+	"preHostTurnBackupDirName": "Pre-host Turns",
 	"gameCostMsDelay": 250
 }

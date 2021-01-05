@@ -8,6 +8,11 @@ const masterCommands = require("./master_commands.js");
 const googleDriveApi = require("./google_drive_api/index.js");
 
 
+//TODO: refactor
+if (fs.existsSync(`${config.dataFolderPath}/backups`) === false)
+    fs.mkdirSync(`${config.dataFolderPath}/backups`);
+
+
 googleDriveApi.authorize()
 .then(() =>_socketWrapper.connect())
 .then((connectedSocketWrapper) => masterCommands.listen(connectedSocketWrapper))
