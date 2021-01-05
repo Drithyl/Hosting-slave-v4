@@ -6,6 +6,7 @@ const rw = require("./reader_writer.js");
 const kill = require("./kill_instance.js");
 const spawn = require("./process_spawn.js").spawn;
 const gameStore = require("./hosted_games_store.js");
+const cleaner = require("./unused_files_cleaner.js");
 const readFileBuffer = require("./read_file_buffer.js");
 const provCountFn = require("./dom5/parse_province_count.js");
 const { fetchStatusDump } = require("./dom5/status_dump_wrapper.js");
@@ -133,6 +134,7 @@ module.exports.restart = function(data)
 	//as soon as it gets deleted
 	return kill(game)
 	.then(() => rw.atomicRmDir(path))
+	.then(() => cleaner.deleteAllTurnBackups(gameName))
 	.then(() => gameStore.requestHosting(game))
 	.then(() => Promise.resolve())
 	.catch((err) => Promise.reject(err));
@@ -189,7 +191,7 @@ module.exports.backupSavefiles = function(gameData)
 	if (gameData.isNewTurn === true)
 	    target += `${config.newTurnsBackupDirName}/${gameName}/Turn ${gameData.turnNbr}`;
 
-	else target += `${config.latestTurnBackupDirName}/${gameName}/Turn ${gameData.turnNbr}`;
+	else target += `${config.preHostTurnBackupDirName}/${gameName}/Turn ${gameData.turnNbr}`;
 
 	return rw.copyDir(source, target, false, ["", ".2h", ".trn"])
 	.then(() => Promise.resolve())
@@ -200,7 +202,7 @@ module.exports.rollback = function(gameData)
 {
 	const gameName = gameData.name;
 	const target = `${_savedGamesPath}/${gameName}`;
-	var source = `${config.dataFolderPath}/backups/${config.latestTurnBackupDirName}/${gameName}/Turn ${gameData.turnNbr}`;
+	var source = `${config.dataFolderPath}/backups/${config.preHostTurnBackupDirName}/${gameName}/Turn ${gameData.turnNbr}`;
 
 	if (fs.existsSync(source) === false)
 	{
@@ -221,7 +223,7 @@ module.exports.deleteGameSavefiles = function(data)
 {
 	const gameName = data.name;
     const path = `${_savedGamesPath}/${gameName}`;
-    const backupPath = `${config.dataFolderPath}/${gameName}`;
+    const backupPath = `${config.dataFolderPath}/backups/${gameName}`;
 
 	return rw.deleteDir(path)
     .then(() => rw.deleteDir(backupPath))
