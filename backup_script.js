@@ -45,10 +45,10 @@ statusDump.fetchStatusDump(gameName)
     rw.log(["backup"], `Statusdump fetched, turn is ${statusDumpWrapper.turnNbr}`);
 
     if (preexecRegex.test(type) === true)
-        return _writeTurnNbrToTmpFile(gameName, statusDumpWrapper.turnNbr, tmpTurnFilePath);
+        return _writeTurnNbrToTmpFile(statusDumpWrapper.turnNbr, tmpTurnFilePath);
         
     else if (postexecRegex.test(type) === true)
-        return _readTurnNbrFromTmpFile(gameName, fetchedStatusDump, tmpTurnFilePath);
+        return _readTurnNbrFromTmpFile(fetchedStatusDump, tmpTurnFilePath);
 })
 .then(() => _createDirectories(`${targetBackupDir}/Turn ${fetchedStatusDump.turnNbr}`))
 .then(() => 
@@ -69,8 +69,9 @@ statusDump.fetchStatusDump(gameName)
 .catch((err) => rw.log(["backup", "error"], `Error occurred during backup: ${err.message}\n\n${err.stack}`));
 
 
-
-function _writeTurnNbrToTmpFile(gameName, turnNbr, path)
+// Pre-exec backup writes the known turn number from the statusdump to a file,
+// so that post-exec backup can read it from there. 
+function _writeTurnNbrToTmpFile(turnNbr, path)
 {
     return fsp.writeFile(path, turnNbr, "utf-8")
     .then(() =>
@@ -85,14 +86,17 @@ function _writeTurnNbrToTmpFile(gameName, turnNbr, path)
     });
 }
 
-function _readTurnNbrFromTmpFile(gameName, statusDump, path)
+// Read turn number from file left by pre-exec. Post-exec backup does not
+// normally know the turn as fetching the statusdump right after a turn
+// generated results in a turn number of -1
+function _readTurnNbrFromTmpFile(statusDump, path)
 {
     return fsp.readFile(path, "utf-8")
     .then((turnNbrString) =>
     {
         rw.log(["backup"], `Postexec read turn ${turnNbrString} from file.`);
         statusDump.turnNbr = +turnNbrString + 1;
-        return fsp.unlink(`${config.tmpDownloadPath}/${gameName}`);
+        return fsp.unlink(path);
     })
     .catch((err) => rw.log(["backup"], `Postexec error when reading turn from file: ${err.message}\n\n${err.stack}`));
 }
