@@ -140,7 +140,6 @@ module.exports.restart = function(data)
 	//as soon as it gets deleted
 	return kill(game)
 	.then(() => rw.atomicRmDir(path))
-    .then(() => cleaner.deleteAllTurnBackups(gameName))
 	.then(() => gameStore.requestHosting(game))
 	.then(() => Promise.resolve())
 	.catch((err) => Promise.reject(err));
