@@ -14,7 +14,7 @@ if (fs.existsSync(`${config.dataFolderPath}/backups`) === false)
 
 
 googleDriveApi.authorize()
-.then(() =>_socketWrapper.connect())
+.then(() => _socketWrapper.connect())
 .then((connectedSocketWrapper) => masterCommands.listen(connectedSocketWrapper))
 .catch((err) => console.log(`Initialization error occurred.`, err));
 
