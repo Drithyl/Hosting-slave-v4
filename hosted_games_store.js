@@ -50,7 +50,12 @@ module.exports.populate = function(gameDataArray)
 		//if game data is already in this store, overwrite it
         else 
         {
-            hostedGames[gameData.port] = gameData;
+            // Overwrite it by reassigning the properties received; but don't remove old
+            // keys like .instance or isRunning so that the slave is aware that it's still
+            // running and doesn't try to launch it again when requested, or it won't be able
+            // to kill it even if the requestHosting() function tries to (since the instance
+            // property will be lost)
+            Object.assign(hostedGames[gameData.port], gameData);
             console.log(`Game ${gameData.name} already exists at port ${gameData.port}; data was overwritten.`);
         }
     });
@@ -106,20 +111,18 @@ module.exports.killGame = function(port)
 	.catch((err) => Promise.reject(err));
 };
 
-module.exports.killAllGames = function(cb)
+module.exports.killAllGames = function()
 {
-	return hostedGames.forEachPromise((game, index, nextPromise) =>
+	hostedGames.forEachItem((game, port) =>
 	{
-		if (game.instance == null)
-			return nextPromise();
+        if (game.instance != null)
+        {
+            rw.log("general", `Killing ${game.name}...`);
 
-		rw.log("general", `Killing ${game.name}...`);
-
-		return kill(game)
-		.then(() => nextPromise());
-	})
-	.then(() => Promise.resolve())
-	.catch((err) => Promise.reject(err));
+            return kill(game)
+            .catch((err) => rw.log(`Could not kill ${game.name} at port ${port}: ${err.message}\n\n${err.stack}`));
+        }
+	});
 };
 
 module.exports.requestHosting = function(gameData)
