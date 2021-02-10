@@ -43,6 +43,43 @@ module.exports.getMapList = function()
 	.catch((err) => Promise.reject(err));
 };
 
+module.exports.getTurnFiles = function(data)
+{
+    const gameName = data.name;
+    const nationNames = data.nationNames;
+    const gameFilesPath = `${_savedGamesPath}/${gameName}`;
+    const scoresPath = `${gameFilesPath}/scores.html`;
+    const files = { turnFiles: {} };
+
+    return nationNames.forEachPromise((nationName, i, nextPromise) =>
+    {
+        return readFileBuffer(`${gameFilesPath}/${nationName}.trn`)
+        .then((buffer) =>
+        {
+            files.turnFiles[nationName] = buffer;
+            return nextPromise();
+        })
+        .catch((err) => Promise.reject(err));
+    })
+    .then(() => 
+    {
+        if (fs.existsSync(scoresPath) === false)
+            return Promise.resolve();
+
+        return readFileBuffer(scoresPath)
+        .then((buffer) =>
+        {
+            files.scores = buffer;
+            return Promise.resolve(files);
+        });
+    })
+    .catch((err) => 
+    {
+        console.log(err);
+        return Promise.reject(err);
+    });
+};
+
 module.exports.getTurnFile = function(data)
 {
     const gameName = data.name;

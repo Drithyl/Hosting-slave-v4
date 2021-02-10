@@ -10,7 +10,7 @@ module.exports = function(filePath, maxSizeInMB = 8)
     var fileSizeInMB;
 
     if (fs.existsSync(filePath) === false)
-        return Promise.reject(`The file does not exist.`);
+        return Promise.reject(`Path ${filePath} does not exist.`);
 
     return fsp.stat(filePath)
     .then((stats) =>

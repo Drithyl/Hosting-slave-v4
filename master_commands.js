@@ -32,6 +32,7 @@ module.exports.listen = function(socketWrapper)
     socketWrapper.on("GET_LAST_HOSTED_TIME", (data) => dom5Interface.getLastHostedTime(data));
     socketWrapper.on("GET_MOD_LIST", (data) => dom5Interface.getModList());
     socketWrapper.on("GET_MAP_LIST", (data) => dom5Interface.getMapList());
+    socketWrapper.on("GET_TURN_FILES", (data) => dom5Interface.getTurnFiles(data));
     socketWrapper.on("GET_TURN_FILE", (data) => dom5Interface.getTurnFile(data));
     socketWrapper.on("GET_SCORE_DUMP", (data) => dom5Interface.getScoreDump(data));
     socketWrapper.on("GET_STALES", (data) => dom5Interface.getStales(data));
