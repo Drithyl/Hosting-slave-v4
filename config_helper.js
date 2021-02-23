@@ -3,7 +3,7 @@ const fs = require("fs");
 const readline = require("readline");
 const exampleConfig = require("./example.config.json");
 
-exports.hasConfig = () => fs.existsSync("./config/config.json");
+exports.hasConfig = () => fs.existsSync("./config.json");
 
 exports.askConfigQuestions = () =>
 {
