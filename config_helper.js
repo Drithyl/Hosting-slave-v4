@@ -1,7 +1,20 @@
 
 const fs = require("fs");
+const path = require("path");
 const readline = require("readline");
+const config = require("./config.json");
 const exampleConfig = require("./example.config.json");
+
+exports.buildDataPath = () =>
+{
+    if (config.dataFolderPath.startsWith(".") === true)
+        config.dataFolderPath = path.resolve(__dirname, config.dataFolderPath);
+
+    if (fs.existsSync(config.dataFolderPath) === false)
+        fs.mkdirSync(config.dataFolderPath);
+
+    return config;
+};
 
 exports.hasConfig = () => fs.existsSync("./config.json");
 
@@ -24,19 +37,15 @@ exports.askConfigQuestions = () =>
 
         config.capacity = +answer;
     }))
-    .then(() => _promisifiedQuestion("Input data folder dir: ", (answer) =>
-    {
+    .then(() => _promisifiedQuestion("Input data folder dir (Enter for default): ", (answer) =>
+    {        
+        if (answer === "")
+            return Promise.resolve();
+
         if (fs.existsSync(answer) === false)
             return Promise.reject("Path does not exist.");
 
         config.dataFolderPath = answer;
-    }))
-    .then(() => _promisifiedQuestion("Input tmp download path: ", (answer) =>
-    {
-        if (fs.existsSync(answer) === false)
-            return Promise.reject("Path does not exist.");
-
-        config.tmpDownloadPath = answer;
     }))
     .then(() => _promisifiedQuestion("Input Dom5 root path: ", (answer) =>
     {

@@ -41,7 +41,7 @@ statusDump.fetchStatusDump(gameName)
 .then((statusDumpWrapper) =>
 {
     fetchedStatusDump = statusDumpWrapper;
-    const tmpTurnFilePath = `${config.tmpDownloadPath}/${gameName}`;
+    const tmpTurnFilePath = `${config.dataFolderPath}/${config.tmpDownloadPath}/${gameName}`;
     rw.log(["backup"], `Statusdump fetched, turn is ${statusDumpWrapper.turnNbr}`);
 
     if (preexecRegex.test(type) === true)

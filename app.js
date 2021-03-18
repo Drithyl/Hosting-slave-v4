@@ -15,7 +15,8 @@ Promise.resolve()
 .then(() =>
 {
     // Load config and then begin initialization
-    config = require("./config.json");
+    config = configHelper.buildDataPath();
+
 
     _initializeComponents();
 });

@@ -14,11 +14,12 @@ const mapExtensionTest = new RegExp("(\.map)|(\.rgb)|(\.tga)|(\.png)$", "i");
 const modExtensionTest = new RegExp("(\.dm)|(\.rgb)|(\.tga)|(\.png)|(\.sw)$", "i");
 
 const zipMaxSize = config.maxFileSizeInMB * 2000000;  //200MB in bytes
+const tmpPath = `${config.dataFolderPath}/${config.tmpDownloadPath}`;
 
-if (fs.existsSync(config.tmpDownloadPath) === false)
+if (fs.existsSync(tmpPath) === false)
 {
     //create temporary download path if it doesn't exist
-    fs.mkdirSync(config.tmpDownloadPath);
+    fs.mkdirSync(tmpPath);
 }
 
 
@@ -37,7 +38,7 @@ module.exports.downloadMod = (fileId) =>
 
 function _downloadFile(fileId, targetPath, extensionFilter)
 {
-    const downloadPath = `${config.tmpDownloadPath}/${fileId}.zip`;
+    const downloadPath = `${tmpPath}/${fileId}.zip`;
 
     rw.log("upload", `Obtaining metadata of file id ${fileId}...`);
 
@@ -112,7 +113,7 @@ function _filterEntry(entry, extensionFilter, targetPath)
 //to the bot log; the user doesn't need to know about it.
 function _cleanupTmpFiles(fileId)
 {
-    let path = `${config.tmpDownloadPath}/${fileId}`;
+    let path = `${tmpPath}/${fileId}`;
 
     rw.log("upload", `Deleting temp zipfile ${fileId}...`);
 

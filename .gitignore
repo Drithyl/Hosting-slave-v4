@@ -8,4 +8,7 @@ config.json
 #node modules
 node_modules/
 
+#app data
+data/
+
 package-lock.json

@@ -8,6 +8,7 @@ const fsp = require("fs").promises;
 const config = require("./config.json");
 
 const _tmpDataPath = `${config.dataFolderPath}/tmp`;
+const _logsPath = `${config.dataFolderPath}/logs`;
 const logTagsToPaths =
 {
 	"default": `${config.dataFolderPath}/logs/general.txt`,
@@ -18,9 +19,10 @@ const logTagsToPaths =
 }
 
 if (fs.existsSync(_tmpDataPath) === false)
-{
-	throw `tmpDir doesn't exist, please create it at the path specified in the config file.`;
-}
+	fs.mkdirSync(_tmpDataPath);
+
+if (fs.existsSync(_logsPath) === false)
+	fs.mkdirSync(_logsPath);
 
 module.exports.copyFile = function(source, target)
 {
