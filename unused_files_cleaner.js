@@ -72,7 +72,7 @@ module.exports.deleteUnusedMaps = function(mapsInUse)
     .then((list) => 
     {
         filesInUse = list;
-        return fsp.readdir(`${config.dom5DataPath}/maps`)
+        return fsp.readdir(config.dom5MapsPath)
     })
     .then((mapFilenames) => _deleteUnusedMaps(mapFilenames, filesInUse))
     .catch((err, deletedFiles) => Promise.reject(err, deletedFiles));
@@ -84,13 +84,12 @@ module.exports.deleteUnusedMaps = function(mapsInUse)
 function _getListOfAllMapfilesInUse(mapsInUse)
 {
     var list = [...mapsInUse];
-    var path = `${config.dom5DataPath}/maps`;
 
     return mapsInUse.forEachPromise((filename, i, nextPromise) =>
     {
         var imageFilenameMatch;
         var winterImageFilenameMatch;
-        const filePath = `${path}/${filename}`;
+        const filePath = `${config.dom5MapsPath}/${filename}`;
 
         if (fs.existsSync(filePath) === false)
             return nextPromise();
@@ -116,14 +115,13 @@ function _getListOfAllMapfilesInUse(mapsInUse)
 function _deleteUnusedMaps(filenames, mapfilesInUse)
 {
   var deletedFiles = [];
-  var mapDirPath = `${config.dom5DataPath}/maps`;
 
   return filenames.forEachPromise((filename, index, nextPromise) =>
   {
     if (mapfilesInUse.includes(filename) === true)
       return nextPromise();
 
-    return fsp.unlink(`${mapDirPath}/${filename}`)
+    return fsp.unlink(`${config.dom5MapsPath}/${filename}`)
     .then(() =>
     {
         deletedFiles.push(filename);

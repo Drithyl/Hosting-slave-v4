@@ -19,6 +19,8 @@
 	"dom5RootPath": "C:/SteamLibrary/steamapps/common/Dominions5",
 	"dom5ExePath": "C:/SteamLibrary/steamapps/common/Dominions5/Dominions5.exe",
 	"dom5DataPath": "C:/Users/MistZ/AppData/Roaming/Dominions5",
+	"dom5MapsPath": "C:/Users/MistZ/AppData/Roaming/Dominions5/maps",
+	"dom5ModsPath": "C:/Users/MistZ/AppData/Roaming/Dominions5/mods",
 
 	"newTurnsBackupDirName": "New Blank Turns",
 	"preHostTurnBackupDirName": "Pre-host Turns",

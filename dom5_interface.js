@@ -11,14 +11,12 @@ const readFileBuffer = require("./read_file_buffer.js");
 const provCountFn = require("./dom5/parse_province_count.js");
 const { fetchStatusDump } = require("./dom5/status_dump_wrapper.js");
 
-const _mapPath = `${config.dom5DataPath}/maps`;
-const _modPath = `${config.dom5DataPath}/mods`;
 const _savedGamesPath = `${config.dom5DataPath}/savedgames`;
 
 
 module.exports.getModList = function()
 {
-	return rw.getDirFilenames(_modPath, ".dm")
+	return rw.getDirFilenames(config.dom5ModsPath, ".dm")
 	.then((filenames) => Promise.resolve(filenames))
 	.catch((err) => Promise.reject(err));
 };
@@ -27,7 +25,7 @@ module.exports.getMapList = function()
 {
 	const mapsWithProvinceCount = [];
 
-	return rw.readDirContents(_mapPath, ".map")
+	return rw.readDirContents(config.dom5MapsPath, ".map")
 	.then((filesContentsByName) =>
 	{
 		filesContentsByName.forEachItem((content, filename) =>

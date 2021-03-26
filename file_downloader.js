@@ -25,14 +25,12 @@ if (fs.existsSync(tmpPath) === false)
 
 module.exports.downloadMap = (fileId) =>
 {
-    const path = `${config.dom5DataPath}/maps`;
-    return _downloadFile(fileId, path, mapExtensionTest);
+    return _downloadFile(fileId, config.dom5MapsPath, mapExtensionTest);
 };
 
 module.exports.downloadMod = (fileId) =>
 {
-    const path = `${config.dom5DataPath}/mods`;
-    return _downloadFile(fileId, path, modExtensionTest);
+    return _downloadFile(fileId, config.dom5ModsPath, modExtensionTest);
 };
 
 
