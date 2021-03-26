@@ -252,7 +252,7 @@ module.exports.readDirContents = function(path, extensionFilter)
     var readFiles = {};
 
 	if (fs.existsSync(path) === false)
-        return Promise.reject(new Error("This directory was not found on the server."));
+        return Promise.reject(new Error(`Directory ${path} was not found on the server.`));
         
     return exports.getDirFilenames(path, extensionFilter)
     .then((filenames) =>
