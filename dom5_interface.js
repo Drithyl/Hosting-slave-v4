@@ -140,8 +140,6 @@ module.exports.forceHost = function(data)
 //Set 60 seconds to start the game
 module.exports.start = function(data)
 {
-    const gameName = data.name;
-    
     // Change current timer to 6 seconds, which will make the start countdown begin;
     // while reinforcing the default timer once again (important in case this is a 
     // start after a restart, we don't want to keep old values)
