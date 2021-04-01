@@ -152,6 +152,7 @@ function _getAdditionalArgs(game)
     let args = [
         "--nosteam",
         "--statusdump",
+		"--textonly",
 		..._backupCmd("--preexec", game.name), 
 		..._backupCmd("--postexec", game.name)
     ];
