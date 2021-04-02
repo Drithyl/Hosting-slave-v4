@@ -101,7 +101,7 @@ function _createConnection()
     {
         _socket = _socketIoObject(_masterServerAddress);
 
-        _socket.on("connect", () => resolve(_socket));
+        _socket.on("connect", () => resolve());
         _socket.on("connect_error", () => reject(`Could not connect to master`));
 
         _socket.on("disconnect", _disconnectHandler);
@@ -112,7 +112,7 @@ function _createConnection()
         //fired when it can't reconnect within reconnectionAttempts
         _socket.on("reconnect_failed", () => rw.log("general", `Could not reconnect to the master server after all the set reconnectionAttempts.`));
 
-        masterCommands.listen(_socket);
+        masterCommands.listen(module.exports);
     });
 }
 
@@ -133,7 +133,7 @@ function _disconnectHandler(reason)
     if (reason === "io server disconnect")
     {
         //reconnect if the server dropped the connection
-        _socket.connect();
+        _socket.open();
     }
 
     //if the reason is "io client disconnect", the socket will try to
