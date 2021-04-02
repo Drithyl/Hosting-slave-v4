@@ -38,25 +38,25 @@ function _initializeComponents()
     googleDriveApi.authorize()
     .then(() => _socketWrapper.connect())
     .catch((err) => console.log(`Initialization error occurred.`, err));
+
+
+    //will get called when an error will cause node to crash
+    //this way it can be properly logged
+    process.on("uncaughtException", (err, origin) =>
+    {
+        let message = `\n\n####################\n\n` +
+        `Caught exception:\n${err.message}\n` +
+        `Exception origin:\n${origin}\n\n` +
+        `Stack:\n${err.stack}\n` +
+        `####################\n\n`;
+
+        console.log(message);
+
+        fs.appendFileSync(
+            `${config.dataFolderPath}/logs/error.txt`,
+            message
+        );
+
+        throw err;
+    });
 }
-
-
-//will get called when an error will cause node to crash
-//this way it can be properly logged
-process.on("uncaughtException", (err, origin) =>
-{
-	let message = `\n\n####################\n\n` +
-	`Caught exception:\n${err.message}\n` +
-	`Exception origin:\n${origin}\n\n` +
-	`Stack:\n${err.stack}\n` +
-	`####################\n\n`;
-
-	console.log(message);
-
-	fs.appendFileSync(
-		`${config.dataFolderPath}/logs/error.txt`,
-		message
-	);
-
-	throw err;
-});
