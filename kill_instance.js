@@ -108,13 +108,13 @@ function _timeoutCheckIfKilled(game, attempts, maxAttempts)
 		if (isPortInUse === true && (game.instance == null || game.instance.killed === true))
 		{
 			rw.log("error", `${game.name}'s instance was terminated but the port is still in use after ${maxAttempts} attempts.`);
-			return Promise.reject(`The game instance was terminated, but the port is still in use. You might have to wait a bit.`);
+			return Promise.reject(new Error(`The game instance was terminated, but the port is still in use. You might have to wait a bit.`));
 		}
 
 		else
 		{
 			rw.log("error", `${game.name}'s instance could not be terminated and the port is still in use after ${maxAttempts} attempts.`);
-			return Promise.reject(`The game instance could not be terminated and the port is still in use. You might have to wait a bit.`);
+			return Promise.reject(new Error(`The game instance could not be terminated and the port is still in use. You might have to wait a bit.`));
 		}
 	});
 }
