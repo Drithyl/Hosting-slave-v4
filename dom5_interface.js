@@ -292,7 +292,7 @@ module.exports.validateMapfile = function(mapfile)
 	if (fs.existsSync(`${dataPath}${mapfileRelPath}`) === true || fs.existsSync(`${rootPath}${mapfileRelPath}`) === true)
 		return Promise.resolve();
 
-	else return Promise.reject(new Error("The map file could not be found."));
+	else return Promise.reject(new Error(`The map file '${mapfile}' could not be found.`));
 };
 
 module.exports.validateMods = function(modfiles)
