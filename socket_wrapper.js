@@ -2,6 +2,7 @@
 const config = require("./config.json");
 const rw = require("./reader_writer.js");
 const gameStore = require("./hosted_games_store.js");
+const masterCommands = require("./master_commands.js");
 const reservedPortsStore = require("./reserved_ports_store.js");
 const { TimeoutError, SocketResponseError } = require("./errors.js");
 
@@ -17,16 +18,12 @@ var _socket;
 exports.connect = () =>
 {
     console.log("Attempting to connect to the master server...");
-    return _connect()
-    .then((connectedSocket) =>
+    return _createConnection()
+    .then(() =>
     {
         console.log(`Connected to master server successfully.`);
-        _socket = connectedSocket;
-        
-        //return this whole module as wrapper
-        return Promise.resolve(module.exports);
-    })
-    .catch((err) => Promise.reject(err));
+        return Promise.resolve();
+    });
 };
 
 //No function below will be available until the socket connects successfully
@@ -98,7 +95,7 @@ exports.emitPromise = (trigger, data) =>
     });
 };
 
-function _connect()
+function _createConnection()
 {
     return new Promise((resolve, reject) =>
     {
@@ -107,50 +104,49 @@ function _connect()
         _socket.on("connect", () => resolve(_socket));
         _socket.on("connect_error", () => reject(`Could not connect to master`));
 
-        _attachReconnectionHandlers();
+        _socket.on("disconnect", _disconnectHandler);
+        _socket.on("reconnect", () => _reconnectHandler);
+        _socket.on("reconnect_attempt", (attemptNumber) => console.log(`Attempting to reconnect...`));
+        _socket.on("reconnect_error", (attemptNumber) => console.log(`Reconnect attempt failed.`));
+
+        //fired when it can't reconnect within reconnectionAttempts
+        _socket.on("reconnect_failed", () => rw.log("general", `Could not reconnect to the master server after all the set reconnectionAttempts.`));
+
+        masterCommands.listen(_socket);
     });
 }
 
-function _attachReconnectionHandlers()
+
+/******************************
+*   DISCONNECTION HANDLING    *
+******************************/
+function _disconnectHandler(reason)
 {
-    /******************************
-    *   DISCONNECTION HANDLING    *
-    ******************************/
-    _socket.on("disconnect", (reason) =>
+    rw.log("general", `Socket disconnected. Reason: ${reason}.`);
+
+    //release all reserved ports in assisted hosting instances,
+    //because if it's the master server that crashed, when it comes back up
+    //the ports will be reserved for no instance
+    reservedPortsStore.releaseAllPorts();
+    gameStore.killAllGames();
+
+    if (reason === "io server disconnect")
     {
-        rw.log("general", `Socket disconnected. Reason: ${reason}.`);
+        //reconnect if the server dropped the connection
+        _socket.connect();
+    }
 
-        //release all reserved ports in assisted hosting instances,
-        //because if it's the master server that crashed, when it comes back up
-        //the ports will be reserved for no instance
-        reservedPortsStore.releaseAllPorts();
-        gameStore.killAllGames();
+    //if the reason is "io client disconnect", the socket will try to
+    //reconnect automatically, since the reconnection flag in the socket
+    //original connection is true
+}
 
-        if (reason === "io server disconnect")
-        {
-            //reconnect if the server dropped the connection
-            _connect();
-        }
-
-        //if the reason is "io client disconnect", the socket will try to
-        //reconnect automatically, since the reconnection flag in the socket
-        //original connection is true
-    });
-
-
-    /****************************
-    *   RECONNECTION HANDLING   *
-    ****************************/
-    _socket.on("reconnect", (attemptNumber) =>
-    {
-        //no need to relaunch games here as the authentication process will kick in again
-        //from the very beginning, on connection, when the master server sends the "init" event
-        rw.log("general", `Reconnected successfully on attempt ${attemptNumber}.`);
-    });
-
-    _socket.on("reconnect_attempt", (attemptNumber) => console.log(`Attempting to reconnect...`));
-    _socket.on("reconnect_error", (attemptNumber) => console.log(`Reconnect attempt failed.`));
-
-    //fired when it can't reconnect within reconnectionAttempts
-    _socket.on("reconnect_failed", () => rw.log("general", `Could not reconnect to the master server after all the set reconnectionAttempts.`));
+/****************************
+*   RECONNECTION HANDLING   *
+****************************/
+function _reconnectHandler(attemptNumber)
+{
+    //no need to relaunch games here as the authentication process will kick in again
+    //from the very beginning, on connection, when the master server sends the "init" event
+    rw.log("general", `Reconnected successfully on attempt ${attemptNumber}.`);
 }
