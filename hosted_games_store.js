@@ -18,24 +18,24 @@ var gameHostRequests = [];
 
 module.exports.populate = function(gameDataArray)
 {
-    console.log(`Game data received:`, gameDataArray);
+    //console.log(`Game data received:`, gameDataArray);
 
 	//first connection to master server
 	if (Object.keys(hostedGames).length <= 0)
 	{
-        console.log(`First connection to the master server since node started; populating the store...`);
+        //console.log(`First connection to the master server since node started; populating the store...`);
         gameDataArray.forEach((gameData) => 
         {
             hostedGames[gameData.port] = gameData;
             console.log(`Added game ${gameData.name} at port ${gameData.port}.`);
         });
 
-        console.log("List of games after first initialization:\n\n", hostedGames)
+        //console.log("List of games after first initialization:\n\n", hostedGames)
 
 		return Promise.resolve();
     }
     
-    console.log(`Comparing existing games with the data received...`);
+    //console.log(`Comparing existing games with the data received...`);
 
 	//not the first connection, some data from master server already exists
 	//check for doubles and override them
@@ -44,7 +44,7 @@ module.exports.populate = function(gameDataArray)
         if (hostedGames[gameData.port] == null)
         {
             hostedGames[gameData.port] = gameData;
-            console.log(`Game ${gameData.name} at port ${gameData.port} is new; added to store.`);
+            //console.log(`Game ${gameData.name} at port ${gameData.port} is new; added to store.`);
         }
 
 		//if game data is already in this store, overwrite it
@@ -56,7 +56,7 @@ module.exports.populate = function(gameDataArray)
             // to kill it even if the requestHosting() function tries to (since the instance
             // property will be lost)
             Object.assign(hostedGames[gameData.port], gameData);
-            console.log(`Game ${gameData.name} already exists at port ${gameData.port}; data was overwritten.`);
+            //console.log(`Game ${gameData.name} already exists at port ${gameData.port}; data was overwritten.`);
         }
     });
 
@@ -67,19 +67,19 @@ module.exports.populate = function(gameDataArray)
 
         if (gameDataArray.find((gameData) => gameData.port === existingGame.port) == null)
 		{
-            console.log(`${existingGame.name} at port ${existingGame.port} was not found on master data; killing and removing it...`);
+            //console.log(`${existingGame.name} at port ${existingGame.port} was not found on master data; killing and removing it...`);
 
             kill(existingGame)
             .then(() =>
             {
                 delete hostedGames[port];
-                console.log(`${existingGame.name} at port ${existingGame.port} was removed.`);
+                //console.log(`${existingGame.name} at port ${existingGame.port} was removed.`);
             })
             .catch((err) => console.log(`Could not kill abandoned game: ${err.message}`));
 		}
     }
 
-    console.log("List of games after re-initialization:\n\n", hostedGames);
+    console.log("List of games initialized.");
     
     return Promise.resolve();
 };
