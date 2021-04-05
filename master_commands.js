@@ -1,6 +1,6 @@
 
+const log = require("./logger.js");
 const config = require("./config.json");
-const rw = require("./reader_writer.js");
 const downloader = require("./file_downloader.js");
 const dom5Interface = require("./dom5_interface.js");
 const hostedGamesStore = require("./hosted_games_store.js");
@@ -53,7 +53,7 @@ module.exports.listen = function(socketWrapper)
 //to verify that this server is trusted by using the token.
 function _sendServerData(data)
 {
-    rw.log("general", "Received REQUEST_SERVER_DATA event from master server. Sending authentication attempt.");
+    log.general(log.getLeanLevel(), "Received REQUEST_SERVER_DATA event from master server. Sending authentication attempt.");
     
     return Promise.resolve({
         id: config.id, 
@@ -66,11 +66,11 @@ function _sendServerData(data)
 //at which point we can launch games.
 function _populateGameData(gamesInfo)
 {
-	rw.log("general", "Authentication attempt validated by master server; received game data to host.");
+	log.general(log.getLeanLevel(), "Authentication attempt validated by master server; received game data to host.");
 
 	if (typeof gamesInfo !== "object")
 	{
-	  rw.log("error", `Did not receive any game data from master server:`, gamesInfo);
+	  log.error(log.getLeanLevel(), `NO GAME DATA RECEIVED FROM MASTER SERVER`, gamesInfo);
 	  return hostedGamesStore.populate({});
 	}
 
@@ -82,7 +82,7 @@ function _downloadFile(data)
 	if (typeof data.fileId !== "string")
 	  return Promise.reject(new Error("fileId must be specified."));
 
-    rw.log("upload", `Request to download ${data.type} zipfile ${data.fileId} received.`);
+    log.upload(log.getLeanLevel(), `Request to download ${data.type} zipfile ${data.fileId} received.`);
 
     return Promise.resolve()
     .then(() =>

@@ -1,4 +1,5 @@
 {
+	"defaultLogLevel": 2,
 	"ownerDiscordID": "123456789233936896",
 	"masterIP": "127.0.0.1",
 	"masterPort": 3000,

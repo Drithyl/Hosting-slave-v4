@@ -1,7 +1,7 @@
 
 const fs = require("fs");
+const log = require("./logger.js");
 const config = require("./config.json");
-const rw = require("./reader_writer.js");
 const spawn = require('child_process').spawn;
 const socket = require("./socket_wrapper.js");
 const stream = require("stream");
@@ -37,7 +37,7 @@ module.exports.spawn = function(game)
 	_attachStdioListener("stdin", game);
 	_attachStdioListener("stdout", game);
 
-	rw.log("general", `Process for ${game.name} spawned.`);
+	log.general(log.getLeanLevel(), `Process for ${game.name} spawned.`);
 	return Promise.resolve(game);
 };
 
@@ -52,24 +52,24 @@ function _attachOnExitListener(game)
 		//if it was terminated due to a signal, then code is null.
 		if (signal === "SIGKILL" || signal === "SIGTERM" || signal === "SIGINT")
 		{
-			rw.log(["general"], `${game.name}'s was terminated by ${signal}.`);
+			log.general(log.getLeanLevel(), `${game.name}'s was terminated by ${signal}.`);
 		}
 
 		else if (code === 0)
 		{
-			rw.log(["general"], `${game.name}'s exited without errors (perhaps port was already in use).`);
+			log.general(log.getLeanLevel(), `${game.name}'s exited without errors (perhaps port was already in use).`);
 		}
 
 		else if (signal == null)
 		{
-			rw.log(["error"], `${game.name}'s "exit" event triggered. Maybe an ingame error occurred, or an arg made it crash. Try launching it without the --notext flag:\n`, {port: game.port, args: game.args, code: code, signal: signal});
+			log.error(log.getLeanLevel(), `${game.name}'s "exit" TRIGGERED. Maybe an ingame error occurred, or an arg made it crash`, {port: game.port, args: game.args, code: code, signal: signal});
 			socket.emit("GAME_EXITED", {name: game.name, code: code});
 		}
 
 		//SIGKILL would mean that the kill_instance.js code was called, so it's as expected
 		else if (game.instance.killed === false && signal !== "SIGKILL")
 		{
-			rw.log(["error"], `${game.name}'s "exit" event triggered. Process was abnormally terminated:\n`, {signal: signal});
+			log.error(log.getLeanLevel(), `${game.name}'s "exit" TRIGGERED. Process was abnormally terminated`, {signal: signal});
 			socket.emit("GAME_TERMINATED", {name: game.name, signal: signal});
 		}
 	});
@@ -84,12 +84,12 @@ function _attachOnCloseListener(game)
 	{
 		if (signal === "SIGKILL" || signal === "SIGTERM" || signal === "SIGINT")
 		{
-			rw.log(["general"], `${game.name}'s stdio got closed by ${signal}.`);
+			log.general(log.getLeanLevel(), `${game.name}'s stdio got closed by ${signal}.`);
 		}
 
 		else if (code === 0)
 		{
-			rw.log(["general"], `${game.name}'s stdio got closed with code 0.`);
+			log.general(log.getLeanLevel(), `${game.name}'s stdio got closed with code 0.`);
 		}
 
 		//code 0 means there were no errors. If instance is null, then "exit" above
@@ -97,7 +97,7 @@ function _attachOnCloseListener(game)
 		if (game.instance != null && game.instance.killed === false && code !== 0)
 		{
 			socket.emit("STDIO_CLOSED", {name: game.name, code: code, signal: signal});
-			rw.log(["general"], `${game.name}'s stdio closed:\n`, {port: game.port, args: game.args, code: code, signal: signal});
+			log.general(log.getLeanLevel(), `${game.name}'s stdio closed:\n`, {port: game.port, args: game.args, code: code, signal: signal});
 		}
 	});
 }
@@ -110,7 +110,7 @@ function _attachOnErrorListener(game)
 	game.instance.on("error", (err) =>
 	{
 		game.instance = null;
-		rw.log("error", `${game.name}'s "error" event triggered.`, err);
+		log.error(log.getLeanLevel(), `${game.name}'s "error" TRIGGERED`, err);
 		socket.emit("GAME_ERROR", {name: game.name, error: err.message});
 	});
 }
@@ -125,23 +125,23 @@ function _attachStdioListener(type, game)
 
         writeStream._write = (data) => 
         {
-            console.log(`${game.name}\t${data}`);
+            log.general(log.getNormalLevel(), `${game.name} stdio data`, data);
             socket.emit("STDIO_DATA", {name: game.name, data: data, type: type});
         };
 
         game.instance[type].setEncoding("utf8");
         game.instance[type].pipe(writeStream);
-        console.log(`Listening to ${game.name}'s ${type} stream.`);
+        log.general(log.getNormalLevel(), `Listening to ${game.name}'s ${type} stream.`);
 
 		game.instance[type].on('data', function (data)
 		{
-			rw.log(["general"], `${game.name}'s ${type} "data" event triggered:\n`, data);
+			log.general(log.getNormalLevel(), `${game.name}'s ${type} "data" event triggered:\n`, data);
 			socket.emit("STDIO_DATA", {name: game.name, data: data, type: type});
 		});
 
 		game.instance[type].on('error', function (err)
 		{
-			rw.log(["error"], `${game.name}'s ${type} "error" event triggered:\n`, err);
+			log.error(log.getLeanLevel(), `${game.name}'s ${type} "error" event triggered:\n`, err);
 			socket.emit("STDIO_ERROR", {name: game.name, error: err, type: type});
 		});
 	}

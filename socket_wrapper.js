@@ -1,6 +1,6 @@
 
+const log = require("./logger.js");
 const config = require("./config.json");
-const rw = require("./reader_writer.js");
 const gameStore = require("./hosted_games_store.js");
 const masterCommands = require("./master_commands.js");
 const reservedPortsStore = require("./reserved_ports_store.js");
@@ -17,11 +17,11 @@ var _socket;
 
 exports.connect = () =>
 {
-    console.log("Attempting to connect to the master server...");
+    log.general(log.getNormalLevel(), "Attempting to connect to the master server...");
     return _createConnection()
     .then(() =>
     {
-        console.log(`Connected to master server successfully.`);
+        log.general(log.getNormalLevel(), `Connected to master server successfully.`);
         return Promise.resolve();
     });
 };
@@ -46,7 +46,7 @@ exports.on = (trigger, handler) =>
                 //If handler rejects promise, send the message of the resulting error
                 //(cannot send the error object as a whole back to master server)
                 //and reject the higher promise
-                console.log(`Error when fulfilling '${trigger}' request: ${err.message}\n\n${err.stack}`);
+                log.error(log.getNormalLevel(), `ERROR FULFILLING '${trigger}' REQUEST`, err);
                 serverCallback(err.message);
                 
                 /** Could reject here but would need to handle it in every single handler attached
@@ -102,15 +102,15 @@ function _createConnection()
         _socket = _socketIoObject(_masterServerAddress);
 
         _socket.on("connect", () => resolve());
-        _socket.on("connect_error", () => reject(`Could not connect to master`));
+        _socket.on("connect_error", () => log.general(log.getLeanLevel(), `Could not connect to master`));
 
         _socket.on("disconnect", _disconnectHandler);
         _socket.on("reconnect", () => _reconnectHandler);
-        _socket.on("reconnect_attempt", (attemptNumber) => console.log(`Attempting to reconnect...`));
-        _socket.on("reconnect_error", (attemptNumber) => console.log(`Reconnect attempt failed.`));
+        _socket.on("reconnect_attempt", (attemptNumber) => log.general(log.getVerboseLevel(), `Attempting to reconnect...`));
+        _socket.on("reconnect_error", (attemptNumber) => log.general(log.getVerboseLevel(), `Reconnect attempt failed.`));
 
         //fired when it can't reconnect within reconnectionAttempts
-        _socket.on("reconnect_failed", () => rw.log("general", `Could not reconnect to the master server after all the set reconnectionAttempts.`));
+        _socket.on("reconnect_failed", () => log.general(log.getLeanLevel(), `Could not reconnect to the master server after all the set reconnectionAttempts.`));
 
         masterCommands.listen(module.exports);
     });
@@ -122,7 +122,7 @@ function _createConnection()
 ******************************/
 function _disconnectHandler(reason)
 {
-    rw.log("general", `Socket disconnected. Reason: ${reason}.`);
+    log.general(log.getLeanLevel(), `Socket disconnected. Reason: ${reason}.`);
 
     //release all reserved ports in assisted hosting instances,
     //because if it's the master server that crashed, when it comes back up
@@ -148,5 +148,5 @@ function _reconnectHandler(attemptNumber)
 {
     //no need to relaunch games here as the authentication process will kick in again
     //from the very beginning, on connection, when the master server sends the "init" event
-    rw.log("general", `Reconnected successfully on attempt ${attemptNumber}.`);
+    log.general(log.getLeanLevel(), `Reconnected successfully on attempt ${attemptNumber}.`);
 }

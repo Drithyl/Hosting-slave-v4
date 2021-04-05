@@ -1,6 +1,7 @@
 
 const fs = require("fs");
 const fsp = require("fs").promises;
+const log = require("./logger.js");
 const config = require("./config.json");
 const rw = require("./reader_writer.js");
 
@@ -14,12 +15,12 @@ module.exports.deleteAllTurnBackups = function(gameName)
     .then(() => exports.deleteBackupsUpToTurn(pathTPreHostBackups, Infinity))
     .then(() =>
     {
-        rw.log(["backup"], `All of ${gameName}'s turn backups were cleaned.`);
+        log.general(log.getLeanLevel(), `All of ${gameName}'s turn backups were cleaned.`);
         return Promise.resolve();
     })
     .catch((err) => 
     {
-        rw.log(["backup"], `Could not clean all turn backups: ${err.message}\n\n${err.stack}`);
+        log.general(log.getLeanLevel(), `Could not clean all turn backups: ${err.message}\n\n${err.stack}`);
         return Promise.reject(new Error(`Could not clean all turn backups: ${err.message}`))
     });
 };
@@ -48,12 +49,12 @@ module.exports.deleteBackupsUpToTurn = function(dirPath, turnNbrToClean)
                 return rw.deleteDir(`${dirPath}/${filename}`)
                 .then(() => 
                 {
-                    rw.log(["backup"], `Cleaned backup of turn ${dirTurnNbr}.`);
+                    log.general(log.getNormalLevel(), `Cleaned backup of turn ${dirTurnNbr}.`);
                     return nextPromise();
                 })
                 .catch((err) => 
                 {
-                    rw.log(["backup"], `Could not clean ${filename}: ${err.message}\n\n${err.stack}`);
+                    log.error(log.getNormalLevel(), `Could not clean ${filename}`, err);
                     return nextPromise();
                 });
             });

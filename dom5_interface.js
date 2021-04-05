@@ -1,6 +1,7 @@
 
 const fs = require("fs");
 const fsp = require("fs").promises;
+const log = require("./logger.js");
 const config = require("./config.json");
 const rw = require("./reader_writer.js");
 const kill = require("./kill_instance.js");
@@ -73,7 +74,7 @@ module.exports.getTurnFiles = function(data)
     })
     .catch((err) => 
     {
-        console.log(err);
+        log.error(log.getLeanLevel(), `ERROR GETTING TURN FILES FOR ${gameName}`, err);
         return Promise.reject(err);
     });
 };
@@ -165,7 +166,7 @@ module.exports.restart = function(data)
     const path = `${_savedGamesPath}/${gameName}`;
     const game = gameStore.getGame(data.port);
 
-	rw.log("general", `Killing ${gameName}'s process...`);
+	log.general(log.getNormalLevel(), `Killing ${gameName}'s process...`);
 
 	//kill game first so it doesn't automatically regenerate the statuspage file
 	//as soon as it gets deleted
@@ -265,7 +266,7 @@ module.exports.deleteGameSavefiles = function(data)
     .then(() => rw.deleteDir(backupPath))
     .then(() => 
     {
-        console.log(`${gameName}: deleted the savedgames files and their backups.`);
+        log.general(log.getNormalLevel(), `${gameName}: deleted the savedgames files and their backups.`);
         return Promise.resolve();
     })
 	.catch((err) => Promise.reject(err));

@@ -3,7 +3,7 @@
 const fs = require("fs");
 const fsp = require("fs").promises;
 const yauzl = require("yauzl");
-const rw = require("../reader_writer.js");
+const log = require("../logger.js");
 
 exports.extractTo = (zipfilePath, targetPath, filterFn = null) =>
 {
@@ -20,7 +20,7 @@ function _openZipfile(filePath)
         {
             if (err)
             {
-                rw.log(["upload", "error"], `Error occurred when opening ${fileId}:\n\n${err.message}`);
+                log.error(log.getLeanLevel(), `ERROR WHEN OPENING ${fileId}`, err);
                 return reject(err);
             }
 
@@ -41,7 +41,7 @@ function _writeEntriesTo(zipfile, path, filterFn = null)
     {
         zipfile.on("error", (err) =>
         {
-            rw.log("upload", `readEntry() error`, err);
+            log.error(log.getNormalLevel(), `readEntry() ERROR`, err);
             zipfile.close();
             reject(err);
         });
@@ -111,22 +111,22 @@ function _writeFile(entry, zipfile, entryWritePath)
         {
             readStream.on("error", (err) =>
             {
-                rw.log("upload", `Error occurred during readStream for file ${entry.fileName}:`, err);
+                log.error(log.getNormalLevel(), `READSTREAM ERROR WITH FILE ${entry.fileName}`, err);
                 return reject(err);
             });
     
             //finished reading, move on to next entry
-            readStream.on("end", () => rw.log("upload", `File ${entry.fileName} read.`));
+            readStream.on("end", () => log.upload(log.getVerboseLevel(), `File ${entry.fileName} read.`));
     
             readStream.pipe(writeStream)
             .on('error', (err) =>
             {
-                rw.log("upload", `Error occurred during writeStream for file ${entry.fileName}:`, err);
+                log.error(log.getLeanLevel(), `WRITESTREAM ERROR WITH FILE ${entry.fileName}`, err);
                 reject(err);
             })
             .on('finish', () => 
             {
-                rw.log("upload", `File ${entry.fileName} written.`);
+                log.upload(log.getVerboseLevel(), `File ${entry.fileName} written.`);
                 resolve()
             });
         });
@@ -142,7 +142,7 @@ function _openReadStream(zipfile, entry)
             //if error, add to error messages and continue looping
             if (err)
             {
-                rw.log("upload", `Error opening a readStream at path ${writePath}.`);
+                log.error(log.getLeanLevel(), `ERROR OPENING READSTREAM AT PATH ${writePath}.`);
                 return reject(err);
             }
     

@@ -1,5 +1,5 @@
 
-const rw = require("../reader_writer.js");
+const log = require("../logger.js");
 
 module.exports = function(mapData)
 {
@@ -9,19 +9,19 @@ module.exports = function(mapData)
 
 	if (mapData == null)
 	{
-		rw.log("general", "The mapData provided was null.");
+		log.error(log.getNormalLevel(), "mapData PROVIDED IS NULL");
 		return null;
 	}
 
 	if (/\w+/.test(mapData) == false)
 	{
-		rw.log("general", "The mapData provided contains no word characters.");
+		log.error(log.getNormalLevel(), "mapData CONTAINS NO WORDS");
 		return null;
 	}
 
 	if (/\#terrain\s+\d+\s+\d+/ig.test(mapData) === false)
 	{
-		rw.log("general", "The mapData provided doesn't contain any #terrain expression.");
+		log.error(log.getNormalLevel(), "mapData CONTAINS NO #terrain TAGS");
 		return null;
 	}
 

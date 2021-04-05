@@ -1,7 +1,7 @@
 
 const fs = require("fs");
+const log = require("./logger.js");
 const config = require("./config.json");
-const rw = require("./reader_writer.js");
 const kill = require("./kill_instance.js");
 const spawn = require("./process_spawn.js").spawn;
 const dom5Interface = require("./dom5_interface.js");
@@ -18,24 +18,24 @@ var gameHostRequests = [];
 
 module.exports.populate = function(gameDataArray)
 {
-    //console.log(`Game data received:`, gameDataArray);
+    log.general(log.getVerboseLevel(), `Game data received:`, gameDataArray);
 
 	//first connection to master server
 	if (Object.keys(hostedGames).length <= 0)
 	{
-        //console.log(`First connection to the master server since node started; populating the store...`);
+        log.general(log.getVerboseLevel(), `First connection to the master server since node started; populating the store...`);
         gameDataArray.forEach((gameData) => 
         {
             hostedGames[gameData.port] = gameData;
-            console.log(`Added game ${gameData.name} at port ${gameData.port}.`);
+            log.general(log.getNormalLevel(), `Added game ${gameData.name} at port ${gameData.port}.`);
         });
 
-        //console.log("List of games after first initialization:\n\n", hostedGames)
+        log.general(log.getVerboseLevel(), "List of games after first initialization", hostedGames)
 
 		return Promise.resolve();
     }
     
-    //console.log(`Comparing existing games with the data received...`);
+    log.general(log.getVerboseLevel(), `Comparing existing games with the data received...`);
 
 	//not the first connection, some data from master server already exists
 	//check for doubles and override them
@@ -44,7 +44,7 @@ module.exports.populate = function(gameDataArray)
         if (hostedGames[gameData.port] == null)
         {
             hostedGames[gameData.port] = gameData;
-            //console.log(`Game ${gameData.name} at port ${gameData.port} is new; added to store.`);
+            log.general(log.getVerboseLevel(), `Game ${gameData.name} at port ${gameData.port} is new; added to store.`);
         }
 
 		//if game data is already in this store, overwrite it
@@ -56,7 +56,7 @@ module.exports.populate = function(gameDataArray)
             // to kill it even if the requestHosting() function tries to (since the instance
             // property will be lost)
             Object.assign(hostedGames[gameData.port], gameData);
-            //console.log(`Game ${gameData.name} already exists at port ${gameData.port}; data was overwritten.`);
+            log.general(log.getVerboseLevel(), `Game ${gameData.name} already exists at port ${gameData.port}; data was overwritten.`);
         }
     });
 
@@ -67,19 +67,19 @@ module.exports.populate = function(gameDataArray)
 
         if (gameDataArray.find((gameData) => gameData.port === existingGame.port) == null)
 		{
-            //console.log(`${existingGame.name} at port ${existingGame.port} was not found on master data; killing and removing it...`);
+            log.general(log.getVerboseLevel(), `${existingGame.name} at port ${existingGame.port} was not found on master data; killing and removing it...`);
 
             kill(existingGame)
             .then(() =>
             {
                 delete hostedGames[port];
-                //console.log(`${existingGame.name} at port ${existingGame.port} was removed.`);
+                log.general(log.getVerboseLevel(), `${existingGame.name} at port ${existingGame.port} was removed.`);
             })
-            .catch((err) => console.log(`Could not kill abandoned game: ${err.message}`));
+            .catch((err) => log.error(log.getLeanLevel(), `ERROR KILLING ABANDONED GAME`, err));
 		}
     }
 
-    console.log("List of games initialized.");
+    log.general(log.getNormalLevel(), "List of games initialized.");
     
     return Promise.resolve();
 };
@@ -117,10 +117,10 @@ module.exports.killAllGames = function()
 	{
         if (game.instance != null)
         {
-            rw.log("general", `Killing ${game.name}...`);
+            log.general(log.getNormalLevel(), `Killing ${game.name}...`);
 
             return kill(game)
-            .catch((err) => rw.log(`Could not kill ${game.name} at port ${port}: ${err.message}\n\n${err.stack}`));
+            .catch((err) => log.error(log.getLeanLevel(), `COULD NOT KILL ${game.name} AT PORT ${port}`, err));
         }
 	});
 };
@@ -136,7 +136,7 @@ module.exports.requestHosting = function(gameData)
 	.then(() =>
 	{
         gameHostRequests.push(gameData.port);
-		rw.log("general", `Requesting hosting for ${gameData.name}...`);
+		log.general(log.getNormalLevel(), `Requesting hosting for ${gameData.name}...`);
         
         return _setTimeoutPromise(delay, _host.bind(null, gameData));
     })

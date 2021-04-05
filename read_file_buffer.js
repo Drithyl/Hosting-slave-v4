@@ -2,6 +2,7 @@
 
 const fs = require("fs");
 const fsp = require("fs").promises;
+const log = require("./logger.js");
 
 
 //Discord only supports attachments of up to 8MB without Nitro
@@ -24,7 +25,7 @@ module.exports = function(filePath, maxSizeInMB = 8)
     })
     .then((buffer) =>
     {
-        console.log(`Buffer for ${filePath} successfully read.`);
+        log.general(log.getNormalLevel(), `Buffer for ${filePath} successfully read.`);
         return Promise.resolve(buffer);
     });
 };

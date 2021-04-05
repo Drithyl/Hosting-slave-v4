@@ -1,9 +1,9 @@
 
 const fs = require("fs");
 const fsp = require("fs").promises;
+const log = require("./logger.js");
 const unzip = require("./yauzl/yauzl.js");
 const config = require("./config.json");
-const rw = require("./reader_writer.js");
 
 const googleDriveAPI = require("./google_drive_api/index.js");
 
@@ -38,7 +38,7 @@ function _downloadFile(fileId, targetPath, extensionFilter)
 {
     const downloadPath = `${tmpPath}/${fileId}.zip`;
 
-    rw.log("upload", `Obtaining metadata of file id ${fileId}...`);
+    log.upload(log.getNormalLevel(), `Obtaining metadata of file id ${fileId}...`);
 
     //obtain the file metadata (name, extension, size) first and then check that it qualifies to be downloaded
     return googleDriveAPI.fetchFileMetadata(fileId)
@@ -47,18 +47,18 @@ function _downloadFile(fileId, targetPath, extensionFilter)
         //The fileExtension property does not include the "." at the beginning of it
         if (metadata.fileExtension !== "zip")
         {
-            rw.log("upload", `File id ${fileId} is not a zipfile.`);
+            log.upload(log.getNormalLevel(), `File id ${fileId} is not a zipfile.`);
             return Promise.reject(new Error("Only .zip files are supported. Please send the file id of a .zip file so it can be unzipped into the proper directory."));
         }
 
         //won't support zips of over 100MB (metadata size is in bytes)
         if (metadata.size > zipMaxSize)
         {
-            rw.log("upload", `File id ${fileId} has a size of ${metadata.size}, which is beyond the limit of ${zipMaxSize}.`);
+            log.upload(log.getNormalLevel(), `File id ${fileId} has a size of ${metadata.size}, which is beyond the limit of ${zipMaxSize}.`);
             return Promise.reject(new Error(`For bandwith reasons, your file cannot be over ${zipMaxSize * 0.000001}MB in size. Please choose a smaller file.`));
         }
         
-        rw.log("upload", `Downloading and fetching zipfile ${fileId}...`);
+        log.upload(log.getNormalLevel(), `Downloading and fetching zipfile ${fileId}...`);
 
         //obtain the zipfile in proper form through yauzl
         return googleDriveAPI.downloadFile(fileId, downloadPath);
@@ -66,10 +66,10 @@ function _downloadFile(fileId, targetPath, extensionFilter)
     .then(() => unzip.extractTo(downloadPath, targetPath, (entry) => _filterEntry(entry, extensionFilter, targetPath)))
     .then((result) =>
     {
-        rw.log("upload", `Entries written successfully.`);
+        log.upload(log.getNormalLevel(), `Entries written successfully.`);
         
         _cleanupTmpFiles(fileId)
-        .catch((err) => rw.log("upload", `Could not clear tmp files:\n\n${err.message}`));
+        .catch((err) => log.error(log.getLeanLevel(), `COULD NOT CLEAR TMP DOWNLOAD FILES`, err));
 
         return Promise.resolve(result);
     });
@@ -82,17 +82,17 @@ function _filterEntry(entry, extensionFilter, targetPath)
     //properly by the --mapfile flag, so make sure to remove them here
     if (/^\_+/g.test(entry.fileName) === true)
     {
-        rw.log("upload", `Data file ${entry.fileName} contains underscores at the beginning of its name, removing them.`);
+        log.upload(log.getNormalLevel(), `Data file ${entry.fileName} contains underscores at the beginning of its name, removing them.`);
         entry.fileName = entry.fileName.replace(/^\_+/g, "");
     }
 
     if (fs.existsSync(`${targetPath}/${entry.fileName}`) === true)
-        rw.log("upload", `File ${entry.fileName} already exists; skipping.`);
+        log.upload(log.getNormalLevel(), `File ${entry.fileName} already exists; skipping.`);
 
     //directories finish their name in /, keep these as well to preserve mod structure
     else if (/\/$/.test(entry.fileName) === true)
     {
-        rw.log("upload", `Keeping directory ${entry.fileName}.`);
+        log.upload(log.getNormalLevel(), `Keeping directory ${entry.fileName}.`);
         return true;
     }
 
@@ -100,11 +100,11 @@ function _filterEntry(entry, extensionFilter, targetPath)
     //so that a mod's structure can be preserved properly)
     else if (extensionFilter.test(entry.fileName) === true)
     {
-        rw.log("upload", `Keeping data file ${entry.fileName}.`);
+        log.upload(log.getNormalLevel(), `Keeping data file ${entry.fileName}.`);
         return true;
     }
 
-    else rw.log("upload", `Skipping file ${entry.fileName}.`);
+    else log.upload(log.getNormalLevel(), `Skipping file ${entry.fileName}.`);
 }
 
 //We're not using a callback because if the execution fails, we'll just print it
@@ -113,11 +113,11 @@ function _cleanupTmpFiles(fileId)
 {
     let path = `${tmpPath}/${fileId}`;
 
-    rw.log("upload", `Deleting temp zipfile ${fileId}...`);
+    log.upload(log.getNormalLevel(), `Deleting temp zipfile ${fileId}...`);
 
     if (fs.existsSync(`${path}.zip`) === false && fs.existsSync(path) === false)
     {
-        rw.log("upload", `Temp zipfile ${fileId} did not exist.`);
+        log.upload(log.getNormalLevel(), `Temp zipfile ${fileId} did not exist.`);
         return Promise.resolve();
     }
 
@@ -127,6 +127,6 @@ function _cleanupTmpFiles(fileId)
     }
 
     return fsp.unlink(path)
-    .then(() => rw.log("upload", `Temp zipfile ${fileId} was successfully deleted.`))
-    .catch((err) => rw.log("upload", `Failed to delete the temp zipfile ${fileId}:\n\n${err.message}`));
+    .then(() => log.upload(log.getNormalLevel(), `Temp zipfile ${fileId} was successfully deleted.`))
+    .catch((err) => log.error(log.getNormalLevel(), `FAILED TO DELETE TMP ZIPFILE ${fileId}`, err));
 }

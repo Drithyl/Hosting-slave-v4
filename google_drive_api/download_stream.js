@@ -1,8 +1,8 @@
 
 
 const fs = require("fs");
+const log = require("../logger.js");
 const { google } = require('googleapis');
-const rw = require("../reader_writer.js");
 
 module.exports = DownloadStream;
 
@@ -58,7 +58,7 @@ function DownloadStream(oAuth2Object, downloadPath)
                 return onErrorHandler(new Error(`Write stream is not in a writable state.`));
 
 
-            rw.log("upload", "WriteStream is writable. Piping ReadStream into it.");
+            log.upload(log.getVerboseLevel(), "WriteStream is writable. Piping ReadStream into it.");
 
             //pipe response readable stream into our writestream. This returns the
             //writestream object so we can chain writestream event handlers into it

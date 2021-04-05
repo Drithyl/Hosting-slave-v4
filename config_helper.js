@@ -88,7 +88,7 @@ function _promisifiedQuestion(question, onAnswerHandler)
                 .then(() => resolve())
                 .catch((err) => 
                 {
-                    console.log(err);
+                    log.error(log.getLeanLevel(), `CONFIG HELPER QUESTION ERROR`, err);
                     _askQuestion();
                 });
             });

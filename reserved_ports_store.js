@@ -1,5 +1,5 @@
 
-const rw = require("./reader_writer.js");
+const log = require("./logger.js");
 const config = require("./config.json");
 const gameInterface = require("./hosted_games_store.js");
 
@@ -31,5 +31,5 @@ module.exports.releasePort = function(port)
 module.exports.releaseAllPorts = function()
 {
 	reservedPorts = [];
-	rw.log("general", `Released reserved assistted hosting instance ports.`);
+	log.general(log.getLeanLevel(), `Released reserved assisted hosting instance ports.`);
 };

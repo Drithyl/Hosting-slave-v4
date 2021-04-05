@@ -5,24 +5,14 @@ require("./helper_functions.js");
 
 const fs = require("fs");
 const fsp = require("fs").promises;
+const log = require("./logger.js");
 const config = require("./config.json");
 
 const _tmpDataPath = `${config.dataFolderPath}/tmp`;
-const _logsPath = `${config.dataFolderPath}/logs`;
-const logTagsToPaths =
-{
-	"default": `${config.dataFolderPath}/logs/general.txt`,
-	"general": `${config.dataFolderPath}/logs/general.txt`,
-	"error": `${config.dataFolderPath}/logs/error.txt`,
-	"backup": `${config.dataFolderPath}/logs/backup.txt`,
-	"upload": `${config.dataFolderPath}/logs/upload.txt`
-}
 
 if (fs.existsSync(_tmpDataPath) === false)
 	fs.mkdirSync(_tmpDataPath);
 
-if (fs.existsSync(_logsPath) === false)
-	fs.mkdirSync(_logsPath);
 
 module.exports.copyFile = function(source, target)
 {
@@ -157,7 +147,7 @@ module.exports.atomicRmDir = function(target, filter = null)
 			{
 				//do not stop execution of the loop on error since failure to clean
 				//the tmp files is not critical to this operation
-				console.log(`Failed to delete remaining tmp file ${filepaths[1]}`);
+				log.error(log.getLeanLevel(), `FAILED TO DELETE TMP FILE ${filepaths[1]}`);
 				return nextPromise();
 			});
 		});
@@ -173,7 +163,7 @@ module.exports.atomicRmDir = function(target, filter = null)
 	.then(() => fsp.rmdir(`${_tmpDataPath}/${targetName}`))
 	.catch((err) => 
 	{
-		console.log(`Error occurred: ${err.message}`);
+		log.error(log.getLeanLevel(), `ATOMIC RM ERROR`, err);
 
 		//undo the whole delete operation
 		return _undo(err);
@@ -271,78 +261,19 @@ module.exports.readDirContents = function(path, extensionFilter)
     .then(() => Promise.resolve(readFiles));
 };
 
-module.exports.log = function(tags, trace, ...inputs)
+module.exports.append = (filePath, stringData) =>
 {
-	var msg = _timestamp() + "\n";
+	const dirPath = filePath.replace(/\/.+$/, "");
 
-	if (Array.isArray(tags) === false)
-		tags = [tags];
+	if (fs.existsSync(dirPath) === false)
+		return Promise.reject(new Error(`Directory ${dirPath} does not exist.`));
 
-	//no trace argument was provided
-	if (typeof trace !== "boolean")
-	{
-		if (Array.isArray(trace) === false)
-			trace = [trace];
-
-		inputs = trace.concat(inputs);
-	}
-
-	inputs.forEach((input) =>
-	{
-		if (typeof input === "string")
-		{
-			//add tab characters to each line so that they are all indented relative to the timestamp
-			input.split("\n").forEach((line) => msg += `\t${line}\n`);
-		}
-
-		else msg += `\t${_toJSON(input)}\n`;
-	});
-
-	console.log(`${msg}\n`);
-
-	if (trace === true)
-	{
-		console.log("\n\n");
-		console.trace();
-		console.log("\n\n");
-	}
-
-	return tags.forEachPromise((tag, index, nextPromise) =>
-	{
-		if (logTagsToPaths[tag] == null)
-			return nextPromise();
-
-		return fsp.appendFile(logTagsToPaths[tag], `${msg}\r\n\n`)
-		.then(() => nextPromise());
-    })
-    .catch((err) => console.log(`Failed to log: ${err.message}\n\n${err.stack}`));
+	if (fs.existsSync(filePath) === false)
+		return fsp.writeFile(filePath, stringData);
+		
+	else return fsp.appendFile(filePath, stringData);
 };
 
-function _timestamp()
-{
-	var now = new Date();
-	var hours = now.getHours();
-	var minutes = now.getMinutes();
-	var seconds = now.getSeconds();
-	var ms = now.getMilliseconds();
-
-	if (hours < 10)
-		hours = `0${hours}`;
-
-	if (minutes < 10)
-		minutes = `0${minutes}`;
-
-	if (seconds < 10)
-		seconds = `0${seconds}`;
-
-	if (ms < 10)
-		ms = `00${ms}`;
-
-	else if (ms < 100)
-		ms = `0${ms}`;
-
-	return `${hours}:${minutes}:${seconds}:${ms}, ${now.toDateString()}`;
-}
 
 function _doesExtensionMatchFilter(filename, filter)
 {
@@ -358,31 +289,4 @@ function _doesExtensionMatchFilter(filename, filter)
 		return true;
 	
 	else return false;
-}
-
-//Stringify that prevents circular references taken from https://antony.fyi/pretty-printing-javascript-objects-as-json/
-function _toJSON(object, spacing = 2)
-{
-	var cache = [];
-
-	//custom replacer function gets around the circular reference errors by discarding them
-	var str = JSON.stringify(object, function(key, value)
-	{
-		if (typeof value === "object" && value != null)
-		{
-			//value already found before, discard it
-			if (cache.indexOf(value) !== -1)
-				return;
-
-			//not found before, store this value for reference
-			cache.push(value);
-		}
-
-		return value;
-
-	}, spacing);
-
-	//enable garbage collection
-	cache = null;
-	return str;
 }

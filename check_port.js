@@ -6,7 +6,7 @@ and hexacyanide's answer on Stack Overflow:
 https://stackoverflow.com/questions/19129570/how-can-i-check-if-port-is-busy-in-nodejs/35251815
 */
 
-const rw = require("./reader_writer.js");
+const log = require("./logger.js");
 const net = require('net');
 
 module.exports = function(port)
@@ -44,7 +44,7 @@ module.exports = function(port)
 		{
 			if (wasPromiseResolved === false)
 			{
-				console.log("Port not in use.");
+				log.general(log.getNormalLevel(), "Port not in use.");
 				wasPromiseResolved = true;
 				resolve(false);
 			}
@@ -56,7 +56,7 @@ module.exports = function(port)
 			if (wasPromiseResolved === false)
 			{
 				server.close();
-				rw.log("error", `Server listening on port ${port} did not get an answer after ${timeoutMs}ms.`);
+				log.error(log.getLeanLevel(), `Server listening on port ${port} did not get an answer after ${timeoutMs}ms.`);
 				wasPromiseResolved = true;
 				resolve(true);
             }

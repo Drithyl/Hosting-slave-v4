@@ -1,6 +1,7 @@
 
 const fs = require("fs");
 const fsp = require("fs").promises;
+const log = require("./logger.js");
 const config = require("./config.json");
 const rw = require("./reader_writer.js");
 const cleaner = require("./unused_files_cleaner.js");
@@ -19,11 +20,11 @@ var targetBackupDir = `${config.dataFolderPath}/backups/${gameName}`;
 var fetchedStatusDump;
 
 
-rw.log(["backup"], `Backup type ${type} for ${gameName} starting.`);
+log.general(log.getNormalLevel(), `Backup type ${type} for ${gameName} starting.`);
 
 
 if (gameName == null)
-    return rw.log(["error", "backup"], `No game name argument received.`);
+    return log.error(log.getLeanLevel(), `BACKUP ERROR; NO GAME NAME ARGUMENT RECEIVED`);
 
 if (preexecRegex.test(type) === true)
     targetBackupDir += `/${config.preHostTurnBackupDirName}`;
@@ -31,10 +32,10 @@ if (preexecRegex.test(type) === true)
 else if (postexecRegex.test(type) === true)
     targetBackupDir += `/${config.newTurnsBackupDirName}`;
 
-else return rw.log(["error", "backup"], `Invalid backup type received; expected --preexec or --postexec: '${type}'`);
+else return log.error(log.getLeanLevel(), `INVALID BACKUP TYPE RECEIVED; EXPECTED --preexec OR --postexec, GOT '${type}'`);
 
 
-rw.log(["backup"], `Fetching statusdump...`);
+log.general(log.getNormalLevel(),`Fetching statusdump...`);
 
 
 statusDump.fetchStatusDump(gameName)
@@ -42,7 +43,7 @@ statusDump.fetchStatusDump(gameName)
 {
     fetchedStatusDump = statusDumpWrapper;
     const tmpTurnFilePath = `${config.dataFolderPath}/${config.tmpDownloadPath}/${gameName}`;
-    rw.log(["backup"], `Statusdump fetched, turn is ${statusDumpWrapper.turnNbr}`);
+    log.general(log.getNormalLevel(), `Statusdump fetched, turn is ${statusDumpWrapper.turnNbr}`);
 
     if (preexecRegex.test(type) === true)
         return _writeTurnNbrToTmpFile(statusDumpWrapper.turnNbr, tmpTurnFilePath);
@@ -53,20 +54,20 @@ statusDump.fetchStatusDump(gameName)
 .then(() => _createDirectories(`${targetBackupDir}/Turn ${fetchedStatusDump.turnNbr}`))
 .then(() => 
 {
-    rw.log(["backup"], `Backup directory created at ${targetBackupDir}/Turn ${fetchedStatusDump.turnNbr}`);
+    log.general(log.getNormalLevel(), `Backup directory created at ${targetBackupDir}/Turn ${fetchedStatusDump.turnNbr}`);
     return fsp.readdir(savedgamesPath);
 })
 .then((filenames) => 
 {
-    rw.log(["backup"], `Read filenames, backing up files...`);
+    log.general(log.getNormalLevel(), `Read filenames, backing up files...`);
     _backupFiles(filenames, savedgamesPath, `${targetBackupDir}/Turn ${fetchedStatusDump.turnNbr}`)
 })
 .then(() =>
 {
-    rw.log(["backup"], `Finished backing up turn files, cleaning old ones...`);
+    log.general(log.getNormalLevel(), `Finished backing up turn files, cleaning old ones...`);
     return _cleanUnusedBackups(fetchedStatusDump);
 })
-.catch((err) => rw.log(["backup", "error"], `Error occurred during backup: ${err.message}\n\n${err.stack}`));
+.catch((err) => log.error(log.getLeanLevel(), `BACKUP ERROR`, err));
 
 
 // Pre-exec backup writes the known turn number from the statusdump to a file,
@@ -76,12 +77,12 @@ function _writeTurnNbrToTmpFile(turnNbr, path)
     return fsp.writeFile(path, turnNbr, "utf-8")
     .then(() =>
     {
-        rw.log(["backup"], `Preexec wrote turn ${turnNbr} to file.`);
+        log.general(log.getNormalLevel(), `Preexec wrote turn ${turnNbr} to file.`);
         return Promise.resolve();
     })
     .catch((err) =>
     {
-        rw.log(["backup"], `Preexec could not write turn ${turnNbr} to file: ${err.message}\n\n${err.stack}`);
+        log.error(log.getLeanLevel(), `PRE-EXEC ERROR WRITING TURN ${turnNbr} TO FILE`, err);
         return Promise.resolve();
     });
 }
@@ -94,11 +95,11 @@ function _readTurnNbrFromTmpFile(statusDump, path)
     return fsp.readFile(path, "utf-8")
     .then((turnNbrString) =>
     {
-        rw.log(["backup"], `Postexec read turn ${turnNbrString} from file.`);
+        log.general(log.getNormalLevel(), `Postexec read turn ${turnNbrString} from file.`);
         statusDump.turnNbr = +turnNbrString + 1;
         return fsp.unlink(path);
     })
-    .catch((err) => rw.log(["backup"], `Postexec error when reading turn from file: ${err.message}\n\n${err.stack}`));
+    .catch((err) => log.error(log.getLeanLevel(), `POST-EXEC ERROR READING TURN FROM FILE`, err));
 }
 
 function _createDirectories(targetBackupDir)
@@ -135,20 +136,20 @@ function _backupFiles(filenames, sourcePath, targetPath)
 {
     return filenames.forEachPromise((filename, index, nextPromise) =>
     {
-        rw.log(["backup"], `Checking ${filename}...`);
+        log.general(log.getNormalLevel(), `Checking ${filename}...`);
         
         if (extensionsToBackupRegex.test(filename) === false)
         {
-            rw.log(["backup"], `Not a turn file; skipping.`);
+            log.general(log.getNormalLevel(), `Not a turn file; skipping.`);
             return nextPromise();
         }
 
-        rw.log(["backup"], `Turn file found, backing up...`);
+        log.general(log.getNormalLevel(), `Turn file found, backing up...`);
 
         return rw.copyFile(`${sourcePath}/${filename}`, `${targetPath}/${filename}`)
         .then(() =>
         {
-            rw.log(["backup"], `Turn file backed up.`);
+            log.general(log.getNormalLevel(), `Turn file backed up.`);
             return nextPromise();
         })
         .catch((err) => Promise.reject(err));
@@ -161,7 +162,7 @@ function _cleanUnusedBackups(statusDump)
     // If turn number is lower than number of backups to keep, no need to clean
     if (statusDump.turnNbr <= config.nbrOfTurnsBackedUp)
     {
-        rw.log(["backup"], `No old turn backups to clean.`);
+        log.general(log.getNormalLevel(), `No old turn backups to clean.`);
         return Promise.resolve();
     }
 
