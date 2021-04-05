@@ -305,11 +305,12 @@ module.exports.validateMods = function(modfiles)
 	for (var i = 0; i < modfiles.length; i++)
 	{
 		var modfile = modfiles[i];
+        var modfileRelPath = (/\.dm$/i.test(modfile) === false) ? `/mods/${modfile}.dm` : `/mods/${modfile}`;
 
 		if (typeof modfile !== "string")
 			return Promise.reject(new Error(`Invalid modfiles element; expected path string, got ${modfile}`));
 
-		if (fs.existsSync(`${path}/mods/${modfile}`) === false)
+		if (fs.existsSync(`${path}${modfileRelPath}`) === false)
 			return Promise.reject(new Error(`The mod file ${modfile} could not be found.`));
 	}
 
