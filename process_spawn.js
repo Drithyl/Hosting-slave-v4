@@ -125,8 +125,12 @@ function _attachStdioListener(type, game)
 
         writeStream._write = (data) => 
         {
-            log.general(log.getNormalLevel(), `${game.name} stdio data`, data);
-            socket.emit("STDIO_DATA", {name: game.name, data: data, type: type});
+			// Ignore data buffers that the game puts out
+			if (data.type == "Buffer")
+				return;
+				
+			log.general(log.getVerboseLevel(), `${game.name} stdio data`, data);
+			socket.emit("STDIO_DATA", {name: game.name, data: data, type: type});
         };
 
         game.instance[type].setEncoding("utf8");
@@ -135,7 +139,7 @@ function _attachStdioListener(type, game)
 
 		game.instance[type].on('data', function (data)
 		{
-			log.general(log.getNormalLevel(), `${game.name}'s ${type} "data" event triggered:\n`, data);
+			log.general(log.getVerboseLevel(), `${game.name}'s ${type} "data" event triggered:\n`, data);
 			socket.emit("STDIO_DATA", {name: game.name, data: data, type: type});
 		});
 
