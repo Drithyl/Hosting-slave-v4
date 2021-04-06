@@ -263,7 +263,7 @@ module.exports.readDirContents = function(path, extensionFilter)
 
 module.exports.append = (filePath, stringData) =>
 {
-	const dirPath = str.replace(/\/\w+\.\w+$/, "");
+	const dirPath = filePath.replace(/\/\w+\.\w+$/, "");
 
 	if (fs.existsSync(dirPath) === false)
 		return Promise.reject(new Error(`Directory ${dirPath} does not exist.`));
