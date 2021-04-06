@@ -11,7 +11,7 @@ const googleDriveAPI = require("./google_drive_api/index.js");
 const mapExtensionTest = new RegExp("(\.map)|(\.rgb)|(\.tga)|(\.png)$", "i");
 
 //These are the extensions expected in the collection of mod files
-const modExtensionTest = new RegExp("(\.dm)|(\.rgb)|(\.tga)|(\.png)|(\.sw)$", "i");
+const modExtensionTest = new RegExp("(\.dm)|(\.rgb)|(\.tga)|(\.png)|(\.sw)|(\.wav)$", "i");
 
 const zipMaxSize = config.maxFileSizeInMB * 2000000;  //200MB in bytes
 const tmpPath = `${config.dataFolderPath}/${config.tmpDownloadPath}`;
