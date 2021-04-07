@@ -18,7 +18,7 @@ module.exports.spawn = function(game)
 	//Arguments must be passed in an array with one element at a time. Even a flag like
 	//--mapfile needs to be its own element, followed by a separate element with its value,
 	//i.e. peliwyr.map
-	const finalArgs = _getAdditionalArgs(game).concat([...game.args]);
+	const finalArgs = game.args.concat(_getAdditionalArgs(game));
 
 	if (fs.existsSync(path) === false)
 		return Promise.reject(`The path ${path} is incorrect. Cannot host game ${game.name} (${game.gameType}).`);
