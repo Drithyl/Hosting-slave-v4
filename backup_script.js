@@ -7,8 +7,8 @@ const rw = require("./reader_writer.js");
 const cleaner = require("./unused_files_cleaner.js");
 const statusDump = require("./dom5/status_dump_wrapper.js");
 
-const preexecRegex = new RegExp("^\\-\\-preexec$", "i");
-const postexecRegex = new RegExp("^\\-\\-postexec$", "i");
+const preexecRegex = new RegExp("^preexec$", "i");
+const postexecRegex = new RegExp("^postexec$", "i");
 const extensionsToBackupRegex = new RegExp("(\.2h)|(\.trn)|(ftherlnd)$", "i");
 
 const gameName = process.argv[2];
@@ -32,7 +32,7 @@ if (preexecRegex.test(type) === true)
 else if (postexecRegex.test(type) === true)
     targetBackupDir += `/${config.newTurnsBackupDirName}`;
 
-else return log.error(log.getLeanLevel(), `INVALID BACKUP TYPE RECEIVED; EXPECTED --preexec OR --postexec, GOT '${type}'`);
+else return log.error(log.getLeanLevel(), `INVALID BACKUP TYPE RECEIVED; EXPECTED preexec OR postexec, GOT '${type}'`);
 
 
 log.general(log.getNormalLevel(),`Fetching statusdump...`);
