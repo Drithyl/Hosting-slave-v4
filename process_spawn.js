@@ -13,6 +13,8 @@ module.exports.spawn = function(game)
 {
 	const path = config.dom5ExePath;
 
+	log.general(log.getVerboseLevel(), `Base game arguments received`, game.args);
+
 	//Arguments must be passed in an array with one element at a time. Even a flag like
 	//--mapfile needs to be its own element, followed by a separate element with its value,
 	//i.e. peliwyr.map
@@ -126,7 +128,7 @@ function _attachStdioListener(type, game)
         writeStream._write = (data) => 
         {
 			// Ignore data buffers that the game puts out
-			if (data.type == "Buffer")
+			if (data.type === "Buffer")
 				return;
 				
 			log.general(log.getVerboseLevel(), `${game.name} stdio data`, data);
@@ -164,11 +166,14 @@ function _getAdditionalArgs(game)
 	if (process.platform === "win32")
         args.push("--nocrashbox");
 
+	log.general(log.getVerboseLevel(), `Additional arguments added`, args);
+
 	return args;
 }
 
 function _backupCmd(type, gameName)
 {
+	let typeName = type.slice(2);
 	let backupModulePath = require.resolve("./backup_script.js");
 
 	if (typeof backupModulePath !== "string")
@@ -177,5 +182,5 @@ function _backupCmd(type, gameName)
 	//pass the dom5 flag (--preexec or --postexec) plus the cmd command to launch
 	//the node script, "node [path to backup_script.js]" plus the game's name and
 	//type as arguments to the script
-	else return [type, `node "${backupModulePath}" ${gameName} ${type}`];
+	else return [`${type}`, `node "${backupModulePath}" ${gameName} ${typeName}`];
 }
