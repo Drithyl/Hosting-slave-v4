@@ -8,7 +8,7 @@ const fsp = require("fs").promises;
 const log = require("./logger.js");
 const config = require("./config.json");
 
-const _tmpDataPath = `${config.dataFolderPath}/tmp`;
+const _tmpDataPath = `${config.dom5DataPath}/${config.tmpFilesDirName}`;
 
 if (fs.existsSync(_tmpDataPath) === false)
 	fs.mkdirSync(_tmpDataPath);

@@ -16,7 +16,7 @@
 	"capacity": 20,
 
 	"dataFolderPath": "C:/Bot/v4-slave",
-	"tmpDownloadPath": "C:/Bot/v4-slave/tmp",
+	"tmpFilesDirName": "tmp",
 	"dom5RootPath": "C:/SteamLibrary/steamapps/common/Dominions5",
 	"dom5ExePath": "C:/SteamLibrary/steamapps/common/Dominions5/Dominions5.exe",
 	"dom5DataPath": "C:/Users/MistZ/AppData/Roaming/Dominions5",

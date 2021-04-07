@@ -14,7 +14,7 @@ const mapExtensionTest = new RegExp("(\.map)|(\.rgb)|(\.tga)|(\.png)$", "i");
 const modExtensionTest = new RegExp("(\.dm)|(\.rgb)|(\.tga)|(\.png)|(\.sw)|(\.wav)$", "i");
 
 const zipMaxSize = config.maxFileSizeInMB * 2000000;  //200MB in bytes
-const tmpPath = `${config.dataFolderPath}/${config.tmpDownloadPath}`;
+const tmpPath = `${config.dom5DataPath}/${config.tmpFilesDirName}`;
 
 if (fs.existsSync(tmpPath) === false)
 {
