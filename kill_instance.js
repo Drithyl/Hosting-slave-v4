@@ -56,7 +56,8 @@ function _kill(game, attempts, maxAttempts)
 		/*if (process.platform === "linux")
 			_killOnLinux(game);
 
-		else */game.instance.kill(game.instance.pid);
+		else game.instance.kill(game.instance.pid);*/
+		game.instance.kill("SIGKILL");
 	}
 
 	else game.instance.kill("SIGTERM");
