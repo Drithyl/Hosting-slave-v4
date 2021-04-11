@@ -6,6 +6,9 @@ const spawn = require('child_process').spawn;
 const socket = require("./socket_wrapper.js");
 const stream = require("stream");
 
+const recentDataEmitted = [];
+const REPETITIVE_DATA_DEBOUNCER_INTERVAL = 60000;
+
 //BEWARE: do not try to pass a master server callback directly to the function or
 //the returning instance will cause a RangeError: Maximum call stack size exceeded
 //as it is an object that contains circular references
@@ -131,8 +134,12 @@ function _attachStdioListener(type, game)
 			if (data.type === "Buffer")
 				return;
 				
+			if (_wasDataEmittedRecently(data) === true)
+				return log.general(log.getVerboseLevel(), `Debouncing data that was already recently emitted.`);
+		
 			log.general(log.getVerboseLevel(), `${game.name} stdio data`, data);
 			socket.emit("STDIO_DATA", {name: game.name, data: data, type: type});
+			_debounceData(data);
         };
 
         game.instance[type].setEncoding("utf8");
@@ -141,16 +148,47 @@ function _attachStdioListener(type, game)
 
 		game.instance[type].on('data', function (data)
 		{
-			log.general(log.getVerboseLevel(), `${game.name}'s ${type} "data" event triggered:\n`, data);
+			if (_wasDataEmittedRecently(data) === true)
+				return log.general(log.getVerboseLevel(), `Debouncing data that was already recently emitted.`);
+			
 			socket.emit("STDIO_DATA", {name: game.name, data: data, type: type});
+			log.general(log.getVerboseLevel(), `${game.name}'s ${type} "data" event triggered:\n`, data);
+			_debounceData(data);
 		});
 
 		game.instance[type].on('error', function (err)
 		{
+			if (_wasDataEmittedRecently(err) === true)
+				return log.general(log.getVerboseLevel(), `Debouncing data that was already recently emitted.`);
+			
 			log.error(log.getLeanLevel(), `${game.name}'s ${type} "error" event triggered:\n`, err);
 			socket.emit("STDIO_ERROR", {name: game.name, error: err, type: type});
+			_debounceData(err);
 		});
 	}
+}
+
+function _wasDataEmittedRecently(data)
+{
+	// If data was emitted recently, don't send it again
+	if (data != null && recentDataEmitted.includes(data) === true)
+		return true;
+
+	else return false;
+}
+
+function _debounceData(data)
+{
+	// Store sent data to make sure we don't keep sending it later in short intervals
+	recentDataEmitted.push(data);
+
+	// After a while, release the record of the previously sent data so it can be sent again if needed
+	setTimeout(() =>
+	{
+		recentDataEmitted.shift();
+		log.general(log.getVerboseLevel(), `Removed data from recently emitted`);
+
+	}, REPETITIVE_DATA_DEBOUNCER_INTERVAL);
 }
 
 function _getAdditionalArgs(game)
