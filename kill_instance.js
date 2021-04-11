@@ -1,6 +1,6 @@
 
 const log = require("./logger.js");
-const checkIfPortIsInUse = require("./check_port.js");
+const checkIfPortIsAvailable = require("./is_port_open.js");
 
 const msBetweenAttempts = 5000;
 
@@ -88,15 +88,15 @@ function _timeoutCheckIfKilled(game, attempts, maxAttempts)
 {
 	log.general(log.getVerboseLevel(), "Checking if port is still in use...");
 
-	return checkIfPortIsInUse(game.port)
-	.then((isPortInUse) =>
+	return checkIfPortIsAvailable(game.port)
+	.then((isPortAvailable) =>
 	{
-		log.general(log.getVerboseLevel(), `isPortInUse returns ${isPortInUse}`);
+		log.general(log.getVerboseLevel(), `isPortAvailable returns ${isPortAvailable}`);
 
 		//All good
-		if (isPortInUse === false && (game.instance == null || game.instance.killed === true))
+		if (isPortAvailable === true && (game.instance == null || game.instance.killed === true))
 		{
-			log.general(log.getNormalLevel(), "Port not in use, instance is null. Success.");
+			log.general(log.getNormalLevel(), "Port available, instance is null. Success.");
 			return Promise.resolve();
 		}
 
@@ -106,7 +106,7 @@ function _timeoutCheckIfKilled(game, attempts, maxAttempts)
 			return _killAttempt(game, ++attempts, 3);
 
 		//max attempts reached
-		if (isPortInUse === true && (game.instance == null || game.instance.killed === true))
+		if (isPortAvailable === false && (game.instance == null || game.instance.killed === true))
 		{
 			log.error(log.getLeanLevel(), `${game.name}'s TERMINATED BUT PORT STILL IN USE AFTER ${maxAttempts} ATTEMPTS`);
 			return Promise.reject(new Error(`The game instance was terminated, but the port is still in use. You might have to wait a bit.`));
@@ -115,7 +115,7 @@ function _timeoutCheckIfKilled(game, attempts, maxAttempts)
 		else
 		{
 			log.error(log.getLeanLevel(), `${game.name}'s COULD NOT BE TERMINATED.`);
-			return Promise.reject(new Error(`The game instance could not be terminated and the port is still in use. You might have to wait a bit.`));
+			return Promise.reject(new Error(`The game instance could not be terminated and the port is still in use. You might have to try again.`));
 		}
 	});
 }
