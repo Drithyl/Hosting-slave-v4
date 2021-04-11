@@ -7,7 +7,7 @@ const DELAY_AFTER_KILLED_SUCCESS = 5000;
 
 module.exports = function(game)
 {
-	if (game == null)
+	if (game == null || game.isRunning !== true)
 		return Promise.resolve();
 
 	//Start the kill attempt chain
@@ -21,7 +21,7 @@ function _killAttempt(game, attempts, maxAttempts)
 {
 	log.general(log.getNormalLevel(), `Attempt ${attempts}. Max attempts ${maxAttempts}.`);
 
-	if (game.instance != null)
+	if (game.isRunning === true)
 		_kill(game, attempts, maxAttempts);
 	
 	return new Promise((resolve, reject) =>
@@ -95,7 +95,7 @@ function _timeoutCheckIfKilled(game, attempts, maxAttempts)
 		log.general(log.getVerboseLevel(), `isPortAvailable returns ${isPortAvailable}`);
 
 		//All good
-		if (isPortAvailable === true && (game.instance == null || game.instance.killed === true))
+		if (isPortAvailable === true && game.isRunning !== true)
 		{
 			log.general(log.getNormalLevel(), "Port available, instance is null. Success.");
 			
@@ -105,10 +105,10 @@ function _timeoutCheckIfKilled(game, attempts, maxAttempts)
 		log.general(log.getNormalLevel(), "Instance is not killed either.");
 
 		if (attempts < maxAttempts)
-			return _killAttempt(game, ++attempts, 3);
+			return _killAttempt(game, ++attempts, maxAttempts);
 
 		//max attempts reached
-		if (isPortAvailable === false && (game.instance == null || game.instance.killed === true))
+		if (isPortAvailable === false && game.isRunning !== true)
 		{
 			log.error(log.getLeanLevel(), `${game.name}'s TERMINATED BUT PORT STILL IN USE AFTER ${maxAttempts} ATTEMPTS`);
 			return Promise.reject(new Error(`The game instance was terminated, but the port is still in use. You might have to wait a bit.`));
