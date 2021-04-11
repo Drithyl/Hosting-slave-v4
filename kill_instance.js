@@ -2,7 +2,8 @@
 const log = require("./logger.js");
 const checkIfPortIsAvailable = require("./is_port_open.js");
 
-const msBetweenAttempts = 5000;
+const MS_BETWEEN_ATTEMPTS = 3000;
+const DELAY_AFTER_KILLED_SUCCESS = 5000;
 
 module.exports = function(game)
 {
@@ -31,7 +32,7 @@ function _killAttempt(game, attempts, maxAttempts)
 			.then(() => resolve())
 			.catch((err) => reject(err));
 	
-		}, msBetweenAttempts);
+		}, MS_BETWEEN_ATTEMPTS);
 	});
 }
 
@@ -97,7 +98,8 @@ function _timeoutCheckIfKilled(game, attempts, maxAttempts)
 		if (isPortAvailable === true && (game.instance == null || game.instance.killed === true))
 		{
 			log.general(log.getNormalLevel(), "Port available, instance is null. Success.");
-			return Promise.resolve();
+			
+			return Promise.resolve((resolve) => setTimeout(resolve, DELAY_AFTER_KILLED_SUCCESS));
 		}
 
 		log.general(log.getNormalLevel(), "Instance is not killed either.");
