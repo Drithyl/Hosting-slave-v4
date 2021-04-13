@@ -9,18 +9,15 @@ const stream = require("stream");
 const recentDataEmitted = [];
 const REPETITIVE_DATA_DEBOUNCER_INTERVAL = 60000;
 
-//BEWARE: do not try to pass a master server callback directly to the function or
-//the returning instance will cause a RangeError: Maximum call stack size exceeded
-//as it is an object that contains circular references
+
 module.exports.spawn = function(game)
 {
 	const path = config.dom5ExePath;
 
 	log.general(log.getVerboseLevel(), `Base game arguments received`, game.args);
 
-	//Arguments must be passed in an array with one element at a time. Even a flag like
-	//--mapfile needs to be its own element, followed by a separate element with its value,
-	//i.e. peliwyr.map
+	// Arguments must be passed in an array with one element at a time. Even a flag like --mapfile
+	// needs to be its own element, followed by a separate element with its value, i.e. peliwyr.map
 	const finalArgs = game.args.concat(_getAdditionalArgs(game));
 
 	if (fs.existsSync(path) === false)
@@ -29,17 +26,19 @@ module.exports.spawn = function(game)
 	if (finalArgs == null)
 		return Promise.reject(`No args were provided to host the game ${game.name} (${game.gameType}).`);
 
-	//instances get overloaded if they spent ~24h with their stdio being listened to,
-	//and end up freezing (in windows server 2012), according to tests in previous bot versions
-	//TODO: testing not ignoring the stdio again
-    game.instance = spawn(path, finalArgs, { stdio: "pipe" });
+	// Stdio pipes are not ignored by default. If these pipes are not listened to (with .on("data") or .pipe())
+	// in flowing mode, or periodically read from in paused mode and consuming the data chunks, the instance
+	// will eventually hang, as the pipes will fill up and Dominions won't be able to push out more data.
+	// This makes the games remain running but unable to be connected, hanging at "Waiting for info..."
+	// https://nodejs.org/api/stream.html#stream_class_stream_readable
+	// stdio array is [stdin, stdout, stderr]
+    game.instance = spawn(path, finalArgs, { stdio: ["ignore", "pipe", "pipe"] });
     game.isRunning = true;
 
 	_attachOnExitListener(game);
 	_attachOnCloseListener(game);
 	_attachOnErrorListener(game);
 	_attachStdioListener("stderr", game);
-	_attachStdioListener("stdin", game);
 	_attachStdioListener("stdout", game);
 
 	log.general(log.getLeanLevel(), `Process for ${game.name} spawned.`);
@@ -122,32 +121,19 @@ function _attachOnErrorListener(game)
 
 function _attachStdioListener(type, game)
 {
-	//dom instances print stdout very often. This is probably what leads to buffer
-	//overflow and the instances hanging when it's not being ignored nor caught
+	// Dom instances push stdout data very often. This is probably what leads to buffer
+	// overflow and the instances hanging when it's not being ignored nor listened to
 	if (game.instance[type] != null)
 	{
-        const writeStream = new stream.Writable();
-
-        writeStream._write = (data) => 
-        {
-			// Ignore data buffers that the game puts out
-			if (data.type === "Buffer")
-				return;
-				
-			if (_wasDataEmittedRecently(data) === true)
-				return log.general(log.getVerboseLevel(), `Debouncing data that was already recently emitted.`);
-		
-			log.general(log.getVerboseLevel(), `${game.name} stdio data`, data);
-			socket.emit("STDIO_DATA", {name: game.name, data: data, type: type});
-			_debounceData(data);
-        };
-
         game.instance[type].setEncoding("utf8");
-        game.instance[type].pipe(writeStream);
         log.general(log.getNormalLevel(), `Listening to ${game.name}'s ${type} stream.`);
 
 		game.instance[type].on('data', function (data)
 		{
+			// Ignore data buffers that the game puts out
+			if (data.type === "Buffer")
+				return;
+				
 			if (_wasDataEmittedRecently(data) === true)
 				return log.general(log.getVerboseLevel(), `Debouncing data that was already recently emitted.`);
 			
@@ -217,8 +203,8 @@ function _backupCmd(type, gameName)
 	if (typeof backupModulePath !== "string")
 	    return [];
 
-	//pass the dom5 flag (--preexec or --postexec) plus the cmd command to launch
-	//the node script, "node [path to backup_script.js]" plus the game's name and
-	//type as arguments to the script
+	// Pass the dom5 flag (--preexec or --postexec) plus the cmd command to launch
+	// the node script, "node [path to backup_script.js]" plus the game's name and
+	// type as arguments to the script
 	else return [`${type}`, `node "${backupModulePath}" ${gameName} ${typeName}`];
 }
