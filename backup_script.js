@@ -1,11 +1,12 @@
 
+const configStore = require("./config_store.js").loadConfig();
+
 const fs = require("fs");
 const fsp = require("fs").promises;
 const log = require("./logger.js");
 const rw = require("./reader_writer.js");
 const cleaner = require("./unused_files_cleaner.js");
 const statusDump = require("./dom5/status_dump_wrapper.js");
-const configStore = require("./config_store.js").loadConfig();
 
 
 const preexecRegex = new RegExp("^preexec$", "i");

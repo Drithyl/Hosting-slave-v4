@@ -17,5 +17,7 @@ module.exports.loadConfig = () =>
 
     for (var key in config)
         module.exports[key] = config[key];
+
+    return module.exports;
 };
 
