@@ -1,6 +1,6 @@
 
 const log = require("./logger.js");
-const config = require("./config.json");
+const configStore = require("./config_store.js");
 const downloader = require("./file_downloader.js");
 const dom5Interface = require("./dom5_interface.js");
 const hostedGamesStore = require("./hosted_games_store.js");
@@ -56,9 +56,9 @@ function _sendServerData(data)
     log.general(log.getLeanLevel(), "Received REQUEST_SERVER_DATA event from master server. Sending authentication attempt.");
     
     return Promise.resolve({
-        id: config.id, 
-        capacity: config.capacity, 
-        ownerDiscordID: config.ownerDiscordID
+        id: configStore.id, 
+        capacity: configStore.capacity, 
+        ownerDiscordID: configStore.ownerDiscordID
     });
 }
 

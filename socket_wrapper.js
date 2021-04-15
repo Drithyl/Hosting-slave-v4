@@ -1,6 +1,6 @@
 
 const log = require("./logger.js");
-const config = require("./config.json");
+const configStore = require("./config_store.js");
 const gameStore = require("./hosted_games_store.js");
 const masterCommands = require("./master_commands.js");
 const reservedPortsStore = require("./reserved_ports_store.js");
@@ -10,7 +10,7 @@ const { TimeoutError, SocketResponseError } = require("./errors.js");
 *   SOCKET CONNECTION TO MASTER SERVER  *
 ****************************************/
 const _socketIoObject = require('socket.io-client');
-const _masterServerAddress = `http://${config.masterIP}:${config.masterPort}/`;
+const _masterServerAddress = `http://${configStore.masterIP}:${configStore.masterPort}/`;
 
 //By default, io will try to reconnect forever with a small delay between each attempt
 var _socket;

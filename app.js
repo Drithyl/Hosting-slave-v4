@@ -1,23 +1,12 @@
 
 require("./helper_functions.js");
-const configHelper = require("./config_helper.js");
+const configStore = require("./config_store.js");
 
 
-Promise.resolve()
-.then(() =>
+configStore.createConfig()
+.then(() => 
 {
-    // Set up config by asking user in console
-    if (configHelper.hasConfig() === false)
-        return configHelper.askConfigQuestions();
-
-    else return Promise.resolve();
-})
-.then(() =>
-{
-    // Load config and then begin initialization
-    config = configHelper.buildDataPath();
-
-
+    configStore.loadConfig();
     _initializeComponents();
 });
 
@@ -25,15 +14,14 @@ Promise.resolve()
 function _initializeComponents()
 {
     const fs = require("fs");
-    const config = require("./config.json");
     const log = require("./logger.js");
     const _socketWrapper = require('./socket_wrapper.js');
     const googleDriveApi = require("./google_drive_api/index.js");
 
 
     //TODO: refactor
-    if (fs.existsSync(`${config.dataFolderPath}/backups`) === false)
-        fs.mkdirSync(`${config.dataFolderPath}/backups`);
+    if (fs.existsSync(`${configStore.dataFolderPath}/backups`) === false)
+        fs.mkdirSync(`${configStore.dataFolderPath}/backups`);
 
 
     googleDriveApi.authorize()

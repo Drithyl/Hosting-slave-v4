@@ -2,40 +2,41 @@
 const fs = require("fs");
 const path = require("path");
 const readline = require("readline");
-const config = require("./config.json");
 const exampleConfig = require("./example.config.json");
 
 exports.buildDataPath = () =>
 {
-    if (config.dataFolderPath.startsWith(".") === true)
-        config.dataFolderPath = path.resolve(__dirname, config.dataFolderPath);
+    const configData = require("./config.json");
 
-    if (fs.existsSync(config.dataFolderPath) === false)
-        fs.mkdirSync(config.dataFolderPath);
+    if (configData.dataFolderPath.startsWith(".") === true)
+        configData.dataFolderPath = path.resolve(__dirname, configData.dataFolderPath);
 
-    return config;
+    if (fs.existsSync(configData.dataFolderPath) === false)
+        fs.mkdirSync(configData.dataFolderPath);
+
+    return configData;
 };
 
 exports.hasConfig = () => fs.existsSync("./config.json");
 
 exports.askConfigQuestions = () =>
 {
-    var config = Object.assign({}, exampleConfig);
+    var newConfig = Object.assign({}, exampleConfig);
 
     return _promisifiedQuestion("Input master server's IP: ", (answer) =>
     {
-        config.masterIP = answer;
+        newConfig.masterIP = answer;
     })
     .then(() => _promisifiedQuestion("Input server authentication id: ", (answer) =>
     {
-        config.id = answer;
+        newConfig.id = answer;
     }))
     .then(() => _promisifiedQuestion("Input number of game slots: ", (answer) =>
     {
         if (Number.isInteger(+answer) === false)
             return Promise.reject("Input is not an integer.");
 
-        config.capacity = +answer;
+        newConfig.capacity = +answer;
     }))
     .then(() => _promisifiedQuestion("Input data folder dir (Enter for default): ", (answer) =>
     {        
@@ -45,30 +46,30 @@ exports.askConfigQuestions = () =>
         if (fs.existsSync(answer) === false)
             return Promise.reject("Path does not exist.");
 
-        config.dataFolderPath = answer;
+        newConfig.dataFolderPath = answer;
     }))
     .then(() => _promisifiedQuestion("Input Dom5 root path: ", (answer) =>
     {
         if (fs.existsSync(answer) === false)
             return Promise.reject("Path does not exist.");
 
-        config.dom5RootPath = answer;
+        newConfig.dom5RootPath = answer;
     }))
     .then(() => _promisifiedQuestion("Input Dom5 exe path: ", (answer) =>
     {
         if (fs.existsSync(answer) === false)
             return Promise.reject("Path does not exist.");
 
-        config.dom5ExePath = answer;
+        newConfig.dom5ExePath = answer;
     }))
     .then(() => _promisifiedQuestion("Input Dom5 data path: ", (answer) =>
     {
         if (fs.existsSync(answer) === false)
             return Promise.reject("Path does not exist.");
 
-        config.dom5DataPath = answer;
+        newConfig.dom5DataPath = answer;
     }))
-    .then(() => fs.writeFileSync("./config.json", JSON.stringify(config, null, 2)));
+    .then(() => fs.writeFileSync("./config.json", JSON.stringify(newConfig, null, 2)));
 };
 
 function _promisifiedQuestion(question, onAnswerHandler)

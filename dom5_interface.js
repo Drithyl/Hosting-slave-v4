@@ -2,7 +2,7 @@
 const fs = require("fs");
 const fsp = require("fs").promises;
 const log = require("./logger.js");
-const config = require("./config.json");
+const configStore = require("./config_store.js");
 const rw = require("./reader_writer.js");
 const kill = require("./kill_instance.js");
 const spawn = require("./process_spawn.js").spawn;
@@ -12,12 +12,12 @@ const readFileBuffer = require("./read_file_buffer.js");
 const provCountFn = require("./dom5/parse_province_count.js");
 const { fetchStatusDump } = require("./dom5/status_dump_wrapper.js");
 
-const _savedGamesPath = `${config.dom5DataPath}/savedgames`;
+const _savedGamesPath = `${configStore.dom5DataPath}/savedgames`;
 
 
 module.exports.getModList = function()
 {
-	return rw.getDirFilenames(config.dom5ModsPath, ".dm")
+	return rw.getDirFilenames(configStore.dom5ModsPath, ".dm")
 	.then((filenames) => Promise.resolve(filenames))
 	.catch((err) => Promise.reject(err));
 };
@@ -26,7 +26,7 @@ module.exports.getMapList = function()
 {
 	const mapsWithProvinceCount = [];
 
-	return rw.readDirContents(config.dom5MapsPath, ".map")
+	return rw.readDirContents(configStore.dom5MapsPath, ".map")
 	.then((filesContentsByName) =>
 	{
 		filesContentsByName.forEachItem((content, filename) =>
@@ -223,12 +223,12 @@ module.exports.backupSavefiles = function(gameData)
 {
 	const gameName = gameData.name;
 	const source = `${_savedGamesPath}/${gameName}`;
-	var target = `${config.dataFolderPath}/backups`;
+	var target = `${configStore.dataFolderPath}/backups`;
 
 	if (gameData.isNewTurn === true)
-	    target += `${config.newTurnsBackupDirName}/${gameName}/Turn ${gameData.turnNbr}`;
+	    target += `${configStore.newTurnsBackupDirName}/${gameName}/Turn ${gameData.turnNbr}`;
 
-	else target += `${config.preHostTurnBackupDirName}/${gameName}/Turn ${gameData.turnNbr}`;
+	else target += `${configStore.preHostTurnBackupDirName}/${gameName}/Turn ${gameData.turnNbr}`;
 
 	return rw.copyDir(source, target, false, ["", ".2h", ".trn"])
 	.then(() => Promise.resolve())
@@ -239,14 +239,19 @@ module.exports.rollback = function(gameData)
 {
 	const gameName = gameData.name;
 	const target = `${_savedGamesPath}/${gameName}`;
-	var source = `${config.dataFolderPath}/backups/${config.preHostTurnBackupDirName}/${gameName}/Turn ${gameData.turnNbr}`;
+	var source = `${configStore.dataFolderPath}/backups/${configStore.preHostTurnBackupDirName}/${gameName}/Turn ${gameData.turnNbr}`;
+
+    log.general(log.getLeanLevel(), `${gameName}: No backup of turn ${gameData.turnNbr} was found in ${configStore.preHostTurnBackupDirName}, looking in new turns...`, source);
 
 	if (fs.existsSync(source) === false)
 	{
-		source = `${config.dataFolderPath}/backups/${config.newTurnsBackupDirName}/${gameName}/Turn ${gameData.turnNbr}`;
+		source = `${configStore.dataFolderPath}/backups/${configStore.newTurnsBackupDirName}/${gameName}/Turn ${gameData.turnNbr}`;
 
 		if (fs.existsSync(source) === false)
-			return Promise.reject(new Error(`No backup of the previous turn was found to be able to rollback.`));
+        {
+            log.general(log.getLeanLevel(), `${gameName}: No backup of turn ${gameData.turnNbr} was found`, source);
+            return Promise.reject(new Error(`No backup of the previous turn was found to be able to rollback.`));
+        }
 	}
 
 	return rw.copyDir(source, target, false, ["", ".2h", ".trn"])
@@ -260,7 +265,7 @@ module.exports.deleteGameSavefiles = function(data)
 {
 	const gameName = data.name;
     const path = `${_savedGamesPath}/${gameName}`;
-    const backupPath = `${config.dataFolderPath}/backups/${gameName}`;
+    const backupPath = `${configStore.dataFolderPath}/backups/${gameName}`;
 
 	return rw.deleteDir(path)
     .then(() => rw.deleteDir(backupPath))
@@ -283,8 +288,8 @@ module.exports.getLastHostedTime = function(gameName)
 
 module.exports.validateMapfile = function(mapfile)
 {
-	var dataPath = config.dom5DataPath;
-	var rootPath = config.dom5RootPath;
+	var dataPath = configStore.dom5DataPath;
+	var rootPath = configStore.dom5RootPath;
 	var mapfileRelPath = (/\.map$/i.test(mapfile) === false) ? `/maps/${mapfile}.map` : `/maps/${mapfile}`;
 
 	if (typeof mapfile !== "string")
@@ -298,7 +303,7 @@ module.exports.validateMapfile = function(mapfile)
 
 module.exports.validateMods = function(modfiles)
 {
-	var path = config.dom5DataPath;
+	var path = configStore.dom5DataPath;
 
 	if (Array.isArray(modfiles) === false)
 		return Promise.reject(new Error(`Invalid argument type provided; expected array of string paths, got ${modfiles}`));

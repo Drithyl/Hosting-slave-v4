@@ -1,7 +1,7 @@
 
 const fs = require("fs");
 const log = require("./logger.js");
-const config = require("./config.json");
+const configStore = require("./config_store.js");
 const kill = require("./kill_instance.js");
 const spawn = require("./process_spawn.js").spawn;
 const dom5Interface = require("./dom5_interface.js");
@@ -96,7 +96,7 @@ module.exports.getUsedPorts = function()
 
 module.exports.isGameNameUsed = function(name)
 {
-	var savePath = `${config.dom5DataPath}/savedgames/${name}`;
+	var savePath = `${configStore.dom5DataPath}/savedgames/${name}`;
 
 	if (fs.existsSync(savePath) === true)
 		return Promise.resolve(true);
@@ -127,7 +127,7 @@ module.exports.killAllGames = function()
 
 module.exports.requestHosting = function(gameData)
 {
-    const delay = config.gameHostMsDelay * gameHostRequests.length;
+    const delay = configStore.gameHostMsDelay * gameHostRequests.length;
 
     if (exports.isGameOnline(gameData.port) === true)
         return Promise.resolve();

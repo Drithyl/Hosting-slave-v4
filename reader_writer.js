@@ -6,9 +6,9 @@ require("./helper_functions.js");
 const fs = require("fs");
 const fsp = require("fs").promises;
 const log = require("./logger.js");
-const config = require("./config.json");
+const configStore = require("./config_store.js");
 
-const _tmpDataPath = `${config.dom5DataPath}/${config.tmpFilesDirName}`;
+const _tmpDataPath = `${configStore.dom5DataPath}/${configStore.tmpFilesDirName}`;
 
 if (fs.existsSync(_tmpDataPath) === false)
 	fs.mkdirSync(_tmpDataPath);

@@ -1,7 +1,7 @@
 
 const fs = require("fs");
 const log = require("./logger.js");
-const config = require("./config.json");
+const configStore = require("./config_store.js");
 const spawn = require('child_process').spawn;
 const socket = require("./socket_wrapper.js");
 const stream = require("stream");
@@ -12,7 +12,7 @@ const REPETITIVE_DATA_DEBOUNCER_INTERVAL = 60000;
 
 module.exports.spawn = function(game)
 {
-	const path = config.dom5ExePath;
+	const path = configStore.dom5ExePath;
 
 	log.general(log.getVerboseLevel(), `Base game arguments received`, game.args);
 

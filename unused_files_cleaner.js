@@ -2,14 +2,14 @@
 const fs = require("fs");
 const fsp = require("fs").promises;
 const log = require("./logger.js");
-const config = require("./config.json");
+const configStore = require("./config_store.js");
 const rw = require("./reader_writer.js");
 
 module.exports.deleteAllTurnBackups = function(gameName)
 {
-    const target = `${config.dataFolderPath}/backups/${gameName}`;
-    const pathToNewTurnBackups = `${target}/${config.newTurnsBackupDirName}`;
-    const pathTPreHostBackups = `${target}/${config.preHostTurnBackupDirName}`;
+    const target = `${configStore.dataFolderPath}/backups/${gameName}`;
+    const pathToNewTurnBackups = `${target}/${configStore.newTurnsBackupDirName}`;
+    const pathTPreHostBackups = `${target}/${configStore.preHostTurnBackupDirName}`;
 
     return exports.deleteBackupsUpToTurn(pathToNewTurnBackups, Infinity)
     .then(() => exports.deleteBackupsUpToTurn(pathTPreHostBackups, Infinity))
@@ -73,7 +73,7 @@ module.exports.deleteUnusedMaps = function(mapsInUse)
     .then((list) => 
     {
         filesInUse = list;
-        return fsp.readdir(config.dom5MapsPath)
+        return fsp.readdir(configStore.dom5MapsPath)
     })
     .then((mapFilenames) => _deleteUnusedMaps(mapFilenames, filesInUse))
     .catch((err, deletedFiles) => Promise.reject(err, deletedFiles));
@@ -90,7 +90,7 @@ function _getListOfAllMapfilesInUse(mapsInUse)
     {
         var imageFilenameMatch;
         var winterImageFilenameMatch;
-        const filePath = `${config.dom5MapsPath}/${filename}`;
+        const filePath = `${configStore.dom5MapsPath}/${filename}`;
 
         if (fs.existsSync(filePath) === false)
             return nextPromise();
@@ -122,7 +122,7 @@ function _deleteUnusedMaps(filenames, mapfilesInUse)
     if (mapfilesInUse.includes(filename) === true)
       return nextPromise();
 
-    return fsp.unlink(`${config.dom5MapsPath}/${filename}`)
+    return fsp.unlink(`${configStore.dom5MapsPath}/${filename}`)
     .then(() =>
     {
         deletedFiles.push(filename);

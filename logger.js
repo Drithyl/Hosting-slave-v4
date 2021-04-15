@@ -1,12 +1,13 @@
 
 const fs = require("fs");
-const config = require("./config.json");
+const configStore = require("./config_store.js");
 const assert = require("./asserter.js");
 const rw = require("./reader_writer.js");
 
 
-const logsBasePath = `${config.dataFolderPath}/logs`;
+const logsBasePath = `${configStore.dataFolderPath}/logs`;
 
+const BACKUP_LOG_PATH = `${logsBasePath}/backup.txt`
 const GENERAL_LOG_PATH = `${logsBasePath}/general.txt`;
 const ERROR_LOG_PATH = `${logsBasePath}/error.txt`;
 const UPLOAD_LOG_PATH = `${logsBasePath}/upload.txt`;
@@ -15,7 +16,7 @@ const LEAN_LEVEL = 0;
 const NORMAL_LEVEL = 1;
 const VERBOSE_LEVEL = 2;
 
-var currentLogLevel = config.defaultLogLevel;
+var currentLogLevel = configStore.defaultLogLevel;
 var logToFile = true;
 
 
@@ -47,6 +48,14 @@ module.exports.setLogToFile = (shouldLogToFile) =>
     exports.general(LEAN_LEVEL, `logToFile set to ${shouldLogToFile}.`);
 };
 
+
+module.exports.backup = (logLevel, header, ...data) =>
+{
+    if (logLevel > currentLogLevel)
+        return;
+
+    return _writeToFileAndLog(BACKUP_LOG_PATH, header, ...data);
+};
 
 module.exports.general = (logLevel, header, ...data) =>
 {

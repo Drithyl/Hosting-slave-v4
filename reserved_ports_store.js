@@ -1,20 +1,20 @@
 
 const log = require("./logger.js");
-const config = require("./config.json");
+const configStore = require("./config_store.js");
 const gameInterface = require("./hosted_games_store.js");
 
 var reservedPorts = [];
 
 module.exports.reservePort = function()
 {
-	var reservedPort = config.gamePortRange.first.toString();
+	var reservedPort = configStore.gamePortRange.first.toString();
 	var usedPorts = gameInterface.getUsedPorts().concat(reservedPorts);
 
 	while (usedPorts.includes(reservedPort.toString()) === true)
 	{
 		reservedPort++;
 
-		if (reservedPort > config.gamePortRange.last)
+		if (reservedPort > configStore.gamePortRange.last)
 		    return Promise.reject(new Error(`There are no free ports.`));
 	}
 

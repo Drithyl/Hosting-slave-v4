@@ -2,10 +2,11 @@
 const fs = require("fs");
 const fsp = require("fs").promises;
 const log = require("./logger.js");
-const config = require("./config.json");
 const rw = require("./reader_writer.js");
 const cleaner = require("./unused_files_cleaner.js");
 const statusDump = require("./dom5/status_dump_wrapper.js");
+const configStore = require("./config_store.js").loadConfig();
+
 
 const preexecRegex = new RegExp("^preexec$", "i");
 const postexecRegex = new RegExp("^postexec$", "i");
@@ -13,37 +14,36 @@ const extensionsToBackupRegex = new RegExp("(\.2h)|(\.trn)|(ftherlnd)$", "i");
 
 const gameName = process.argv[2];
 const type = process.argv[3];
-const savedgamesPath = `${config.dom5DataPath}/savedgames/${gameName}`;
+const savedgamesPath = `${configStore.dom5DataPath}/savedgames/${gameName}`;
 
-
-var targetBackupDir = `${config.dataFolderPath}/backups/${gameName}`;
+var targetBackupDir = `${configStore.dataFolderPath}/backups/${gameName}`;
 var fetchedStatusDump;
 
 
-log.general(log.getNormalLevel(), `Backup type ${type} for ${gameName} starting.`);
+log.backup(log.getNormalLevel(), `Backup type ${type} for ${gameName} starting.`);
 
 
 if (gameName == null)
     return log.error(log.getLeanLevel(), `BACKUP ERROR; NO GAME NAME ARGUMENT RECEIVED`);
 
 if (preexecRegex.test(type) === true)
-    targetBackupDir += `/${config.preHostTurnBackupDirName}`;
+    targetBackupDir += `/${configStore.preHostTurnBackupDirName}`;
 
 else if (postexecRegex.test(type) === true)
-    targetBackupDir += `/${config.newTurnsBackupDirName}`;
+    targetBackupDir += `/${configStore.newTurnsBackupDirName}`;
 
 else return log.error(log.getLeanLevel(), `INVALID BACKUP TYPE RECEIVED; EXPECTED preexec OR postexec, GOT '${type}'`);
 
 
-log.general(log.getNormalLevel(),`Fetching statusdump...`);
+log.backup(log.getNormalLevel(),`Fetching statusdump...`);
 
 
 statusDump.fetchStatusDump(gameName)
 .then((statusDumpWrapper) =>
 {
     fetchedStatusDump = statusDumpWrapper;
-    const tmpTurnFilePath = `${config.dom5DataPath}/${tmpFilesDirName}/${gameName}`;
-    log.general(log.getNormalLevel(), `Statusdump fetched, turn is ${statusDumpWrapper.turnNbr}`);
+    const tmpTurnFilePath = `${configStore.dom5DataPath}/${tmpFilesDirName}/${gameName}`;
+    log.backup(log.getNormalLevel(), `Statusdump fetched, turn is ${statusDumpWrapper.turnNbr}`);
 
     if (preexecRegex.test(type) === true)
         return _writeTurnNbrToTmpFile(statusDumpWrapper.turnNbr, tmpTurnFilePath);
@@ -54,17 +54,17 @@ statusDump.fetchStatusDump(gameName)
 .then(() => _createDirectories(`${targetBackupDir}/Turn ${fetchedStatusDump.turnNbr}`))
 .then(() => 
 {
-    log.general(log.getNormalLevel(), `Backup directory created at ${targetBackupDir}/Turn ${fetchedStatusDump.turnNbr}`);
+    log.backup(log.getNormalLevel(), `Backup directory created at ${targetBackupDir}/Turn ${fetchedStatusDump.turnNbr}`);
     return fsp.readdir(savedgamesPath);
 })
 .then((filenames) => 
 {
-    log.general(log.getNormalLevel(), `Read filenames, backing up files...`);
+    log.backup(log.getNormalLevel(), `Read filenames, backing up files...`);
     _backupFiles(filenames, savedgamesPath, `${targetBackupDir}/Turn ${fetchedStatusDump.turnNbr}`)
 })
 .then(() =>
 {
-    log.general(log.getNormalLevel(), `Finished backing up turn files, cleaning old ones...`);
+    log.backup(log.getNormalLevel(), `Finished backing up turn files, cleaning old ones...`);
     return _cleanUnusedBackups(fetchedStatusDump);
 })
 .catch((err) => log.error(log.getLeanLevel(), `BACKUP ERROR`, err));
@@ -77,7 +77,7 @@ function _writeTurnNbrToTmpFile(turnNbr, path)
     return fsp.writeFile(path, turnNbr, "utf-8")
     .then(() =>
     {
-        log.general(log.getNormalLevel(), `Preexec wrote turn ${turnNbr} to file.`);
+        log.backup(log.getNormalLevel(), `Preexec wrote turn ${turnNbr} to file.`);
         return Promise.resolve();
     })
     .catch((err) =>
@@ -95,7 +95,7 @@ function _readTurnNbrFromTmpFile(statusDump, path)
     return fsp.readFile(path, "utf-8")
     .then((turnNbrString) =>
     {
-        log.general(log.getNormalLevel(), `Postexec read turn ${turnNbrString} from file.`);
+        log.backup(log.getNormalLevel(), `Postexec read turn ${turnNbrString} from file.`);
         statusDump.turnNbr = +turnNbrString + 1;
         return fsp.unlink(path);
     })
@@ -136,20 +136,20 @@ function _backupFiles(filenames, sourcePath, targetPath)
 {
     return filenames.forEachPromise((filename, index, nextPromise) =>
     {
-        log.general(log.getNormalLevel(), `Checking ${filename}...`);
+        log.backup(log.getNormalLevel(), `Checking ${filename}...`);
         
         if (extensionsToBackupRegex.test(filename) === false)
         {
-            log.general(log.getNormalLevel(), `Not a turn file; skipping.`);
+            log.backup(log.getNormalLevel(), `Not a turn file; skipping.`);
             return nextPromise();
         }
 
-        log.general(log.getNormalLevel(), `Turn file found, backing up...`);
+        log.backup(log.getNormalLevel(), `Turn file found, backing up...`);
 
         return rw.copyFile(`${sourcePath}/${filename}`, `${targetPath}/${filename}`)
         .then(() =>
         {
-            log.general(log.getNormalLevel(), `Turn file backed up.`);
+            log.backup(log.getNormalLevel(), `Turn file backed up.`);
             return nextPromise();
         })
         .catch((err) => Promise.reject(err));
@@ -160,14 +160,14 @@ function _backupFiles(filenames, sourcePath, targetPath)
 function _cleanUnusedBackups(statusDump)
 {
     // If turn number is lower than number of backups to keep, no need to clean
-    if (statusDump.turnNbr <= config.nbrOfTurnsBackedUp)
+    if (statusDump.turnNbr <= configStore.nbrOfTurnsBackedUp)
     {
-        log.general(log.getNormalLevel(), `No old turn backups to clean.`);
+        log.backup(log.getNormalLevel(), `No old turn backups to clean.`);
         return Promise.resolve();
     }
 
     // Otherwise, delete previous backups according to the configuration
-    const turnNbrToClean = statusDump.turnNbr - config.nbrOfTurnsBackedUp;
+    const turnNbrToClean = statusDump.turnNbr - configStore.nbrOfTurnsBackedUp;
 
     return cleaner.deleteBackupsUpToTurn(targetBackupDir, turnNbrToClean)
     .catch((err) => Promise.reject(err));

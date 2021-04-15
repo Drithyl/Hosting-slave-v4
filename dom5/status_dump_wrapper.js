@@ -1,13 +1,13 @@
 
 const fs = require("fs");
 const fsp = require("fs").promises;
-const config = require("../config.json");
+const configStore = require("../config_store.js");
 const NationStatusWrapper = require("./nation_status_wrapper.js");
 
 exports.fetchStatusDump = (gameName) =>
 {
     var rawData;
-    const gameDataPath = `${config.dom5DataPath}/savedgames/${gameName}`;
+    const gameDataPath = `${configStore.dom5DataPath}/savedgames/${gameName}`;
     const statusDumpPath = `${gameDataPath}/statusdump.txt`;
 
     if (fs.existsSync(statusDumpPath) === false)
@@ -45,7 +45,7 @@ function StatusDump(gameName, rawData)
     this.getSubmittedPretenders = () =>
     {
         const submittedNationStatuses = [];
-        const path = `${config.dom5DataPath}/savedgames/${_gameName}`;
+        const path = `${configStore.dom5DataPath}/savedgames/${_gameName}`;
 
         this.nationStatusArray.forEach((nationStatus) =>
         {
@@ -60,7 +60,7 @@ function StatusDump(gameName, rawData)
     {
         const staleArrayByName = [];
         const goneAiArrayByName = [];
-        const path = `${config.dom5DataPath}/savedgames/${_gameName}`;
+        const path = `${configStore.dom5DataPath}/savedgames/${_gameName}`;
 
         return this.nationStatusArray.forEachPromise((nationStatus, index, nextPromise) =>
         {

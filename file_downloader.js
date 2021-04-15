@@ -3,7 +3,7 @@ const fs = require("fs");
 const fsp = require("fs").promises;
 const log = require("./logger.js");
 const unzip = require("./yauzl/yauzl.js");
-const config = require("./config.json");
+const configStore = require("./config_store.js");
 
 const googleDriveAPI = require("./google_drive_api/index.js");
 
@@ -13,8 +13,8 @@ const mapExtensionTest = new RegExp("(\.map)|(\.rgb)|(\.tga)|(\.png)$", "i");
 //These are the extensions expected in the collection of mod files
 const modExtensionTest = new RegExp("(\.dm)|(\.rgb)|(\.tga)|(\.png)|(\.sw)|(\.wav)$", "i");
 
-const zipMaxSize = config.maxFileSizeInMB * 2000000;  //200MB in bytes
-const tmpPath = `${config.dom5DataPath}/${config.tmpFilesDirName}`;
+const zipMaxSize = configStore.maxFileSizeInMB * 2000000;  //200MB in bytes
+const tmpPath = `${configStore.dom5DataPath}/${configStore.tmpFilesDirName}`;
 
 if (fs.existsSync(tmpPath) === false)
 {
@@ -25,12 +25,12 @@ if (fs.existsSync(tmpPath) === false)
 
 module.exports.downloadMap = (fileId) =>
 {
-    return _downloadFile(fileId, config.dom5MapsPath, mapExtensionTest);
+    return _downloadFile(fileId, configStore.dom5MapsPath, mapExtensionTest);
 };
 
 module.exports.downloadMod = (fileId) =>
 {
-    return _downloadFile(fileId, config.dom5ModsPath, modExtensionTest);
+    return _downloadFile(fileId, configStore.dom5ModsPath, modExtensionTest);
 };
 
 
