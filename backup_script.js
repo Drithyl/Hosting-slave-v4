@@ -43,7 +43,7 @@ statusDump.fetchStatusDump(gameName)
 .then((statusDumpWrapper) =>
 {
     fetchedStatusDump = statusDumpWrapper;
-    const tmpTurnFilePath = `${configStore.dom5DataPath}/${tmpFilesDirName}/${gameName}`;
+    const tmpTurnFilePath = `${configStore.dom5DataPath}/${configStore.tmpFilesDirName}/${gameName}`;
     log.backup(log.getNormalLevel(), `Statusdump fetched, turn is ${statusDumpWrapper.turnNbr}`);
 
     if (preexecRegex.test(type) === true)
