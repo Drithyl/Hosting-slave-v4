@@ -44,10 +44,10 @@ statusDump.fetchStatusDump(gameName)
 {
     fetchedStatusDump = statusDumpWrapper;
     const tmpTurnFilePath = `${configStore.dom5DataPath}/${configStore.tmpFilesDirName}/${gameName}`;
-    log.backup(log.getNormalLevel(), `Statusdump fetched, turn is ${statusDumpWrapper.turnNbr}`);
+    log.backup(log.getNormalLevel(), `Statusdump fetched, turn is ${fetchedStatusDump.turnNbr}`);
 
     if (preexecRegex.test(type) === true)
-        return _writeTurnNbrToTmpFile(statusDumpWrapper.turnNbr, tmpTurnFilePath);
+        return _writeTurnNbrToTmpFile(fetchedStatusDump.turnNbr.toString(), tmpTurnFilePath);
         
     else if (postexecRegex.test(type) === true)
         return _readTurnNbrFromTmpFile(fetchedStatusDump, tmpTurnFilePath);
@@ -75,6 +75,7 @@ statusDump.fetchStatusDump(gameName)
 // so that post-exec backup can read it from there. 
 function _writeTurnNbrToTmpFile(turnNbr, path)
 {
+    log.backup(log.getNormalLevel(), `Preexec; writing turn number ${turnNbr} to file...`);
     return fsp.writeFile(path, turnNbr, "utf-8")
     .then(() =>
     {
@@ -93,6 +94,7 @@ function _writeTurnNbrToTmpFile(turnNbr, path)
 // generated results in a turn number of -1
 function _readTurnNbrFromTmpFile(statusDump, path)
 {
+    log.backup(log.getNormalLevel(), `Postexec; reading turn number from file...`);
     return fsp.readFile(path, "utf-8")
     .then((turnNbrString) =>
     {
