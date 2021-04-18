@@ -1,6 +1,7 @@
 
 const fs = require("fs");
 const fsp = require("fs").promises;
+const log = require("../logger.js");
 const configStore = require("../config_store.js");
 const NationStatusWrapper = require("./nation_status_wrapper.js");
 
@@ -56,35 +57,58 @@ function StatusDump(gameName, rawData)
         return submittedNationStatuses;
     };
 
-    this.fetchStales = (lastHostedTime) =>
+    this.fetchStales = () =>
     {
         const staleArrayByName = [];
         const goneAiArrayByName = [];
         const path = `${configStore.dom5DataPath}/savedgames/${_gameName}`;
+        const ftherlndFilePath = `${path}/ftherlnd`;
 
-        return this.nationStatusArray.forEachPromise((nationStatus, index, nextPromise) =>
+        if (fs.existsSync(ftherlndFilePath) === false)
+            return Promise.resolve({ stales: ["ftherlnd file does not exist??"], wentAi: goneAiArrayByName });
+
+        return fsp.stat(ftherlndFilePath)
+        .then((ftherlndFileStats) =>
         {
-            const nationFilePath = `${path}/${nationStatus.filename}.2h`;
+            const lastHostedTime = ftherlndFileStats.mtime.getTime();
 
-            if (nationStatus.wentAiThisTurn === true)
+            return this.nationStatusArray.forEachPromise((nationStatus, index, nextPromise) =>
             {
-                goneAiArrayByName.push(nationStatus.fullName);
-                return nextPromise();
-            }
+                const nationFilePath = `${path}/${nationStatus.filename}.2h`;
 
-            if (nationStatus.isHuman === true && fs.existsSync(nationFilePath) === true)
-            {
-                return fsp.stat(nationFilePath)
-                .then((nationFileStats) =>
+                if (nationStatus.wentAiThisTurn === true)
                 {
-                    if (nationFileStats.mtime.getTime() >= lastHostedTime)
-                        staleArrayByName.push(nationStatus.filename);
-
+                    goneAiArrayByName.push(nationStatus.fullName);
                     return nextPromise();
-                });
-            }
+                }
 
-            return nextPromise();
+                if (nationStatus.isHuman === true)
+                {
+                    // When a nation's .2h file does not exist, no orders were given
+                    if (fs.existsSync(nationFilePath) === false)
+                    {
+                        staleArrayByName.push(nationStatus.fullName);
+                        return nextPromise();
+                    }
+
+                    return fsp.stat(nationFilePath)
+                    .then((nationFileStats) =>
+                    {
+                        if (nationFileStats.mtime.getTime() < lastHostedTime)
+                            staleArrayByName.push(nationStatus.fullName);
+
+                        return nextPromise();
+                    })
+                    .catch((err) =>
+                    {
+                        log.error(log.getLeanLevel(), `${_gameName}\tCould not verify ${nationStatus.fullName} stale`, err);
+                        staleArrayByName.push(nationStatus.fullName + "\tCould not verify if a stale occurred");
+                        return nextPromise();
+                    });
+                }
+
+                return nextPromise();
+            })
         })
         .then(() => Promise.resolve({ stales: staleArrayByName, wentAi: goneAiArrayByName }));
     };
