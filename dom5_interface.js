@@ -239,13 +239,13 @@ module.exports.rollback = function(gameData)
 {
 	const gameName = gameData.name;
 	const target = `${_savedGamesPath}/${gameName}`;
-	var source = `${configStore.dataFolderPath}/backups/${configStore.preHostTurnBackupDirName}/${gameName}/Turn ${gameData.turnNbr}`;
+	var source = `${configStore.dataFolderPath}/backups/${gameName}/${configStore.preHostTurnBackupDirName}/Turn ${gameData.turnNbr}`;
 
 	if (fs.existsSync(source) === false)
 	{
         log.general(log.getLeanLevel(), `${gameName}: No backup of turn ${gameData.turnNbr} was found in ${configStore.preHostTurnBackupDirName}, looking in new turns...`, source);
     
-		source = `${configStore.dataFolderPath}/backups/${configStore.newTurnsBackupDirName}/${gameName}/Turn ${gameData.turnNbr}`;
+		source = `${configStore.dataFolderPath}/backups/${gameName}/${configStore.newTurnsBackupDirName}/Turn ${gameData.turnNbr}`;
 
 		if (fs.existsSync(source) === false)
         {
