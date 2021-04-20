@@ -16,9 +16,18 @@ if (fs.existsSync(_tmpDataPath) === false)
 
 module.exports.copyFile = function(source, target)
 {
+	log.general(log.getVerboseLevel(), `Copying file ${source} to ${target}...`);
 	return exports.checkAndCreateFilepath(target)
-	.then(() => fsp.readFile(source))
-    .then((buffer) => fsp.writeFile(target, buffer))
+	.then(() => 
+	{
+		log.general(log.getVerboseLevel(), `Dirs created, reading file ${source}`);
+		return fsp.readFile(source);
+	})
+    .then((buffer) => 
+	{
+		log.general(log.getVerboseLevel(), `File read, writing to ${target}`);
+		return fsp.writeFile(target, buffer);
+	})
     .catch((err) => Promise.reject(err));
 };
 
@@ -30,6 +39,7 @@ module.exports.copyDir = function(source, target, deepCopy, extensionFilter = nu
 	return fsp.readdir(source)
 	.then((filenames) => 
 	{
+		log.general(log.getVerboseLevel(), `Source directory to be copied read`, filenames);
 		return filenames.forEachPromise((filename, index, nextPromise) =>
 		{
 			return Promise.resolve()
@@ -37,13 +47,23 @@ module.exports.copyDir = function(source, target, deepCopy, extensionFilter = nu
 			{
 				//if there's a directory inside our directory and no extension filter, copy its contents too
 				if (deepCopy === true && fs.lstatSync(`${source}/${filename}`).isDirectory() === true)
+				{
+					log.general(log.getVerboseLevel(), `Directory found, calling copyDir on it`);
 					return exports.copyDir(`${source}/${filename}`, `${target}/${filename}`, deepCopy, extensionFilter);
+				}
 
 				else if (_doesExtensionMatchFilter(filename, extensionFilter) === true)
+				{
+					log.general(log.getVerboseLevel(), "File found, copying it...");
 					return exports.copyFile(`${source}/${filename}`, `${target}/${filename}`);
+				}
 
 				//ignore file and loop
-				else return Promise.resolve();
+				else 
+				{
+					log.general(log.getVerboseLevel(), "Ignoring file and loop");
+					return Promise.resolve();
+				}
 			})
 			.then(() => nextPromise());
 		});
@@ -196,7 +216,10 @@ module.exports.checkAndCreateFilepath = function(filepath)
 	{
 		//last element of the path should not be iterated through as it will be a file
 		if (index >= splitPath.length - 1)
-			return Promise.resolve();
+		{
+			log.general(log.getVerboseLevel(), "Reached last path element, returning");
+			return nextPromise();
+		}
 
 		//prevent empty paths from being created
 		if (fs.existsSync(compoundPath) === false && /[\w]/.test(compoundPath) === true)
@@ -204,17 +227,20 @@ module.exports.checkAndCreateFilepath = function(filepath)
 			return fsp.mkdir(compoundPath)
 			.then(() => 
 			{
+				log.general(log.getVerboseLevel(), "Created dir " + compoundPath);
 				compoundPath += `/${splitPath[index+1]}`;
-				nextPromise();
+				return nextPromise();
 			});
 		}
 			
 		else
 		{
+			log.general(log.getVerboseLevel(), "Dir already exists " + compoundPath);
 			compoundPath += `/${splitPath[index+1]}`;
-			nextPromise();
+			return nextPromise();
 		}
-	});
+	})
+	.catch((err) => Promise.reject(err));
 };
 
 module.exports.getDirFilenames = function(path, extensionFilter = "")
