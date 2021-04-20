@@ -235,28 +235,31 @@ module.exports.backupSavefiles = function(gameData)
 	.catch((err) => Promise.reject(err));
 };
 
-module.exports.rollback = function(gameData)
+module.exports.rollback = function(data)
 {
-	const gameName = gameData.name;
+    const game = gameStore.getGame(data.port);
+	const gameName = game.name;
 	const target = `${_savedGamesPath}/${gameName}`;
-	var source = `${configStore.dataFolderPath}/backups/${gameName}/${configStore.preHostTurnBackupDirName}/Turn ${gameData.turnNbr}`;
+	var source = `${configStore.dataFolderPath}/backups/${gameName}/${configStore.preHostTurnBackupDirName}/Turn ${data.turnNbr}`;
 
 	if (fs.existsSync(source) === false)
 	{
-        log.general(log.getLeanLevel(), `${gameName}: No backup of turn ${gameData.turnNbr} was found in ${configStore.preHostTurnBackupDirName}, looking in new turns...`, source);
+        log.general(log.getNormalLevel(), `${gameName}: No backup of turn ${data.turnNbr} was found in ${configStore.preHostTurnBackupDirName}, looking in new turns...`, source);
     
-		source = `${configStore.dataFolderPath}/backups/${gameName}/${configStore.newTurnsBackupDirName}/Turn ${gameData.turnNbr}`;
+		source = `${configStore.dataFolderPath}/backups/${gameName}/${configStore.newTurnsBackupDirName}/Turn ${data.turnNbr}`;
 
 		if (fs.existsSync(source) === false)
         {
-            log.general(log.getLeanLevel(), `${gameName}: No backup of turn ${gameData.turnNbr} was found`, source);
+            log.general(log.getLeanLevel(), `${gameName}: No backup of turn ${data.turnNbr} was found`, source);
             return Promise.reject(new Error(`No backup of the previous turn was found to be able to rollback.`));
         }
 	}
+    
+    log.general(log.getNormalLevel(), `${gameName}: Copying backup of turn ${data.turnNbr} into into the game's savedgames...`, source);
 
 	return rw.copyDir(source, target, false, ["", ".2h", ".trn"])
-	.then(() => kill(gameData))
-	.then(() => spawn(gameData))
+	.then(() => kill(game))
+	.then(() => spawn(game))
 	.then(() => Promise.resolve())
 	.catch((err) => Promise.reject(err));
 };
