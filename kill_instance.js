@@ -7,8 +7,14 @@ const DELAY_AFTER_KILLED_SUCCESS = 5000;
 
 module.exports = function(game)
 {
+	// Ensure that it's a proper game from the hosted_games_store that's passed,
+	// not game data sent directly by master server, or the isRunning flag won't
+	// be present
 	if (game == null || game.isRunning !== true)
+	{
+		log.general(log.getNormalLevel(), `Game instance is null or not running; no need to kill`, game);
 		return Promise.resolve();
+	}
 
 	//Start the kill attempt chain
 	return _killAttempt(game, 0, 6);
