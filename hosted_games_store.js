@@ -69,7 +69,7 @@ module.exports.populate = function(gameDataArray)
 		{
             log.general(log.getVerboseLevel(), `${existingGame.name} at port ${existingGame.port} was not found on master data; killing and removing it...`);
 
-            kill(existingGame)
+            exports.killGame(port)
             .then(() =>
             {
                 delete hostedGames[port];
@@ -119,7 +119,7 @@ module.exports.killAllGames = function()
         {
             log.general(log.getNormalLevel(), `Killing ${game.name}...`);
 
-            return kill(game)
+            return exports.killGame(port)
             .catch((err) => log.error(log.getLeanLevel(), `COULD NOT KILL ${game.name} AT PORT ${port}`, err));
         }
 	});
@@ -132,11 +132,11 @@ module.exports.requestHosting = function(gameData)
     if (exports.isGameOnline(gameData.port) === true)
         return Promise.resolve();
 
-	return kill(gameData)
+	return exports.killGame(gameData.port)
 	.then(() =>
 	{
         gameHostRequests.push(gameData.port);
-		log.general(log.getNormalLevel(), `Requesting hosting for ${gameData.name}...`);
+		log.general(log.getNormalLevel(), `Requesting hosting for ${gameData.name} on port ${gameData.port}...`);
         
         return _setTimeoutPromise(delay, _host.bind(null, gameData));
     })
@@ -153,7 +153,7 @@ module.exports.deleteGame = function(data)
 {
     const port = data.port;
 
-	return kill(hostedGames[port])
+	return exports.killGame(port)
     .then(() => dom5Interface.deleteGameSavefiles(data))
     .then(() =>
     {
@@ -165,7 +165,7 @@ module.exports.deleteGame = function(data)
 
 module.exports.deleteGameData = function(data)
 {
-	return kill(hostedGames[data.port])
+	return exports.killGame(data.port)
 	.then(() => 
 	{
 		delete hostedGames[data.port];
@@ -205,6 +205,7 @@ function _host(gameData)
     .then(() => 
     {
         hostedGames[gameData.port] = gameData;
+        log.general(log.getNormalLevel(), `Added ${gameData.name} to game store`);
         
         /** If the game is not in the lobby, then change the timer to the
          *  default and current ones sent by the master server to ensure

@@ -164,15 +164,14 @@ module.exports.restart = function(data)
 {
     const gameName = data.name;
     const path = `${_savedGamesPath}/${gameName}`;
-    const game = gameStore.getGame(data.port);
 
 	log.general(log.getNormalLevel(), `Killing ${gameName}'s process...`);
 
 	//kill game first so it doesn't automatically regenerate the statuspage file
 	//as soon as it gets deleted
-	return kill(game)
+	return gameStore.killGame(data.port)
 	.then(() => rw.atomicRmDir(path))
-	.then(() => gameStore.requestHosting(game))
+	.then(() => gameStore.requestHosting(data))
 	.then(() => Promise.resolve())
 	.catch((err) => Promise.reject(err));
 };
@@ -258,7 +257,7 @@ module.exports.rollback = function(data)
     log.general(log.getNormalLevel(), `${gameName}: Copying backup of turn ${data.turnNbr} into into the game's savedgames...`, source);
 
 	return rw.copyDir(source, target, false, ["", ".2h", ".trn"])
-	.then(() => kill(game))
+	.then(() => gameStore.killGame(game.port))
 	.then(() => spawn(game))
 	.then(() => Promise.resolve())
 	.catch((err) => Promise.reject(err));
