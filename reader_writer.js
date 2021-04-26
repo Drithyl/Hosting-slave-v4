@@ -39,7 +39,12 @@ module.exports.copyDir = function(source, target, deepCopy, extensionFilter = nu
 	return fsp.readdir(source)
 	.then((filenames) => 
 	{
-		log.general(log.getVerboseLevel(), `Source directory to be copied read`, filenames);
+		log.general(log.getVerboseLevel(), `Source directory to be copied read; ${source}`, filenames);
+		
+		if (filenames.length <= 0)
+			return Promise.reject(new Error(`The directory to copy from is empty.`));
+			
+
 		return filenames.forEachPromise((filename, index, nextPromise) =>
 		{
 			return Promise.resolve()
