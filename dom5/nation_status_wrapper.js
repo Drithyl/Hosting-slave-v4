@@ -15,9 +15,9 @@ function NationStatusWrapper(nationRawData)
     //the number of the pretender of this team (so if it's not the same as the nation nbr, this is a disciple)
     this.pretenderNbr = _parsedData.pretenderNbr;
     
-    //controller of the nation. 0 is ai, 1 is human, 2 is just went ai this turn
+    //controller of the nation. 0 is ai, 1 is human, 2 is ai (seems like the "went AI this turn" flag does not work)
     this.isHuman = (_parsedData.controller === 1) ? true : false;
-    this.wentAiThisTurn = (_parsedData.controller === 2) ? true : false;
+    this.isAi = (_parsedData.controller === 2) ? true : false;
 
     //from 0 to 5: easy, normal, difficult, mighty, master, impossible
     this.aiDifficultyNbr = _parsedData.aiDifficultyNbr;
