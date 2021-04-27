@@ -28,6 +28,11 @@ module.exports.copyFile = function(source, target)
 		log.general(log.getVerboseLevel(), `File read, writing to ${target}`);
 		return fsp.writeFile(target, buffer);
 	})
+    .then(() => 
+	{
+		log.general(log.getVerboseLevel(), `File copied`);
+		return Promise.resolve();
+	})
     .catch((err) => Promise.reject(err));
 };
 

@@ -4,10 +4,9 @@ const log = require("./logger.js");
 const configStore = require("./config_store.js");
 const spawn = require('child_process').spawn;
 const socket = require("./socket_wrapper.js");
-const stream = require("stream");
 
 const recentDataEmitted = [];
-const REPETITIVE_DATA_DEBOUNCER_INTERVAL = 60000;
+const REPETITIVE_DATA_DEBOUNCER_INTERVAL = 600000;
 
 
 module.exports.spawn = function(game)
@@ -135,7 +134,7 @@ function _attachStdioListener(type, game)
 				return;
 				
 			if (_wasDataEmittedRecently(data) === true)
-				return log.general(log.getVerboseLevel(), `Debouncing data that was already recently emitted.`);
+				return;
 			
 			socket.emit("STDIO_DATA", {name: game.name, data: data, type: type});
 			log.general(log.getVerboseLevel(), `${game.name}'s ${type} "data" event triggered:\n`, data);
@@ -145,7 +144,7 @@ function _attachStdioListener(type, game)
 		game.instance[type].on('error', function (err)
 		{
 			if (_wasDataEmittedRecently(err) === true)
-				return log.general(log.getVerboseLevel(), `Debouncing data that was already recently emitted.`);
+				return;
 			
 			log.error(log.getLeanLevel(), `${game.name}'s ${type} "error" event triggered:\n`, err);
 			socket.emit("STDIO_ERROR", {name: game.name, error: err, type: type});
