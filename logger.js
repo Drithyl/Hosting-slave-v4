@@ -48,13 +48,16 @@ module.exports.setLogToFile = (shouldLogToFile) =>
     exports.general(LEAN_LEVEL, `logToFile set to ${shouldLogToFile}.`);
 };
 
-
+// Used by the backup_script.js, does not need to print to console
+// as it's a separate console window. If it does, it will be picked
+// by the stdio pipes and emitted to the master server
 module.exports.backup = (logLevel, header, ...data) =>
 {
     if (logLevel > currentLogLevel)
         return;
 
-    return _writeToFileAndLog(BACKUP_LOG_PATH, header, ...data);
+    const logData = _formatLogData(header, ...data);
+    _writeToFile(BACKUP_LOG_PATH, logData);
 };
 
 module.exports.general = (logLevel, header, ...data) =>
@@ -62,7 +65,9 @@ module.exports.general = (logLevel, header, ...data) =>
     if (logLevel > currentLogLevel)
         return;
 
-    return _writeToFileAndLog(GENERAL_LOG_PATH, header, ...data);
+    const logData = _formatLogData(header, ...data);
+    console.log(logData);
+    _writeToFile(GENERAL_LOG_PATH, logData);
 };
 
 module.exports.error = (logLevel, header, ...data) =>
@@ -70,7 +75,9 @@ module.exports.error = (logLevel, header, ...data) =>
     if (logLevel > currentLogLevel)
         return;
 
-    return _writeToFileAndLog(ERROR_LOG_PATH, header, ...data);
+    const logData = _formatLogData(header, ...data);
+    console.log(logData);
+    _writeToFile(ERROR_LOG_PATH, logData);
 };
 
 module.exports.upload = (logLevel, header, ...data) =>
@@ -78,22 +85,13 @@ module.exports.upload = (logLevel, header, ...data) =>
     if (logLevel > currentLogLevel)
         return;
 
-    return _writeToFileAndLog(UPLOAD_LOG_PATH, header, ...data);
+    const logData = _formatLogData(header, ...data);
+    console.log(logData);
+    _writeToFile(UPLOAD_LOG_PATH, logData);
 };
 
 
-function _writeToFileAndLog(path, header, ...data)
-{
-    const logStr = _log(header, ...data);
-
-    if (logToFile === false)
-        return;
-
-    return rw.append(path, logStr)
-    .catch((err) => _log(`LOGGER ERROR: Could not log to file.`, `${err.message}\n\n${err.stack}`));
-}
-
-function _log(header, ...data)
+function _formatLogData(header, ...data)
 {
     var logStr = `${_getTimestamp()}\t${header}\n`;
 
@@ -106,8 +104,13 @@ function _log(header, ...data)
     });
 
     logStr += "\n";
-    console.log(logStr);
     return logStr;
+}
+
+function _writeToFile(path, logData)
+{
+    return rw.append(path, logData)
+    .catch((err) => console.log(_formatLogData(`LOGGER ERROR: Could not log to file.`, `${err.message}\n\n${err.stack}`)));
 }
 
 function _getTimestamp()
