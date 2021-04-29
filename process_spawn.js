@@ -137,9 +137,10 @@ function _attachStdioListener(type, game)
 				return;
 
 			// A timestamp used by the logger.js, this will happen
-			// when the backup script executes and logs things to console
+			// when the backup script executes and logs things to
+			// console. Instead of sending the data to master; log it
 			if (/^\d\d:\d\d:\d\d\.\d\d\dZ/.test(data) === true)
-				return;
+				return log.backup(log.getVerboseLevel(), data);
 			
 			socket.emit("STDIO_DATA", {name: game.name, data: data, type: type});
 			log.general(log.getVerboseLevel(), `${game.name}'s ${type} "data" event triggered:\n`, data);
