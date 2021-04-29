@@ -135,6 +135,11 @@ function _attachStdioListener(type, game)
 				
 			if (_wasDataEmittedRecently(data) === true)
 				return;
+
+			// A timestamp used by the logger.js, this will happen
+			// when the backup script executes and logs things to console
+			if (/^\d\d:\d\d:\d\d\.\d\d\dZ/.test(data) === true)
+				return;
 			
 			socket.emit("STDIO_DATA", {name: game.name, data: data, type: type});
 			log.general(log.getVerboseLevel(), `${game.name}'s ${type} "data" event triggered:\n`, data);
