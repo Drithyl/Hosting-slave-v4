@@ -98,7 +98,7 @@ function _formatLogData(header, ...data)
     data.forEach((line) =>
     {
         if (assert.isObject(line) === true)
-            logStr += "\n" + _indentJSON(line);
+            logStr += "\n" + _toIndentedJSON(line);
 
         else logStr += `\n\t${line}`;
     });
@@ -119,18 +119,18 @@ function _getTimestamp()
 }
 
 // Stringify a json object with full indentation
-function _indentJSON(obj)
+function _toIndentedJSON(obj)
 {
     // Replace the normal stringification if the object is an Error,
     // otherwise they will show as empty {} objects
     const jsonStr = JSON.stringify(obj, function replacer(objKey, objValue)
     {
-        const err = {};
+        const obj = {};
 
-        if (objValue instanceof Error)
+        if (objValue instanceof Error || (typeof objValue === "object" && Array.isArray(objValue) === false))
         {
-            Object.getOwnPropertyNames(objValue).forEach((key) => err[key] = objValue[key]);
-            return err;
+            Object.getOwnPropertyNames(objValue).forEach((key) => obj[key] = objValue[key]);
+            return obj;
         }
 
         return objValue;
