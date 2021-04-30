@@ -2,31 +2,52 @@
 const fs = require("fs");
 const fsp = require("fs").promises;
 const log = require("../logger.js");
+const assert = require("../asserter.js");
+const rw = require("../reader_writer.js");
 const configStore = require("../config_store.js");
 const NationStatusWrapper = require("./nation_status_wrapper.js");
 
-exports.fetchStatusDump = (gameName) =>
+const STATUSDUMP_FILENAME = "statusdump.txt";
+
+
+exports.fetchStatusDump = (gameName, path = null) =>
 {
     var rawData;
     const gameDataPath = `${configStore.dom5DataPath}/savedgames/${gameName}`;
-    const statusDumpPath = `${gameDataPath}/statusdump.txt`;
+    const statusDumpPath = (assert.isString(path) === false) ? `${gameDataPath}/${STATUSDUMP_FILENAME}` : `${path}/${STATUSDUMP_FILENAME}`;
 
     if (fs.existsSync(statusDumpPath) === false)
-        return Promise.reject(new Error(`Could not find ${gameName}'s statusdump.`));
+        return Promise.reject(new Error(`Could not find ${gameName}'s statusdump at path ${path}`));
 
     return fsp.readFile(statusDumpPath, "utf8")
     .then((statusDumpRawData) =>
     {
         rawData = statusDumpRawData;
         
-        return Promise.resolve(new StatusDump(gameName, rawData));
+        return Promise.resolve(new StatusDump(gameName, statusDumpPath, rawData));
     })
     .catch((err) => Promise.reject(new Error(`Could not create statusdump object:\n\n${err.message}`)));
 };
 
-function StatusDump(gameName, rawData)
+exports.cloneStatusDump = (gameName, targetPath, sourcePath = null) =>
+{
+    const gameDataPath = `${configStore.dom5DataPath}/savedgames/${gameName}`;
+    const statusDumpPath = (assert.isString(sourcePath) === false) ? `${gameDataPath}/${STATUSDUMP_FILENAME}` : sourcePath;
+
+    if (fs.existsSync(targetPath) === false)
+        return Promise.reject(new Error(`Target path ${targetPath} does not exist.`));
+
+    if (fs.existsSync(statusDumpPath) === false)
+        return Promise.reject(new Error(`Could not find ${gameName}'s statusdump.`));
+
+    return rw.copyFile(statusDumpPath, `${targetPath}/${STATUSDUMP_FILENAME}`)
+    .catch((err) => Promise.reject(new Error(`Could not clone statusdump:\n\n${err.message}`)));
+};
+
+function StatusDump(gameName, originalPath, rawData)
 {
     const _gameName = gameName;
+    const _originalPath = originalPath;
     const _parsedData = _parseDumpData(rawData);
     
     this.turnNbr = _parsedData.turnNbr;
@@ -57,60 +78,29 @@ function StatusDump(gameName, rawData)
         return submittedNationStatuses;
     };
 
+    this.getNationsWithUndoneTurns = () => this.nationStatusArray.filter((nationStatus) => nationStatus.isTurnFinished === false && nationStatus.isHuman === true);
+
     this.fetchStales = () =>
     {
-        const staleArrayByName = [];
-        const goneAiArrayByName = [];
-        const path = `${configStore.dom5DataPath}/savedgames/${_gameName}`;
-        const ftherlndFilePath = `${path}/ftherlnd`;
+        const undoneTurns = this.getNationsWithUndoneTurns();
+        const staleObj = { 
+            stales: [], 
+            wentAi: [] 
+        };
 
-        if (fs.existsSync(ftherlndFilePath) === false)
-            return Promise.resolve({ stales: ["ftherlnd file does not exist??"], wentAi: goneAiArrayByName });
+        if (assert.isArray(undoneTurns) === false)
+            return Promise.reject(`Stale data unavailable.`);
 
-        return fsp.stat(ftherlndFilePath)
-        .then((ftherlndFileStats) =>
-        {
-            const lastHostedTime = ftherlndFileStats.mtime.getTime();
+        if (undoneTurns.length <= 0)
+            return Promise.resolve(staleObj);
 
-            return this.nationStatusArray.forEachPromise((nationStatus, index, nextPromise) =>
-            {
-                const nationFilePath = `${path}/${nationStatus.filename}.2h`;
+        undoneTurns.forEach((nationStatus) => staleObj.stales.push(nationStatus.fullName));
 
-                if (nationStatus.wentAiThisTurn === true)
-                {
-                    goneAiArrayByName.push(nationStatus.fullName);
-                    return nextPromise();
-                }
+        // Clear this statusdump's file, since it won't be needed again
+        fsp.unlink(_originalPath)
+        .then(() => fsp.rmdir(_originalPath.replace(`/${STATUSDUMP_FILENAME}`, "")));
 
-                if (nationStatus.isHuman === true)
-                {
-                    // When a nation's .2h file does not exist, no orders were given
-                    if (fs.existsSync(nationFilePath) === false)
-                    {
-                        staleArrayByName.push(nationStatus.fullName);
-                        return nextPromise();
-                    }
-
-                    return fsp.stat(nationFilePath)
-                    .then((nationFileStats) =>
-                    {
-                        if (nationFileStats.mtime.getTime() < lastHostedTime)
-                            staleArrayByName.push(nationStatus.fullName);
-
-                        return nextPromise();
-                    })
-                    .catch((err) =>
-                    {
-                        log.error(log.getLeanLevel(), `${_gameName}\tCould not verify ${nationStatus.fullName} stale`, err);
-                        staleArrayByName.push(nationStatus.fullName + "\tCould not verify if a stale occurred");
-                        return nextPromise();
-                    });
-                }
-
-                return nextPromise();
-            })
-        })
-        .then(() => Promise.resolve({ stales: staleArrayByName, wentAi: goneAiArrayByName }));
+        return Promise.resolve(staleObj);
     };
 }
 

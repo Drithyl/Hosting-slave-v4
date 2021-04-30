@@ -178,7 +178,7 @@ module.exports.restart = function(data)
 
 module.exports.getSubmittedPretenders = function(data)
 {
-	return fetchStatusDump(data.name)
+	return exports.fetchStatusDump(data.name)
     .then((statusDumpWrapper) => Promise.resolve(statusDumpWrapper.getSubmittedPretenders()));
 };
 
@@ -200,22 +200,10 @@ module.exports.removePretender = function(data)
 
 module.exports.getStales = function(data)
 {
-    var _lastHostedTime;
+    const clonedStatusdumpPath = `${configStore.dom5DataPath}/${configStore.tmpFilesDirName}/${data.name}`;
 
-    return exports.getLastHostedTime(data.name)
-    .then((lastHostedTime) =>
-    {
-        _lastHostedTime = lastHostedTime;
-        return exports.getStatusDump(data);
-    })
-	.then((statusDumpWrapper) => statusDumpWrapper.fetchStales(_lastHostedTime))
-	.then((stales) => Promise.resolve(stales));
-};
-
-module.exports.getStatusDump = function(data)
-{
-	return fetchStatusDump(data.name)
-	.then((statusDumpWrapper) => Promise.resolve(statusDumpWrapper));
+	return fetchStatusDump(data.name, clonedStatusdumpPath)
+    .then((statusDumpWrapper) => statusDumpWrapper.fetchStales());
 };
 
 module.exports.backupSavefiles = function(gameData)

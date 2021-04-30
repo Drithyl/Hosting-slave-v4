@@ -16,6 +16,7 @@ const extensionsToBackupRegex = new RegExp("(\.2h)|(\.trn)|(ftherlnd)$", "i");
 const gameName = process.argv[2];
 const type = process.argv[3];
 const savedgamesPath = `${configStore.dom5DataPath}/savedgames/${gameName}`;
+const clonedStatusdumpDir = `${configStore.dom5DataPath}/${configStore.tmpFilesDirName}/${gameName}`;
 
 var targetBackupDir = `${configStore.dataFolderPath}/backups/${gameName}`;
 var fetchedStatusDump;
@@ -36,23 +37,35 @@ else if (postexecRegex.test(type) === true)
 else return log.error(log.getLeanLevel(), `INVALID BACKUP TYPE RECEIVED; EXPECTED preexec OR postexec, GOT '${type}'`);
 
 
-log.backup(log.getNormalLevel(),`Fetching statusdump...`);
-
-
-statusDump.fetchStatusDump(gameName)
+Promise.resolve()
+.then(() =>
+{
+    if (preexecRegex.test(type) === true)
+    {
+        log.backup(log.getNormalLevel(),`Cloning statusdump...`);
+        return _cloneStatusdump(gameName);
+    }
+    
+    return Promise.resolve();
+})
+.then(() => 
+{
+    log.backup(log.getNormalLevel(),`Fetching statusdump...`);
+    return statusDump.fetchStatusDump(gameName, clonedStatusdumpDir)
+})
 .then((statusDumpWrapper) =>
 {
     fetchedStatusDump = statusDumpWrapper;
-    const tmpTurnFilePath = `${configStore.dom5DataPath}/${configStore.tmpFilesDirName}/${gameName}`;
-    log.backup(log.getNormalLevel(), `Statusdump fetched, turn is ${fetchedStatusDump.turnNbr}`);
 
-    if (preexecRegex.test(type) === true)
-        return _writeTurnNbrToTmpFile(fetchedStatusDump.turnNbr.toString(), tmpTurnFilePath);
-        
-    else if (postexecRegex.test(type) === true)
-        return _readTurnNbrFromTmpFile(fetchedStatusDump, tmpTurnFilePath);
+    if (postexecRegex.test(type) === true)
+    {
+        statusDumpWrapper.turnNbr++;
+        log.backup(log.getNormalLevel(), `This is post-exec, incremented turn nbr`);
+    }
+
+    log.backup(log.getNormalLevel(), `Statusdump fetched, turn is ${fetchedStatusDump.turnNbr}`);
+    return _createDirectories(`${targetBackupDir}/Turn ${fetchedStatusDump.turnNbr}`);
 })
-.then(() => _createDirectories(`${targetBackupDir}/Turn ${fetchedStatusDump.turnNbr}`))
 .then(() => 
 {
     log.backup(log.getNormalLevel(), `Backup directory created at ${targetBackupDir}/Turn ${fetchedStatusDump.turnNbr}`);
@@ -71,38 +84,20 @@ statusDump.fetchStatusDump(gameName)
 .catch((err) => log.error(log.getLeanLevel(), `BACKUP ERROR`, err));
 
 
-// Pre-exec backup writes the known turn number from the statusdump to a file,
-// so that post-exec backup can read it from there. 
-function _writeTurnNbrToTmpFile(turnNbr, path)
+function _cloneStatusdump(gameName)
 {
-    log.backup(log.getNormalLevel(), `Preexec; writing turn number ${turnNbr} to file...`);
-    return fsp.writeFile(path, turnNbr, "utf-8")
+    return Promise.resolve()
     .then(() =>
     {
-        log.backup(log.getNormalLevel(), `Preexec wrote turn ${turnNbr} to file.`);
-        return Promise.resolve();
-    })
-    .catch((err) =>
-    {
-        log.error(log.getLeanLevel(), `PRE-EXEC ERROR WRITING TURN ${turnNbr} TO FILE`, err);
-        return Promise.resolve();
-    });
-}
+        if (fs.existsSync(clonedStatusdumpDir) === false)
+        {
+            log.backup(log.getNormalLevel(), `Statusdump clone path ${clonedStatusdumpDir} does not exist; creating it...`);
+            return fsp.mkdir(clonedStatusdumpDir);
+        }
 
-// Read turn number from file left by pre-exec. Post-exec backup does not
-// normally know the turn as fetching the statusdump right after a turn
-// generated results in a turn number of -1
-function _readTurnNbrFromTmpFile(statusDump, path)
-{
-    log.backup(log.getNormalLevel(), `Postexec; reading turn number from file...`);
-    return fsp.readFile(path, "utf-8")
-    .then((turnNbrString) =>
-    {
-        log.backup(log.getNormalLevel(), `Postexec read turn ${turnNbrString} from file.`);
-        statusDump.turnNbr = +turnNbrString + 1;
-        return fsp.unlink(path);
+        else return Promise.resolve();
     })
-    .catch((err) => log.error(log.getLeanLevel(), `POST-EXEC ERROR READING TURN FROM FILE`, err));
+    .then(() => statusDump.cloneStatusDump(gameName, clonedStatusdumpDir));
 }
 
 function _createDirectories(targetBackupDir)
