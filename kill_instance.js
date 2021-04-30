@@ -21,9 +21,9 @@ module.exports = function(game)
 function _isGameRunning(game)
 {
 	// The condition covers not only isRunning being true, but also 
-	// it being null, so that instances which may not have had their 
-	// isRunning property set to true on spawning can still be killed
-	return game.isRunning === true || (game.isRunning == null && game.instance != null);
+	// the instance not being null, so that instances which may not 
+	// have had their isRunning property set to true on spawning can still be killed
+	return game.isRunning === true || game.instance != null;
 }
 
 // Tries to kill and sets a timeout check to verify the instance is killed
