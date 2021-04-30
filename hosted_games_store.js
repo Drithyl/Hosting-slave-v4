@@ -19,7 +19,7 @@ var gameHostRequests = [];
 module.exports.populate = function(gameDataArray)
 {
     log.general(log.getVerboseLevel(), `Game data received:`, gameDataArray);
-
+    
 	//first connection to master server
 	if (Object.keys(hostedGames).length <= 0)
 	{
