@@ -187,7 +187,8 @@ function _getAdditionalArgs(game)
     let args = [
         "--nosteam",
         "--statusdump",
-		"--textonly",
+		//"--textonly",
+		"--noquickhost",
 		..._backupCmd("--preexec", game.name), 
 		..._backupCmd("--postexec", game.name)
     ];
