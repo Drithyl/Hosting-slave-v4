@@ -178,7 +178,7 @@ module.exports.restart = function(data)
 
 module.exports.getSubmittedPretenders = function(data)
 {
-	return exports.fetchStatusDump(data.name)
+	return fetchStatusDump(data.name)
     .then((statusDumpWrapper) => Promise.resolve(statusDumpWrapper.getSubmittedPretenders()));
 };
 
