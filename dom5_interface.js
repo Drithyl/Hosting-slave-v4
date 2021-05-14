@@ -206,6 +206,12 @@ module.exports.getStales = function(data)
     .then((statusDumpWrapper) => statusDumpWrapper.fetchStales());
 };
 
+module.exports.getUndoneTurns = function(data)
+{
+	return fetchStatusDump(data.name)
+    .then((statusDumpWrapper) => Promise.resolve(statusDumpWrapper.getNationsWithUndoneTurns()));
+};
+
 module.exports.backupSavefiles = function(gameData)
 {
 	const gameName = gameData.name;

@@ -36,6 +36,7 @@ module.exports.listen = function(socketWrapper)
     socketWrapper.on("GET_TURN_FILE", (data) => dom5Interface.getTurnFile(data));
     socketWrapper.on("GET_SCORE_DUMP", (data) => dom5Interface.getScoreDump(data));
     socketWrapper.on("GET_STALES", (data) => dom5Interface.getStales(data));
+    socketWrapper.on("GET_UNDONE_TURNS", (data) => dom5Interface.getUndoneTurns(data));
     socketWrapper.on("GET_SUBMITTED_PRETENDERS", (data) => dom5Interface.getSubmittedPretenders(data));
     socketWrapper.on("GET_STATUS_DUMP", (data) => dom5Interface.getStatusDump(data));
     socketWrapper.on("OVERWRITE_SETTINGS", (data) => hostedGamesStore.overwriteSettings(data));
