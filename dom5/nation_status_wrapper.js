@@ -16,6 +16,7 @@ function NationStatusWrapper(nationRawData)
     this.pretenderNbr = _parsedData.pretenderNbr;
     
     //controller of the nation. 0 is ai, 1 is human, 2 is ai (seems like the "went AI this turn" flag does not work)
+    this.isDead = (_parsedData.controller === -1) ? true : false;
     this.isHuman = (_parsedData.controller === 1) ? true : false;
     this.isAi = (_parsedData.controller === 2) ? true : false;
 
@@ -80,5 +81,5 @@ function _extractNationWords(rawData)
 
 function _extractNationNumbers(rawData)
 {
-    return rawData.match(/\d+/ig);
+    return rawData.match(/-?\d+/ig);
 }
