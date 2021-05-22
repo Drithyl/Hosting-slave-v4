@@ -1,5 +1,6 @@
 
 const fs = require("fs");
+const fsp = require("fs").promises;
 const log = require("./logger.js");
 const configStore = require("./config_store.js");
 const kill = require("./kill_instance.js");
@@ -176,11 +177,19 @@ module.exports.deleteGameData = function(data)
 
 module.exports.overwriteSettings = function(data)
 {
-	let game = hostedGames[data.port];
-	delete game.args;
+	const game = hostedGames[data.port];
+    const ftherlndPath = `${configStore.dom5DataPath}/savedgames/${gameName}/ftherlnd`;
 
+	delete game.args;
 	game.args = [...data.args];
-	return Promise.resolve();
+
+    // If ftherlnd exists, it must be deleted, as some settings
+    // are hardcoded inside it once the savedgames folder of
+    // the game is created, like master password or maps
+    if (fs.existsSync(ftherlndPath) === true)
+        return fsp.unlink(ftherlndPath);
+	
+    else return Promise.resolve();
 }
 
 function _setTimeoutPromise(delay, fnToCall)
