@@ -62,50 +62,71 @@ module.exports.deleteBackupsUpToTurn = function(dirPath, turnNbrToClean)
     });
 };
 
-module.exports.deleteUnusedMaps = function(mapsInUse)
+module.exports.deleteUnusedMaps = (mapsInUse) => _deleteUnusedFilesInDir(mapsInUse, configStore.dom5MapsPath);
+module.exports.deleteUnusedMods = (modsInUse) => _deleteUnusedFilesInDir(modsInUse, configStore.dom5ModsPath);
+
+
+function _deleteUnusedFilesInDir(filesInUse, dirPath)
 {
-    var filesInUse;
+    var relatedFilesInUse = [];
+    
+    if (Array.isArray(filesInUse) === false)
+        return Promise.reject(new Error(`Expected filesInUse to be an array, got ${typeof filesInUse} instead.`), []);
 
-    if (Array.isArray(mapsInUse) === false)
-        return Promise.reject(new Error(`Expected mapsInUse to be an array, got ${typeof mapsInUse} instead.`), []);
-
-    return _getListOfAllMapfilesInUse(mapsInUse)
-    .then((list) => 
+    return _getListOfRelatedFilesInUse(filesInUse, dirPath)
+    .then((files) => 
     {
-        filesInUse = list;
-        return fsp.readdir(configStore.dom5MapsPath)
+        relatedFilesInUse = relatedFilesInUse.concat(files);
+        return rw.walkDir(dirPath);
     })
-    .then((mapFilenames) => _deleteUnusedMaps(mapFilenames, filesInUse))
+    .then((dirFiles) => _deleteUnusedFiles(dirFiles, relatedFilesInUse))
+    .then((deletedFiles) => 
+    {
+        log.general(log.getLeanLevel(), `In ${dirPath}, deleted files`, deletedFiles);
+        return Promise.resolve(deletedFiles);
+    })
     .catch((err, deletedFiles) => Promise.reject(err, deletedFiles));
 };
 
-/** uses the list of map names in use to check the file contents and add the
- *  necessary map image files to the list as well, so they do not get deleted
+/** uses the list of filenames in use to check the file contents and add the
+ *  related asset files to the list as well, so they do not get deleted
  */
-function _getListOfAllMapfilesInUse(mapsInUse)
+function _getListOfRelatedFilesInUse(filesInUse, dirPath)
 {
-    var list = [...mapsInUse];
+    var list = [];
+    var path = require("path");
 
-    return mapsInUse.forEachPromise((filename, i, nextPromise) =>
+    return filesInUse.forEachPromise((filename, i, nextPromise) =>
     {
-        var imageFilenameMatch;
-        var winterImageFilenameMatch;
-        const filePath = `${configStore.dom5MapsPath}/${filename}`;
+        var assetTagssMatch;
+        const filePath = path.resolve(dirPath, filename);
 
         if (fs.existsSync(filePath) === false)
             return nextPromise();
 
+        list.push(filePath);
+
         return fsp.readFile(filePath, "utf8")
         .then((fileContent) =>
         {
-            imageFilenameMatch = fileContent.match(/\#imagefile .+\.((tga)|(rgb)|(png))/i);
-            winterImageFilenameMatch = fileContent.match(/\#winterimagefile .+\.((tga)|(rgb)|(png))/i);
+            assetTagssMatch = fileContent.match(/\#(spr|spr1|spr2|icon|flag|indepflag|sample|imagefile|winterimagefile)\s*"?.+"?/ig);
 
-            if (Array.isArray(imageFilenameMatch) === true)
-                list.push(imageFilenameMatch[0].replace(/#imagefile /, "").trim());
+            if (Array.isArray(assetTagssMatch) === false)
+                return nextPromise();
 
-            if (Array.isArray(winterImageFilenameMatch) === true)
-                list.push(winterImageFilenameMatch[0].replace(/#winterimagefile /, "").trim());
+            assetTagssMatch.forEach((assetTag) =>
+            {
+                const relPath = assetTag.replace(/^\#\w+\s*"?(.+)"?$/i, "$1");
+                const absolutePath = path.resolve(dirPath, relPath);
+
+                if (fs.existsSync(absolutePath) === true)
+                {
+                    log.general(log.getNormalLevel(), `Found related file in use at ${absolutePath}`);
+                    list.push(absolutePath);
+                }
+
+                else log.general(log.getLeanLevel(), `Related file in use found at path ${absolutePath} does not exist?`);
+            });
 
             return nextPromise();
         });
@@ -113,22 +134,50 @@ function _getListOfAllMapfilesInUse(mapsInUse)
     .then(() => Promise.resolve(list));
 }
 
-function _deleteUnusedMaps(filenames, mapfilesInUse)
+function _deleteUnusedFiles(filePaths, filesInUse)
 {
-  var deletedFiles = [];
+    var deletedFiles = [];
+    var leftToDelete = filePaths.length;
+    log.general(log.getLeanLevel(), "Total related files to check for cleaning", leftToDelete);
 
-  return filenames.forEachPromise((filename, index, nextPromise) =>
-  {
-    if (mapfilesInUse.includes(filename) === true)
-      return nextPromise();
+    if (leftToDelete <= 0)
+        return Promise.resolve(deletedFiles);
 
-    return fsp.unlink(`${configStore.dom5MapsPath}/${filename}`)
-    .then(() =>
+    return new Promise((resolve, reject) =>
     {
-        deletedFiles.push(filename);
-        return nextPromise();
+        filePaths.forEach((path) =>
+        {
+            if (filesInUse.includes(path) === false)
+            {
+                fsp.unlink(path)
+                .then(() =>
+                {
+                    deletedFiles.push(path);
+                    leftToDelete--;
+                    console.log(`Deleted unused file ${path}, ${leftToDelete} left`);
+                    //log.general(log.getNormalLevel(), `Deleted unused file ${path}`, err);
+
+                    if (leftToDelete <= 0)
+                        return resolve(deletedFiles);
+                })
+                .catch((err) =>
+                {
+                    leftToDelete--;
+                    log.general(log.getLeanLevel(), `Failed to delete file ${path}, ${leftToDelete} left`, err);
+
+                    if (leftToDelete <= 0)
+                        return resolve(deletedFiles);
+                });
+            }
+
+            else
+            {
+                leftToDelete--;
+                console.log(`Skipped file ${path}, ${leftToDelete} left`);
+
+                if (leftToDelete <= 0)
+                    return resolve(deletedFiles);
+            }
+        });
     });
-  })
-  .then(() => Promise.resolve(deletedFiles))
-  .catch((err) => Promise.reject(err, deletedFiles));
 }
