@@ -273,6 +273,61 @@ module.exports.getDirFilenames = function(path, extensionFilter = "")
 	});
 };
 
+module.exports.walkDir = function(dir)
+{
+	const results = [];
+	const path = require('path');
+
+	return _walk(dir);
+
+	function _walk(dir)
+	{
+		return new Promise((resolve, reject) =>
+		{
+			fsp.readdir(dir)
+			.then((list) =>
+			{
+				var pending = list.length;
+
+				if (pending <= 0)
+					return resolve(results);
+
+				list.forEach((file) =>
+				{
+					file = path.resolve(dir, file);
+
+					fsp.stat(file)
+					.then((stat) =>
+					{
+						if (stat.isDirectory() === true)
+						{
+							_walk(file)
+							.then((res) => 
+							{
+								results.concat(res);
+								pending--;
+
+								if (pending <= 0)
+									return resolve(results);
+							});
+						}
+
+						else
+						{
+							results.push(file);
+							pending--;
+
+							if (pending <= 0)
+								return resolve(results);
+						}
+					});
+				})
+			})
+			.catch((err) => reject(err));
+		});
+	}
+};
+
 module.exports.readDirContents = function(path, extensionFilter)
 {
     var readFiles = {};
