@@ -115,7 +115,7 @@ function _writeToFile(path, logData)
 
 function _getTimestamp()
 {
-    return new Date(Date.now()).toISOString().replace(/^.+T/i, "");
+    return new Date(Date.now()).toISOString().replace(/^(.+)(T)/i, "$1$2 ");
 }
 
 // Stringify a json object with full indentation
