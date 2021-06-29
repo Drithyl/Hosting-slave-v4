@@ -137,7 +137,7 @@ Object.defineProperty(Object.prototype, "forAllPromises",
                 var key = keyArray[i];
                 var item = self[key];
 
-                Promise.resolve(asyncFn(item, i, self))
+                Promise.resolve(asyncFn(item, key, self))
                 .then((result) =>
                 {
                     if (breakOnError === false || errorOccurred === false)
