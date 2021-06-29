@@ -31,7 +31,7 @@ module.exports.deleteBackupsUpToTurn = function(dirPath, turnNbrToClean)
     return rw.getDirFilenames(dirPath)
     .then((filenames) =>
     {
-        return filenames.forEachPromise((filename, i, nextPromise) =>
+        return filenames.forAllPromises((filename) =>
         {
             return fsp.stat(`${dirPath}/${filename}`)
             .then((stats) =>
@@ -39,24 +39,16 @@ module.exports.deleteBackupsUpToTurn = function(dirPath, turnNbrToClean)
                 const dirTurnNbr = +filename.replace(/\D*/g, "");
 
                 if (stats.isDirectory() === false)
-                    return nextPromise();
+                    return;
 
                 // Folder of a backup from recent turn, do not clean
                 if (dirTurnNbr > turnNbrToClean)
-                    return nextPromise();
+                    return;
 
                 // Folders of turns at the number given or before will be deleted
                 return rw.deleteDir(`${dirPath}/${filename}`)
-                .then(() => 
-                {
-                    log.general(log.getNormalLevel(), `Cleaned backup of turn ${dirTurnNbr}.`);
-                    return nextPromise();
-                })
-                .catch((err) => 
-                {
-                    log.error(log.getNormalLevel(), `Could not clean ${filename}`, err);
-                    return nextPromise();
-                });
+                .then(() => log.general(log.getNormalLevel(), `Cleaned backup of turn ${dirTurnNbr}.`))
+                .catch((err) => log.error(log.getNormalLevel(), `Could not clean ${filename}`, err));
             });
         });
     });
@@ -96,13 +88,13 @@ function _getListOfRelatedFilesInUse(filesInUse, dirPath)
     var list = [];
     var path = require("path");
 
-    return filesInUse.forEachPromise((filename, i, nextPromise) =>
+    return filesInUse.forAllPromises((filename) =>
     {
         var assetTagssMatch;
         const filePath = path.resolve(dirPath, filename);
 
         if (fs.existsSync(filePath) === false)
-            return nextPromise();
+            return;
 
         list.push(filePath);
 
@@ -112,7 +104,7 @@ function _getListOfRelatedFilesInUse(filesInUse, dirPath)
             assetTagssMatch = fileContent.match(/\#(spr|spr1|spr2|icon|flag|indepflag|sample|imagefile|winterimagefile)\s*"?.+"?/ig);
 
             if (Array.isArray(assetTagssMatch) === false)
-                return nextPromise();
+                return;
 
             assetTagssMatch.forEach((assetTag) =>
             {
@@ -127,8 +119,6 @@ function _getListOfRelatedFilesInUse(filesInUse, dirPath)
 
                 else log.general(log.getLeanLevel(), `Related file in use found at path ${absolutePath} does not exist?`);
             });
-
-            return nextPromise();
         });
     })
     .then(() => Promise.resolve(list));

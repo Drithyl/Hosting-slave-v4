@@ -132,24 +132,17 @@ function _createDirectories(targetBackupDir)
 
 function _backupFiles(filenames, sourcePath, targetPath)
 {
-    return filenames.forEachPromise((filename, index, nextPromise) =>
+    return filenames.forAllPromises((filename) =>
     {
         log.backup(log.getNormalLevel(), `Checking ${filename}...`);
         
         if (extensionsToBackupRegex.test(filename) === false)
-        {
             log.backup(log.getNormalLevel(), `Not a turn file; skipping.`);
-            return nextPromise();
-        }
 
         log.backup(log.getNormalLevel(), `Turn file found, backing up...`);
 
         return rw.copyFile(`${sourcePath}/${filename}`, `${targetPath}/${filename}`)
-        .then(() =>
-        {
-            log.backup(log.getNormalLevel(), `Turn file backed up.`);
-            return nextPromise();
-        })
+        .then(() => log.backup(log.getNormalLevel(), `Turn file backed up.`))
         .catch((err) => Promise.reject(err));
     })
     .catch((err) => Promise.reject(err));

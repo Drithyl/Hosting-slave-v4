@@ -50,14 +50,10 @@ module.exports.getTurnFiles = function(data)
     const scoresPath = `${gameFilesPath}/scores.html`;
     const files = { turnFiles: {} };
 
-    return nationNames.forEachPromise((nationName, i, nextPromise) =>
+    return nationNames.forAllPromises((nationName) =>
     {
         return readFileBuffer(`${gameFilesPath}/${nationName}.trn`)
-        .then((buffer) =>
-        {
-            files.turnFiles[nationName] = buffer;
-            return nextPromise();
-        })
+        .then((buffer) => files.turnFiles[nationName] = buffer)
         .catch((err) => Promise.reject(err));
     })
     .then(() => 
