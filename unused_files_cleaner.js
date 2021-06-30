@@ -127,47 +127,25 @@ function _getListOfRelatedFilesInUse(filesInUse, dirPath)
 function _deleteUnusedFiles(filePaths, filesInUse)
 {
     var deletedFiles = [];
-    var leftToDelete = filePaths.length;
     log.general(log.getLeanLevel(), "Total related files to check for cleaning", leftToDelete);
 
     if (leftToDelete <= 0)
         return Promise.resolve(deletedFiles);
 
-    return new Promise((resolve, reject) =>
+    return filePaths.forAllPromises((path) =>
     {
-        filePaths.forEach((path) =>
+        if (filesInUse.includes(path) === false)
         {
-            if (filesInUse.includes(path) === false)
+            return fsp.unlink(path)
+            .then(() =>
             {
-                fsp.unlink(path)
-                .then(() =>
-                {
-                    deletedFiles.push(path);
-                    leftToDelete--;
-                    console.log(`Deleted unused file ${path}, ${leftToDelete} left`);
-                    //log.general(log.getNormalLevel(), `Deleted unused file ${path}`, err);
+                deletedFiles.push(path);
+                console.log(`Deleted unused file ${path}, ${leftToDelete} left`);
+            })
+            .catch((err) => log.general(log.getLeanLevel(), `Failed to delete file ${path}, ${leftToDelete} left`, err));
+        }
 
-                    if (leftToDelete <= 0)
-                        return resolve(deletedFiles);
-                })
-                .catch((err) =>
-                {
-                    leftToDelete--;
-                    log.general(log.getLeanLevel(), `Failed to delete file ${path}, ${leftToDelete} left`, err);
-
-                    if (leftToDelete <= 0)
-                        return resolve(deletedFiles);
-                });
-            }
-
-            else
-            {
-                leftToDelete--;
-                console.log(`Skipped file ${path}, ${leftToDelete} left`);
-
-                if (leftToDelete <= 0)
-                    return resolve(deletedFiles);
-            }
-        });
-    });
+        else console.log(`Skipped file ${path}, ${leftToDelete} left`);
+    })
+    .then(() => Promise.resolve(deletedFiles));
 }
