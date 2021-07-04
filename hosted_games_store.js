@@ -31,8 +31,7 @@ module.exports.populate = function(gameDataArray)
             log.general(log.getNormalLevel(), `Added game ${gameData.name} at port ${gameData.port}.`);
         });
 
-        log.general(log.getVerboseLevel(), "List of games after first initialization", hostedGames)
-
+        log.general(log.getVerboseLevel(), "List of games after first initialization", hostedGames);
 		return Promise.resolve();
     }
     
@@ -92,7 +91,7 @@ module.exports.getGame = function(port)
 
 module.exports.getUsedPorts = function()
 {
-	return Object.keys(hostedGames);
+	return Object.keys(hostedGames).map((portStr) => +portStr);
 };
 
 module.exports.isGameNameUsed = function(name)

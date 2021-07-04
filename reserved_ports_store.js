@@ -7,10 +7,10 @@ var reservedPorts = [];
 
 module.exports.reservePort = function()
 {
-	var reservedPort = configStore.gamePortRange.first.toString();
+	var reservedPort = configStore.gamePortRange.first;
 	var usedPorts = gameInterface.getUsedPorts().concat(reservedPorts);
 
-	while (usedPorts.includes(reservedPort.toString()) === true)
+	while (usedPorts.includes(reservedPort) === true)
 	{
 		reservedPort++;
 
@@ -19,12 +19,12 @@ module.exports.reservePort = function()
 	}
 
 	reservedPorts.push(reservedPort);
-	return Promise.resolve(+reservedPort);
+	return Promise.resolve(reservedPort);
 };
 
 module.exports.releasePort = function(port)
 {
-    reservedPorts.splice(reservedPorts.indexOf(port), 1);
+    reservedPorts.splice(reservedPorts.indexOf(+port), 1);
     return Promise.resolve();
 };
 
