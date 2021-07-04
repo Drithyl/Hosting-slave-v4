@@ -6,6 +6,7 @@ const configStore = require("./config_store.js");
 const kill = require("./kill_instance.js");
 const spawn = require("./process_spawn.js").spawn;
 const dom5Interface = require("./dom5_interface.js");
+const reservedPortsStore = require("./reserved_ports_store.js");
 
 /************************************************************
 *                         GAME LIST                         *
@@ -92,6 +93,18 @@ module.exports.getGame = function(port)
 module.exports.getUsedPorts = function()
 {
 	return Object.keys(hostedGames).map((portStr) => +portStr);
+};
+
+module.exports.resetPort = function(gameData)
+{
+    const game = hostedGames[gameData.port];
+    const newPort = reservedPortsStore.reservePort();
+
+    hostedGames[newPort] = game;
+    delete hostedGames[gameData.port];
+    game.port = newPort;
+
+	return Promise.resolve(newPort);
 };
 
 module.exports.isGameNameUsed = function(name)

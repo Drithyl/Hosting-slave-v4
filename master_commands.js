@@ -13,6 +13,7 @@ module.exports.listen = function(socketWrapper)
     socketWrapper.on("GAME_DATA", _populateGameData);
     socketWrapper.on("UPLOAD_FILE", _downloadFile);
 
+    socketWrapper.on("RESET_PORT", (gameData) => hostedGamesStore.resetPort(gameData));
     socketWrapper.on("RESERVE_PORT", (data) => reservedPortsStore.reservePort());
     socketWrapper.on("RELEASE_PORT", (data) => reservedPortsStore.releasePort(data.port));
 
