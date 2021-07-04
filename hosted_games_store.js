@@ -100,11 +100,18 @@ module.exports.resetPort = function(gameData)
     const game = hostedGames[gameData.port];
     const newPort = reservedPortsStore.reservePort();
 
-    hostedGames[newPort] = game;
-    delete hostedGames[gameData.port];
-    game.port = newPort;
+    return exports.killGameByName(gameData.name)
+    .then(() =>
+    {
+        hostedGames[newPort] = game;
+        game.port = newPort;
 
-	return Promise.resolve(newPort);
+        if (gameData.name == game.name)
+            delete hostedGames[gameData.port];
+
+        return Promise.resolve(newPort);
+    })
+    .catch((err) => Promise.reject(new Error(`Could not kill ${gameData.name}; can't do the port transfer. Try again later.`)));
 };
 
 module.exports.isGameNameUsed = function(name)
@@ -120,6 +127,15 @@ module.exports.isGameNameUsed = function(name)
 module.exports.killGame = function(port)
 {
 	return kill(hostedGames[port])
+	.then(() => Promise.resolve())
+	.catch((err) => Promise.reject(err));
+};
+
+module.exports.killGameByName = function(name)
+{
+    const game = _getGameByName(name);
+
+	return kill(game)
 	.then(() => Promise.resolve())
 	.catch((err) => Promise.reject(err));
 };
@@ -238,4 +254,11 @@ function _host(gameData)
         else return Promise.resolve();
     })
     .catch((err) => Promise.reject(err));
+}
+
+function _getGameByName(gameName)
+{
+    for (var port in hostedGames)
+        if (hostedGames[port].name == gameName)
+            return hostedGames[port];
 }
