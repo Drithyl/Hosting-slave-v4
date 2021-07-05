@@ -127,9 +127,9 @@ function _getListOfRelatedFilesInUse(filesInUse, dirPath)
 function _deleteUnusedFiles(filePaths, filesInUse)
 {
     var deletedFiles = [];
-    log.general(log.getLeanLevel(), "Total related files to check for cleaning", leftToDelete);
+    log.general(log.getLeanLevel(), "Total related files to check for cleaning", filePaths.length);
 
-    if (leftToDelete <= 0)
+    if (filePaths.length <= 0)
         return Promise.resolve(deletedFiles);
 
     return filePaths.forAllPromises((path) =>
@@ -140,12 +140,12 @@ function _deleteUnusedFiles(filePaths, filesInUse)
             .then(() =>
             {
                 deletedFiles.push(path);
-                console.log(`Deleted unused file ${path}, ${leftToDelete} left`);
+                console.log(`Deleted unused file ${path}`);
             })
-            .catch((err) => log.general(log.getLeanLevel(), `Failed to delete file ${path}, ${leftToDelete} left`, err));
+            .catch((err) => log.general(log.getLeanLevel(), `Failed to delete file ${path}`, err));
         }
 
-        else console.log(`Skipped file ${path}, ${leftToDelete} left`);
+        else console.log(`Skipped file ${path}`);
     })
     .then(() => Promise.resolve(deletedFiles));
 }
