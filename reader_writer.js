@@ -4,6 +4,7 @@
 require("./helper_functions.js");
 
 const fs = require("fs");
+const path = require("path");
 const fsp = require("fs").promises;
 const log = require("./logger.js");
 const configStore = require("./config_store.js");
@@ -17,7 +18,7 @@ if (fs.existsSync(_tmpDataPath) === false)
 module.exports.copyFile = function(source, target)
 {
 	log.general(log.getVerboseLevel(), `Copying file ${source} to ${target}...`);
-	return exports.checkAndCreateFilepath(target)
+	return exports.checkAndCreateFilePath(target)
 	.then(() => 
 	{
 		log.general(log.getVerboseLevel(), `Dirs created, reading file ${source}`);
@@ -80,29 +81,29 @@ module.exports.copyDir = function(source, target, deepCopy, extensionFilter = nu
     .catch((err) => Promise.reject(err));
 };
 
-module.exports.deleteDir = function(path)
+module.exports.deleteDir = function(dirPath)
 {
-    if (fs.existsSync(path) === false)
+    if (fs.existsSync(dirPath) === false)
         return Promise.resolve();
         
-    return fsp.readdir(path)
+    return fsp.readdir(dirPath)
     .then((filenames) =>
     {
         return filenames.forAllPromises((filename) =>
         {
-            const filepath = `${path}/${filename}`;
+            const filePath = path.resolve(dirPath, filename);
 
-            return fsp.lstat(filepath)
+            return fsp.lstat(filePath)
             .then((stats) =>
             {
                 if (stats.isDirectory() === true)
-                    return exports.deleteDir(filepath);
+                    return exports.deleteDir(filePath);
 
-                return fsp.unlink(filepath);
+                return fsp.unlink(filePath);
             });
         })
     })
-    .then(() => fsp.rmdir(path))
+    .then(() => fsp.rmdir(dirPath))
     .catch((err) => Promise.reject(err));
 };
 
@@ -165,15 +166,15 @@ module.exports.atomicRmDir = function(target, filter = null)
 	{
 		//renaming to tmp directory complete,
 		//now delete all those files to clean up
-		return renamedFiles.forAllPromises((filepaths) =>
+		return renamedFiles.forAllPromises((filePaths) =>
 		{
 			//unlink renamed file at new tmp path
-			return fsp.unlink(filepaths[1])
+			return fsp.unlink(filePaths[1])
 			.catch((err) =>
 			{
 				//do not stop execution of the loop on error since failure to clean
 				//the tmp files is not critical to this operation
-				log.error(log.getLeanLevel(), `FAILED TO DELETE TMP FILE ${filepaths[1]}`);
+				log.error(log.getLeanLevel(), `FAILED TO DELETE TMP FILE ${filePaths[1]}`);
 			});
 		});
 	})
@@ -198,9 +199,9 @@ module.exports.atomicRmDir = function(target, filter = null)
 	//renamed files to enforce the atomicity of the whole operation
 	function _undo(deleteErr)
 	{
-		return renamedFiles.forAllPromises((filepaths) =>
+		return renamedFiles.forAllPromises((filePaths) =>
 		{
-			return fsp.rename(filepaths[1], filepaths[0])
+			return fsp.rename(filePaths[1], filePaths[0])
 			.catch((err) => Promise.reject(new Error(`Critical error during deletion; could not undo the files deleted so far: ${err.message}`)));
 		})
 		//remove leftover tmp dir
@@ -211,9 +212,9 @@ module.exports.atomicRmDir = function(target, filter = null)
 };
 
 //If a directory does not exist, this will create it
-module.exports.checkAndCreateFilepath = function(filepath)
+module.exports.checkAndCreateFilePath = function(filePath)
 {
-	var splitPath = filepath.split("/");
+	var splitPath = filePath.split("/");
 	var compoundPath = splitPath[0];
 
 	return splitPath.forEachPromise((pathSegment, index, nextPromise) =>
@@ -247,19 +248,19 @@ module.exports.checkAndCreateFilepath = function(filepath)
 	.catch((err) => Promise.reject(err));
 };
 
-module.exports.getDirFilenames = function(path, extensionFilter = "")
+module.exports.getDirFilenames = function(dirPath, extensionFilter = "")
 {
 	var readFilenames = [];
 
-	if (fs.existsSync(path) === false)
-		return Promise.reject(new Error(`The directory ${path} was not found on the server.`));
+	if (fs.existsSync(dirPath) === false)
+		return Promise.reject(new Error(`The directory ${dirPath} was not found on the server.`));
 
-	return fsp.readdir(path, "utf8")
+	return fsp.readdir(dirPath, "utf8")
 	.then((filenames) =>
 	{
 		filenames.forEach((filename) =>
 		{
-			if (extensionFilter === "" || filename.lastIndexOf(extensionFilter) !== -1)
+			if (extensionFilter === "" || path.extname(filename) === extensionFilter)
                 readFilenames.push(filename);
         });
         
@@ -270,7 +271,6 @@ module.exports.getDirFilenames = function(path, extensionFilter = "")
 module.exports.walkDir = function(dir)
 {
 	const results = [];
-	const path = require('path');
 
 	return _walk(dir);
 
@@ -322,19 +322,19 @@ module.exports.walkDir = function(dir)
 	}
 };
 
-module.exports.readDirContents = function(path, extensionFilter)
+module.exports.readDirContents = function(dirPath, extensionFilter)
 {
     var readFiles = {};
 
-	if (fs.existsSync(path) === false)
-        return Promise.reject(new Error(`Directory ${path} was not found on the server.`));
+	if (fs.existsSync(dirPath) === false)
+        return Promise.reject(new Error(`Directory ${dirPath} was not found on the server.`));
         
-    return exports.getDirFilenames(path, extensionFilter)
+    return exports.getDirFilenames(dirPath, extensionFilter)
     .then((filenames) =>
     {
         return filenames.forAllPromises((filename) => 
         {
-            return fsp.readFile(`${path}/${filename}`, "utf8")
+            return fsp.readFile(path.resolve(dirPath, filename), "utf8")
             .then((contents) => readFiles[filename] = contents)
             .catch((err) => Promise.reject(err));
         });

@@ -1,13 +1,12 @@
 
 const fs = require("fs");
+const path = require("path");
 const fsp = require("fs").promises;
 const log = require("./logger.js");
 const configStore = require("./config_store.js");
 const rw = require("./reader_writer.js");
-const kill = require("./kill_instance.js");
 const spawn = require("./process_spawn.js").spawn;
 const gameStore = require("./hosted_games_store.js");
-const cleaner = require("./unused_files_cleaner.js");
 const readFileBuffer = require("./read_file_buffer.js");
 const provCountFn = require("./dom5/parse_province_count.js");
 const { fetchStatusDump } = require("./dom5/status_dump_wrapper.js");
@@ -46,13 +45,13 @@ module.exports.getTurnFiles = function(data)
 {
     const gameName = data.name;
     const nationNames = data.nationNames;
-    const gameFilesPath = `${_savedGamesPath}/${gameName}`;
-    const scoresPath = `${gameFilesPath}/scores.html`;
+    const gameFilesPath = path.resolve(_savedGamesPath, gameName);
+    const scoresPath = path.resolve(gameFilesPath, "scores.html");
     const files = { turnFiles: {} };
 
     return nationNames.forAllPromises((nationName) =>
     {
-        return readFileBuffer(`${gameFilesPath}/${nationName}.trn`)
+        return readFileBuffer(path.resolve(gameFilesPath, `${nationName}.trn`))
         .then((buffer) => files.turnFiles[nationName] = buffer)
         .catch((err) => Promise.reject(err));
     })
@@ -79,9 +78,9 @@ module.exports.getTurnFile = function(data)
 {
     const gameName = data.name;
     const nationFilename = data.nationFilename;
-    const path = `${_savedGamesPath}/${gameName}/${nationFilename}.trn`;
+    const filePath = path.resolve(_savedGamesPath, gameName, `${nationFilename}.trn`);
 
-    return readFileBuffer(path)
+    return readFileBuffer(filePath)
     .then((buffer) => Promise.resolve(buffer))
     .catch((err) => Promise.reject(err));
 };
@@ -89,9 +88,9 @@ module.exports.getTurnFile = function(data)
 module.exports.getScoreFile = function(data)
 {
     const gameName = data.name;
-    const path = `${_savedGamesPath}/${gameName}/scores.html`;
+    const filePath = path.resolve(_savedGamesPath, gameName, "scores.html");
 
-    return readFileBuffer(path)
+    return readFileBuffer(filePath)
     .then((buffer) => Promise.resolve(buffer))
     .catch((err) => Promise.reject(err));
 };
@@ -105,7 +104,7 @@ module.exports.changeTimer = function(data)
     const gameName = data.name;
     const defaultTimer = +data.timer / 60000;
     const currentTimer = +data.currentTimer * 0.001;
-    const path = `${_savedGamesPath}/${gameName}/domcmd`;
+    const domcmdPath = path.resolve(_savedGamesPath, gameName, "domcmd");
 
     var timerArguments = "";
 
@@ -115,7 +114,7 @@ module.exports.changeTimer = function(data)
     if (isNaN(currentTimer) === false)
         timerArguments += `settimeleft ${currentTimer}\n`;
 
-    return fsp.writeFile(path, timerArguments)
+    return fsp.writeFile(domcmdPath, timerArguments)
 	.then(() => Promise.resolve())
     .catch((err) => Promise.reject(err));
 };
@@ -148,9 +147,9 @@ module.exports.start = function(data)
 module.exports.hasStarted = function(data)
 {
     const gameName = data.name;
-    const path = `${_savedGamesPath}/${gameName}/ftherlnd`;
+    const ftherlndPath = path.resolve(_savedGamesPath, gameName, "ftherlnd");
 
-    if (fs.existsSync(path) === true)
+    if (fs.existsSync(ftherlndPath) === true)
         return true;
 
     else return false;
@@ -159,14 +158,14 @@ module.exports.hasStarted = function(data)
 module.exports.restart = function(data)
 {
     const gameName = data.name;
-    const path = `${_savedGamesPath}/${gameName}`;
+    const gameDirPath = path.resolve(_savedGamesPath, gameName);
 
 	log.general(log.getNormalLevel(), `Killing ${gameName}'s process...`);
 
 	//kill game first so it doesn't automatically regenerate the statuspage file
 	//as soon as it gets deleted
 	return gameStore.killGame(data.port)
-	.then(() => rw.atomicRmDir(path))
+	.then(() => rw.atomicRmDir(gameDirPath))
 	.then(() => gameStore.requestHosting(data))
 	.then(() => Promise.resolve())
 	.catch((err) => Promise.reject(err));
@@ -181,15 +180,15 @@ module.exports.getSubmittedPretenders = function(data)
 module.exports.removePretender = function(data)
 {
 	const gameName = data.name;
-    var path = `${_savedGamesPath}/${gameName}/${data.nationFilename}`;
+    var filePath = path.resolve(_savedGamesPath, gameName, data.nationFilename);
     
     if (/\.2h$/i.test(data.nationFilename) === false)
-        path += ".2h";
+        filePath += ".2h";
 
-	if (fs.existsSync(path) === false)
+	if (fs.existsSync(filePath) === false)
         return Promise.reject(new Error("Could not find the pretender file. Has it already been deleted? You can double-check in the lobby. If not, you can try rebooting the game."));
 
-    return fsp.unlink(path)
+    return fsp.unlink(filePath)
 	.then(() => Promise.resolve())
 	.catch((err) => Promise.reject(err));
 };
@@ -211,13 +210,13 @@ module.exports.getUndoneTurns = function(data)
 module.exports.backupSavefiles = function(gameData)
 {
 	const gameName = gameData.name;
-	const source = `${_savedGamesPath}/${gameName}`;
-	var target = `${configStore.dataFolderPath}/backups`;
+	const source = path.resolve(_savedGamesPath, gameName);
+	var target = path.resolve(configStore.dataFolderPath, "backups");
 
 	if (gameData.isNewTurn === true)
-	    target += `${configStore.newTurnsBackupDirName}/${gameName}/Turn ${gameData.turnNbr}`;
+	    target = path.resolve(target, configStore.newTurnsBackupDirName, gameName, `Turn ${gameData.turnNbr}`);
 
-	else target += `${configStore.preHostTurnBackupDirName}/${gameName}/Turn ${gameData.turnNbr}`;
+	else target = path.resolve(target, configStore.preHostTurnBackupDirName, gameName, `Turn ${gameData.turnNbr}`);
 
 	return rw.copyDir(source, target, false, ["", ".2h", ".trn"])
 	.then(() => Promise.resolve())
@@ -228,14 +227,14 @@ module.exports.rollback = function(data)
 {
     const game = gameStore.getGame(data.port);
 	const gameName = game.name;
-	const target = `${_savedGamesPath}/${gameName}`;
-	var source = `${configStore.dataFolderPath}/backups/${gameName}/${configStore.preHostTurnBackupDirName}/Turn ${data.turnNbr}`;
+	const target = path.resolve(_savedGamesPath, gameName);
+	var source = path.resolve(configStore.dataFolderPath, "backups", gameName, configStore.preHostTurnBackupDirName, `Turn ${data.turnNbr}`);
 
 	if (fs.existsSync(source) === false)
 	{
         log.general(log.getNormalLevel(), `${gameName}: No backup of turn ${data.turnNbr} was found in ${configStore.preHostTurnBackupDirName}, looking in new turns...`, source);
     
-		source = `${configStore.dataFolderPath}/backups/${gameName}/${configStore.newTurnsBackupDirName}/Turn ${data.turnNbr}`;
+		source = path.resolve(configStore.dataFolderPath, "backups", gameName, configStore.newTurnsBackupDirName, `Turn ${data.turnNbr}`);
 
 		if (fs.existsSync(source) === false)
         {
@@ -256,10 +255,10 @@ module.exports.rollback = function(data)
 module.exports.deleteGameSavefiles = function(data)
 {
 	const gameName = data.name;
-    const path = `${_savedGamesPath}/${gameName}`;
-    const backupPath = `${configStore.dataFolderPath}/backups/${gameName}`;
+    const dirPath = path.resolve(_savedGamesPath, gameName);
+    const backupPath = path.resolve(configStore.dataFolderPath, "backups", gameName);
 
-	return rw.deleteDir(path)
+	return rw.deleteDir(dirPath)
     .then(() => rw.deleteDir(backupPath))
     .then(() => 
     {
@@ -271,8 +270,8 @@ module.exports.deleteGameSavefiles = function(data)
 
 module.exports.getLastHostedTime = function(gameName)
 {
-    const gameDataPath = `${_savedGamesPath}/${gameName}`;
-    const ftherlndPath = `${gameDataPath}/ftherlnd`;
+    const gameDataPath = path.resolve(_savedGamesPath, gameName);
+    const ftherlndPath = path.resolve(gameDataPath, "ftherlnd");
 
     return fsp.stat(ftherlndPath)
     .then((ftherlndStat) => Promise.resolve(ftherlndStat.mtime.getTime()));
@@ -295,7 +294,7 @@ module.exports.validateMapfile = function(mapfile)
 
 module.exports.validateMods = function(modfiles)
 {
-	var path = configStore.dom5DataPath;
+	var dataPath = configStore.dom5DataPath;
 
 	if (Array.isArray(modfiles) === false)
 		return Promise.reject(new Error(`Invalid argument type provided; expected array of string paths, got ${modfiles}`));
@@ -308,7 +307,7 @@ module.exports.validateMods = function(modfiles)
 		if (typeof modfile !== "string")
 			return Promise.reject(new Error(`Invalid modfiles element; expected path string, got ${modfile}`));
 
-		if (fs.existsSync(`${path}${modfileRelPath}`) === false)
+		if (fs.existsSync(`${dataPath}${modfileRelPath}`) === false)
 			return Promise.reject(new Error(`The mod file ${modfile} could not be found.`));
 	}
 
