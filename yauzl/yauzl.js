@@ -1,6 +1,7 @@
 
 //Yet Another Unzip Library. Docs: https://www.npmjs.com/package/yauzl
 const fs = require("fs");
+const path = require("path");
 const fsp = require("fs").promises;
 const yauzl = require("yauzl");
 const log = require("../logger.js");
@@ -29,7 +30,7 @@ function _openZipfile(filePath)
     });
 }
 
-function _writeEntriesTo(zipfile, path, filterFn = null)
+function _writeEntriesTo(zipfile, targetPath, filterFn = null)
 {
     const skippedEntries = [];
     const writtenEntries = [];
@@ -55,7 +56,7 @@ function _writeEntriesTo(zipfile, path, filterFn = null)
                 return zipfile.readEntry();
             }
 
-            _writeEntryTo(entry, zipfile, path)
+            _writeEntryTo(entry, zipfile, targetPath)
             .then(() => 
             {
                 writtenEntries.push(entry.fileName);
@@ -78,9 +79,9 @@ function _writeEntriesTo(zipfile, path, filterFn = null)
     });
 }
 
-function _writeEntryTo(entry, zipfile, path)
+function _writeEntryTo(entry, zipfile, targetPath)
 {
-    const entryWritePath = `${path}/${entry.fileName}`;
+    const entryWritePath = path.resolve(targetPath, entry.fileName);
     const filename = entry.fileName;
 
     if (/\/$/.test(filename) === true)
