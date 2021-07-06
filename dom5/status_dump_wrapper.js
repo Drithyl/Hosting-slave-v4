@@ -1,7 +1,7 @@
 
 const fs = require("fs");
+const path = require("path");
 const fsp = require("fs").promises;
-const log = require("../logger.js");
 const assert = require("../asserter.js");
 const rw = require("../reader_writer.js");
 const configStore = require("../config_store.js");
@@ -10,14 +10,14 @@ const NationStatusWrapper = require("./nation_status_wrapper.js");
 const STATUSDUMP_FILENAME = "statusdump.txt";
 
 
-exports.fetchStatusDump = (gameName, path = null) =>
+exports.fetchStatusDump = (gameName, filePath = null) =>
 {
     var rawData;
-    const gameDataPath = `${configStore.dom5DataPath}/savedgames/${gameName}`;
-    const statusDumpPath = (assert.isString(path) === false) ? `${gameDataPath}/${STATUSDUMP_FILENAME}` : `${path}/${STATUSDUMP_FILENAME}`;
+    const gameDataPath = path.resolve(configStore.dom5DataPath, `savedgames/${gameName}`);
+    const statusDumpPath = (assert.isString(filePath) === false) ? path.resolve(gameDataPath, STATUSDUMP_FILENAME) : path.resolve(filePath, STATUSDUMP_FILENAME);
 
     if (fs.existsSync(statusDumpPath) === false)
-        return Promise.reject(new Error(`Could not find ${gameName}'s statusdump at path ${path}`));
+        return Promise.reject(new Error(`Could not find ${gameName}'s statusdump at path ${statusDumpPath}`));
 
     return fsp.readFile(statusDumpPath, "utf8")
     .then((statusDumpRawData) =>
@@ -67,11 +67,11 @@ function StatusDump(gameName, originalPath, rawData)
     this.getSubmittedPretenders = () =>
     {
         const submittedNationStatuses = [];
-        const path = `${configStore.dom5DataPath}/savedgames/${_gameName}`;
+        const savedgamesDir = path.resolve(configStore.dom5DataPath, `savedgames/${_gameName}`);
 
         this.nationStatusArray.forEach((nationStatus) =>
         {
-            if (fs.existsSync(`${path}/${nationStatus.filename}.2h`) === true)
+            if (fs.existsSync(path.resolve(savedgamesDir, `${nationStatus.filename}.2h`)) === true)
                 submittedNationStatuses.push(nationStatus);
         });
 
