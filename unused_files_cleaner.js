@@ -1,5 +1,6 @@
 
 const fs = require("fs");
+const path = require("path");
 const fsp = require("fs").promises;
 const log = require("./logger.js");
 const configStore = require("./config_store.js");
@@ -8,8 +9,8 @@ const rw = require("./reader_writer.js");
 module.exports.deleteAllTurnBackups = function(gameName)
 {
     const target = `${configStore.dataFolderPath}/backups/${gameName}`;
-    const pathToNewTurnBackups = `${target}/${configStore.newTurnsBackupDirName}`;
-    const pathTPreHostBackups = `${target}/${configStore.preHostTurnBackupDirName}`;
+    const pathToNewTurnBackups = path.resolve(target, configStore.newTurnsBackupDirName);
+    const pathTPreHostBackups = path.resolve(target, configStore.preHostTurnBackupDirName);
 
     return exports.deleteBackupsUpToTurn(pathToNewTurnBackups, Infinity)
     .then(() => exports.deleteBackupsUpToTurn(pathTPreHostBackups, Infinity))
@@ -74,10 +75,14 @@ function _deleteUnusedFilesInDir(filesInUse, dirPath)
     .then((dirFiles) => _deleteUnusedFiles(dirFiles, relatedFilesInUse))
     .then((deletedFiles) => 
     {
-        log.general(log.getLeanLevel(), `In ${dirPath}, deleted files`, deletedFiles);
+        log.general(log.getLeanLevel(), `In ${dirPath}, deleted unused files`, deletedFiles);
         return Promise.resolve(deletedFiles);
     })
-    .catch((err, deletedFiles) => Promise.reject(err, deletedFiles));
+    .catch((err, deletedFiles) => 
+    {
+        log.general(log.getLeanLevel(), `Error occurred when deleting unused files in ${dirPath}; files that were still deleted are listed below`, deletedFiles);
+        return Promise.reject(err, deletedFiles)
+    });
 };
 
 /** uses the list of filenames in use to check the file contents and add the
@@ -86,7 +91,6 @@ function _deleteUnusedFilesInDir(filesInUse, dirPath)
 function _getListOfRelatedFilesInUse(filesInUse, dirPath)
 {
     var list = [];
-    var path = require("path");
 
     return filesInUse.forAllPromises((filename) =>
     {
@@ -132,20 +136,14 @@ function _deleteUnusedFiles(filePaths, filesInUse)
     if (filePaths.length <= 0)
         return Promise.resolve(deletedFiles);
 
-    return filePaths.forAllPromises((path) =>
+    return filePaths.forAllPromises((filePath) =>
     {
-        if (filesInUse.includes(path) === false)
+        if (filesInUse.includes(filePath) === false)
         {
-            return fsp.unlink(path)
-            .then(() =>
-            {
-                deletedFiles.push(path);
-                console.log(`Deleted unused file ${path}`);
-            })
-            .catch((err) => log.general(log.getLeanLevel(), `Failed to delete file ${path}`, err));
+            return fsp.unlink(filePath)
+            .then(() => deletedFiles.push(filePath))
+            .catch((err) => log.general(log.getLeanLevel(), `Failed to delete file ${filePath}`, err));
         }
-
-        else console.log(`Skipped file ${path}`);
     })
     .then(() => Promise.resolve(deletedFiles));
 }
