@@ -56,7 +56,23 @@ function _writeEntriesTo(zipfile, targetPath, filterFn = null)
                 return zipfile.readEntry();
             }
 
-            _writeEntryTo(entry, zipfile, targetPath)
+            Promise.resolve()
+            .then(() =>
+            {
+                log.upload(log.getVerboseLevel(), `Checking that path ${targetPath} exists...`);
+
+                // Make sure the directory that we are extracting this entry to exists,
+                // otherwise create it. The .zip standard might sometimes omit directories
+                // within itself; refer to https://github.com/thejoshwolfe/yauzl/issues/52
+                if (fs.existsSync(targetPath) === false)
+                {
+                    log.upload(log.getVerboseLevel(), `Path does not exist; creating it...`);
+                    return fsp.mkdir(targetPath);
+                }
+
+                else return Promise.resolve();
+            })
+            .then(() => _writeEntryTo(entry, zipfile, targetPath))
             .then(() => 
             {
                 writtenEntries.push(entry.fileName);

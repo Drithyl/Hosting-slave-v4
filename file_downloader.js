@@ -78,6 +78,8 @@ function _downloadFile(fileId, targetPath, extensionFilter)
 /** function used to filter the entries inside the zipfile. Must return true to be extracted */
 function _filterEntry(entry, extensionFilter, targetPath)
 {
+    log.upload(log.getNormalLevel(), `Checking entry ${entry.fileName}...`);
+
     //.map files that begin with two underscores __ don't get found
     //properly by the --mapfile flag, so make sure to remove them here
     if (/^\_+/g.test(entry.fileName) === true)
