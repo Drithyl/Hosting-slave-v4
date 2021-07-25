@@ -100,10 +100,32 @@ function _writeEntryTo(entry, zipfile, targetPath)
     const entryWritePath = path.resolve(targetPath, entry.fileName);
     const filename = entry.fileName;
 
-    if (/\/$/.test(filename) === true)
-        return _writeDirectory(entryWritePath);
+    return _ensurePathExists(entryWritePath)
+    .then(() =>
+    {
+        if (/\/$/.test(filename) === true)
+            return _writeDirectory(entryWritePath);
+    
+        else return _writeFile(entry, zipfile, entryWritePath);
+    });
+}
 
-    else return _writeFile(entry, zipfile, entryWritePath);
+function _ensurePathExists(entryPath)
+{
+    const entryDirPath = path.dirname(entryPath);
+    log.upload(log.getVerboseLevel(), `Checking that path ${entryDirPath} exists...`);
+
+    // Make sure the directory that we are extracting this entry to exists,
+    // otherwise create it. The .zip standard might sometimes omit directories
+    // within itself; refer to https://github.com/thejoshwolfe/yauzl/issues/52
+    if (fs.existsSync(entryDirPath) === false)
+    {
+        log.upload(log.getVerboseLevel(), `Path does not exist; creating it...`);
+        return fsp.mkdir(entryDirPath);
+    }
+
+    log.upload(log.getVerboseLevel(), `Path exists; continuing...`);
+    return Promise.resolve();
 }
 
 function _writeDirectory(dirWritePath)
