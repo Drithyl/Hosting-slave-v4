@@ -9,7 +9,7 @@ const fsp = require("fs").promises;
 const log = require("./logger.js");
 const configStore = require("./config_store.js");
 
-const _tmpDataPath = `${configStore.dom5DataPath}/${configStore.tmpFilesDirName}`;
+const _tmpDataPath = path.resolve(configStore.dom5DataPath, configStore.tmpFilesDirName);
 
 if (fs.existsSync(_tmpDataPath) === false)
 	fs.mkdirSync(_tmpDataPath);
@@ -114,80 +114,67 @@ module.exports.deleteDir = function(dirPath)
 //call back as if successful. 
 //DOES NOT SUPPORT CROSS-DEVICE DELETING (i.e. paths between different hard drives
 //or devices). Both the tmp dir specified in the config and the target must be on the same drive
-module.exports.atomicRmDir = function(target, filter = null)
+module.exports.atomicRmDir = async function(targetDir, filter = null)
 {
+	let stats;
+	let filenames;
 	let renamedFiles = [];
 	let wasDirLeftEmpty = true;
-	let targetName = (target.indexOf("/") === -1) ? target : target.slice(target.lastIndexOf("/") + 1);
+	let targetName = path.basename(targetDir);
+	let tmpPath = path.resolve(_tmpDataPath, targetName);
 
-	if (fs.existsSync(target) === false)
-		return Promise.reject(new Error(`ENOENT: target path "${target}" does not exist.`));
+	if (fs.existsSync(targetDir) === false)
+		throw new Error(`ENOENT: target path "${targetDir}" does not exist.`);
 
-	fsp.stat(target)
-	.then((stats) =>
+	stats = await fsp.stat(targetDir);
+	
+	if (stats.isDirectory() === false)
+		throw new Error(`Target is not a directory.`);
+	
+	//Create tmp dir for the files if it doesn't exist
+	if (fs.existsSync(tmpPath) === false)
+		await fsp.mkdir(tmpPath);
+
+	filenames = await fsp.readdir(targetDir);
+    
+	await filenames.forAllPromises(async (filename) =>
 	{
-		if (stats.isDirectory() === false)
-			return Promise.reject(new Error(`Target is not a directory.`));
+		var filePath = path.resolve(targetDir, filename);
+		var newFilePath = path.resolve(tmpPath, filename);
+		var fileStats = await fsp.stat(filePath);
 		
-		return Promise.resolve();
-	})
-    .then(() => 
-    {
-        //Create tmp dir for the files if it doesn't exist
-        if (fs.existsSync(`${_tmpDataPath}/${targetName}`) === false)
-            return fsp.mkdir(`${_tmpDataPath}/${targetName}`);
+		if (fileStats.isFile() === false || _doesExtensionMatchFilter(filename, filter) === false)
+		{
+			wasDirLeftEmpty = false;
+			return;
+		}
+			
+		await fsp.rename(filePath, newFilePath);
 
-        else return Promise.resolve();
-    })
-	.then(() => fsp.readdir(target))
-	.then((filenames) =>
+		//keep track of the renamedFiles by pushing an array with [0] oldPath and [1] temp path to be removed later
+		renamedFiles.push([filePath, newFilePath]);
+	});
+	
+	//renaming to tmp directory complete,
+	//now delete all those files to clean up
+	await renamedFiles.forAllPromises((filePaths) =>
 	{
-		return filenames.forAllPromises((filename) =>
+		//unlink renamed file at new tmp path
+		return fsp.unlink(filePaths[1])
+		.catch((err) =>
 		{
-			return fsp.stat(`${target}/${filename}`)
-			.then((stats) =>
-			{
-				if (stats.isFile() === false || _doesExtensionMatchFilter(filename, filter) === false)
-				{
-					wasDirLeftEmpty = false;
-					return;
-				}
-					
-				return fsp.rename(`${target}/${filename}`, `${_tmpDataPath}/${targetName}/${filename}`)
-				.then(() => 
-				{
-					//keep track of the renamedFiles by pushing an array with [0] oldPath and [1] temp path to be removed later
-					renamedFiles.push([`${target}/${filename}`, `${_tmpDataPath}/${targetName}/${filename}`]);
-				});
-			});
+			//do not stop execution of the loop on error since failure to clean
+			//the tmp files is not critical to this operation
+			log.error(log.getLeanLevel(), `FAILED TO DELETE TMP FILE ${filePaths[1]}`);
 		});
-	})
-	.then(() =>
-	{
-		//renaming to tmp directory complete,
-		//now delete all those files to clean up
-		return renamedFiles.forAllPromises((filePaths) =>
-		{
-			//unlink renamed file at new tmp path
-			return fsp.unlink(filePaths[1])
-			.catch((err) =>
-			{
-				//do not stop execution of the loop on error since failure to clean
-				//the tmp files is not critical to this operation
-				log.error(log.getLeanLevel(), `FAILED TO DELETE TMP FILE ${filePaths[1]}`);
-			});
-		});
-	})
-	.then(() =>
-	{
-		//delete dir if it's left empty and the files were not filtered
-		if (wasDirLeftEmpty === true)
-			return fsp.rmdir(target);
+	});
+
+	//delete dir if it's left empty and the files were not filtered
+	if (wasDirLeftEmpty === true)
+		await fsp.rmdir(targetDir);
 		
-		else return Promise.resolve();
-	})
-	.then(() => fsp.rmdir(`${_tmpDataPath}/${targetName}`))
-	.catch((err) => 
+	return fsp.rmdir(tmpPath)
+	.catch((err) =>
 	{
 		log.error(log.getLeanLevel(), `ATOMIC RM ERROR`, err);
 
@@ -202,10 +189,9 @@ module.exports.atomicRmDir = function(target, filter = null)
 		return renamedFiles.forAllPromises((filePaths) =>
 		{
 			return fsp.rename(filePaths[1], filePaths[0])
-			.catch((err) => Promise.reject(new Error(`Critical error during deletion; could not undo the files deleted so far: ${err.message}`)));
+			.catch((err) => Promise.reject(new Error(`Critical error during deletion; could not undo the files deleted so far: ${err.message}`)))
 		})
-		//remove leftover tmp dir
-		.then(() => fsp.rmdir(`${_tmpDataPath}/${targetName}`))
+		.then(() => fsp.rmdir(tmpPath))
         .then(() => Promise.reject(new Error(`Deletion could not be performed: ${deleteErr.message}`)))
         .catch((err) => Promise.reject(new Error(`Deletion could not be performed; could not undo the files deleted so far: ${err.message}`)));
 	}
