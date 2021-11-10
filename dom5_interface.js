@@ -132,12 +132,21 @@ module.exports.forceHost = function(data)
 };
 
 //Set 60 seconds to start the game
-module.exports.start = function(data)
+module.exports.start = async function(data)
 {
     // Change current timer to 6 seconds, which will make the start countdown begin;
     // while reinforcing the default timer once again (important in case this is a 
     // start after a restart, we don't want to keep old values)
     const startData = Object.assign(data, { timer: data.timer, currentTimer: 6000 });
+    const statusdump = await fetchStatusDump(data.name);
+    const submittedPretenders = statusdump.getSubmittedPretenders();
+
+    if (statusdump.hasSelectedNations() === false)
+        return Promise.reject(new Error(`Cannot start a game with no submitted pretenders.`));
+
+    // Checks if at least one nation is human
+    if (submittedPretenders.length < 2)
+        return Promise.reject(new Error(`At least two nations must be human-controlled.`));
 
 	return exports.changeTimer(startData)
 	.then(() => Promise.resolve())
