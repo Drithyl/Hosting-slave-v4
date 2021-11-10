@@ -78,6 +78,11 @@ function StatusDump(gameName, originalPath, rawData)
         return submittedNationStatuses;
     };
 
+    this.hasSelectedNations = () =>
+    {
+        return this.nationStatusArray.filter((nationStatus) => nationStatus.isHuman || nationStatus.isAi).length > 0;
+    };
+
     this.getNationsWithUndoneTurns = () => this.nationStatusArray.filter((nationStatus) => nationStatus.isTurnFinished === false && nationStatus.isHuman === true);
 
     this.fetchStales = () =>
