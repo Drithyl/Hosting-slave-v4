@@ -120,6 +120,8 @@ function _attachOnErrorListener(game)
 
 function _attachStdioListener(type, game)
 {
+	const nationsTurnStatusMessageRegExp = new RegExp("^(\\(?\\*?(\\w*|\\?)(\\)|\\?|\\-|\\+)?\\s*)+$", "i");
+
 	// Dom instances push stdout data very often. This is probably what leads to buffer
 	// overflow and the instances hanging when it's not being ignored nor listened to
 	if (game.instance[type] != null)
@@ -133,7 +135,8 @@ function _attachStdioListener(type, game)
 			if (data.type === "Buffer")
 				return;
 				
-			if (_wasDataEmittedRecently(data) === true)
+			// Nation turn status data is ignorable
+			if (_wasDataEmittedRecently(data) === true || nationsTurnStatusMessageRegExp.test(data) === true)
 				return;
 
 			// A timestamp used by the logger.js, this will happen
