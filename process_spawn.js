@@ -146,7 +146,6 @@ function _attachStdioListener(type, game)
 				return log.backup(log.getVerboseLevel(), data);
 			
 			socket.emit("STDIO_DATA", {name: game.name, data: data, type: type});
-			log.general(log.getVerboseLevel(), `${game.name}'s ${type} "data" event triggered:\n`, data);
 			_debounceData(data);
 		});
 
