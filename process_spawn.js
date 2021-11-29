@@ -159,12 +159,7 @@ function _debounceData(data)
 	recentDataEmitted.push(data);
 
 	// After a while, release the record of the previously sent data so it can be sent again if needed
-	setTimeout(() =>
-	{
-		recentDataEmitted.shift();
-		log.general(log.getVerboseLevel(), `Removed data from recently emitted`);
-
-	}, REPETITIVE_DATA_DEBOUNCER_INTERVAL);
+	setTimeout(recentDataEmitted.shift, REPETITIVE_DATA_DEBOUNCER_INTERVAL);
 }
 
 function _isRelevantData(stdioData)
