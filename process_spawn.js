@@ -120,8 +120,6 @@ function _attachOnErrorListener(game)
 
 function _attachStdioListener(type, game)
 {
-	const nationsTurnStatusMessageRegExp = new RegExp("^(\\(?\\*?(\\w*|\\?)(\\)|\\?|\\-|\\+)?\\s*)+$", "i");
-
 	// Dom instances push stdout data very often. This is probably what leads to buffer
 	// overflow and the instances hanging when it's not being ignored nor listened to
 	if (game.instance[type] != null)
@@ -131,32 +129,17 @@ function _attachStdioListener(type, game)
 
 		game.instance[type].on('data', function (data)
 		{
-			// Ignore data buffers that the game puts out
-			if (data.type === "Buffer")
-				return;
-				
-			// Nation turn status data is ignorable
-			if (_wasDataEmittedRecently(data) === true || nationsTurnStatusMessageRegExp.test(data) === true)
-				return;
-
-			// A timestamp used by the logger.js, this will happen
-			// when the backup script executes and logs things to
-			// console. Instead of sending the data to master; log it
-			if (/\d\d:\d\d:\d\d\.\d\d\dZ/.test(data) === true)
-				return log.backup(log.getVerboseLevel(), data);
-			
-			socket.emit("STDIO_DATA", {name: game.name, data: data, type: type});
-			_debounceData(data);
+			if (_isRelevantData(data) === true)
+				socket.emit("STDIO_DATA", {name: game.name, data: data, type: type});
 		});
 
 		game.instance[type].on('error', function (err)
 		{
-			if (_wasDataEmittedRecently(err) === true)
-				return;
-			
-			log.error(log.getLeanLevel(), `${game.name}'s ${type} "error" event triggered:\n`, err);
-			socket.emit("STDIO_ERROR", {name: game.name, error: err, type: type});
-			_debounceData(err);
+			if (_isRelevantData(err) === true)
+			{
+				log.error(log.getLeanLevel(), `${game.name}'s ${type} "error" event triggered:\n`, err);
+				socket.emit("STDIO_ERROR", {name: game.name, error: err, type: type});
+			}
 		});
 	}
 }
@@ -182,6 +165,40 @@ function _debounceData(data)
 		log.general(log.getVerboseLevel(), `Removed data from recently emitted`);
 
 	}, REPETITIVE_DATA_DEBOUNCER_INTERVAL);
+}
+
+function _isRelevantData(stdioData)
+{	
+	const nationsTurnStatusMessageRegExp = new RegExp("^(\\(?\\*?(\\w*|\\?)(\\)|\\?|\\-|\\+)?\\s*)+$", "i");
+
+	_debounceData(data);
+
+	// Ignore data buffers that the game puts out
+	if (stdioData.type === "Buffer")
+		return false;
+	
+	// Nation turn status data is ignorable
+	if (_wasDataEmittedRecently(stdioData) === true)
+		return false;
+
+	// Heartbeat data showing the status of nation turns
+	if (nationsTurnStatusMessageRegExp.test(stdioData) === true)
+		return false;
+
+	// A timestamp used by the logger.js, this will happen
+	// when the backup script executes and logs things to
+	// console. Instead of sending the data to master; log it
+	if (/\d\d:\d\d:\d\d\.\d\d\dZ/.test(stdioData) === true)
+	{
+		log.backup(log.getVerboseLevel(), stdioData);
+		return false;
+	}
+
+	// Heartbeat data showing number of connections to game
+	if (/^\w+,\s*Connections\s*\d+/.test(stdioData) === true)
+		return false;
+
+	return true;
 }
 
 function _getAdditionalArgs(game)
