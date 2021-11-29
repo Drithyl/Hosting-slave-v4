@@ -171,7 +171,7 @@ function _isRelevantData(stdioData)
 {	
 	const nationsTurnStatusMessageRegExp = new RegExp("^(\\(?\\*?(\\w*|\\?)(\\)|\\?|\\-|\\+)?\\s*)+$", "i");
 
-	_debounceData(data);
+	_debounceData(stdioData);
 
 	// Ignore data buffers that the game puts out
 	if (stdioData.type === "Buffer")
