@@ -132,6 +132,13 @@ module.exports.forceHost = function(data)
 };
 
 //Set 60 seconds to start the game
+module.exports.getStatusDump = async function(data)
+{
+    const statusdump = await fetchStatusDump(data.name);
+    return statusdump;
+};
+
+//Set 60 seconds to start the game
 module.exports.start = async function(data)
 {
     // Change current timer to 6 seconds, which will make the start countdown begin;
