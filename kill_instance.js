@@ -123,13 +123,13 @@ function _timeoutCheckIfKilled(game, attempts, maxAttempts)
 		if (isPortAvailable === false && _isGameTerminated(game) === true)
 		{
 			log.error(log.getLeanLevel(), `${game.name}'s TERMINATED BUT PORT STILL IN USE AFTER ${maxAttempts} ATTEMPTS`);
-			return Promise.reject(new Error(`The game instance was terminated, but the port is still in use. You might have to wait a bit.`));
+			return Promise.reject(new Error(`The game instance was terminated, but port ${game.port} still in use. You might have to wait a bit.`));
 		}
 
 		else
 		{
 			log.error(log.getLeanLevel(), `${game.name}'s COULD NOT BE TERMINATED.`);
-			return Promise.reject(new Error(`The game instance could not be terminated and the port is still in use. You might have to try again.`));
+			return Promise.reject(new Error(`The game instance could not be terminated and port ${game.port} is still in use. You might have to try again.`));
 		}
 	});
 }
