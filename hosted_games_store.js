@@ -19,6 +19,7 @@ var hostedGames = {};
 
 //queue of games pending hosting
 var gameHostRequests = [];
+var areGamesUpdating = false;
 
 module.exports.populate = function(gameDataArray)
 {
@@ -83,11 +84,16 @@ module.exports.populate = function(gameDataArray)
     }
 
     log.general(log.getNormalLevel(), "List of games initialized.");
-    return module.exports.updateGames();
+
+    if (areGamesUpdating === false)
+        return module.exports.updateGames();
+        
+    return Promise.resolve()
 };
 
 module.exports.updateGames = function()
 {
+    areGamesUpdating = true;
     const startTime = Date.now();
     log.general(log.getNormalLevel(), "Starting game update cycle...");
 
