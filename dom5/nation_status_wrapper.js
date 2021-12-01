@@ -76,7 +76,7 @@ function _extractNationShortName(rawData)
 
 function _extractNationWords(rawData)
 {
-    return rawData.replace(/^Nation\s*(\d+\s+)+/ig, "").split(/\t+/);
+    return rawData.replace(/^Nation\s*(-?\d+\s+)+/ig, "").split(/\t+/);
 }
 
 function _extractNationNumbers(rawData)
