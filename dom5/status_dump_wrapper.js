@@ -12,7 +12,6 @@ const STATUSDUMP_FILENAME = "statusdump.txt";
 
 exports.fetchStatusDump = async (gameName, filePath = null) =>
 {
-    var rawData;
     const gameDataPath = path.resolve(configStore.dom5DataPath, `savedgames/${gameName}`);
     const statusDumpPath = (assert.isString(filePath) === false) ? path.resolve(gameDataPath, STATUSDUMP_FILENAME) : path.resolve(filePath, STATUSDUMP_FILENAME);
 
@@ -22,22 +21,6 @@ exports.fetchStatusDump = async (gameName, filePath = null) =>
     // Create wrapper object then update it to parse the latest statusdump data
     const wrapper = new StatusDump(gameName, statusDumpPath);
     await wrapper.update();
-    return wrapper;
-};
-
-exports.updateStatusDump = async (statusDumpWrapper) =>
-{
-    var rawData;
-    const gameDataPath = path.resolve(configStore.dom5DataPath, `savedgames/${gameName}`);
-    const statusDumpPath = (assert.isString(filePath) === false) ? path.resolve(gameDataPath, STATUSDUMP_FILENAME) : path.resolve(filePath, STATUSDUMP_FILENAME);
-
-    if (fs.existsSync(statusDumpPath) === false)
-        throw new Error(`Could not find ${gameName}'s statusdump at path ${statusDumpPath}`);
-
-    // Create wrapper object then update with raw data and last modified statusdump time
-    const wrapper = new StatusDump(gameName, statusDumpPath);
-    await wrapper.update();
-
     return wrapper;
 };
 
@@ -85,7 +68,7 @@ function StatusDump(gameName, originalPath)
         const statusdumpMTime = stat.mtime;
 
         // If it hasn't changed, no need to update it
-        if (this.lastUpdateTimestamp === statusdumpMTime)
+        if (this.lastUpdateTimestamp >= statusdumpMTime)
             return;
 
         // Otherwise get the most recent statusdump metadata and update this wrapper
