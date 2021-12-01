@@ -9,7 +9,6 @@ const spawn = require("./process_spawn.js").spawn;
 const gameStore = require("./hosted_games_store.js");
 const readFileBuffer = require("./read_file_buffer.js");
 const provCountFn = require("./dom5/parse_province_count.js");
-const { fetchStatusDump } = require("./dom5/status_dump_wrapper.js");
 
 const _savedGamesPath = `${configStore.dom5DataPath}/savedgames`;
 
@@ -134,8 +133,12 @@ module.exports.forceHost = function(data)
 //Set 60 seconds to start the game
 module.exports.getStatusDump = async function(data)
 {
-    const statusdump = await fetchStatusDump(data.name);
-    return statusdump;
+    const status = gameStore.getGameStatus(data.port);
+
+    if (status == null)
+        return Promise.reject(`No game status available for ${data.name}`);
+
+    return Promise.resolve(status);
 };
 
 //Set 60 seconds to start the game
@@ -145,7 +148,7 @@ module.exports.start = async function(data)
     // while reinforcing the default timer once again (important in case this is a 
     // start after a restart, we don't want to keep old values)
     const startData = Object.assign(data, { timer: data.timer, currentTimer: 6000 });
-    const statusdump = await fetchStatusDump(data.name);
+    const statusdump = gameStore.getGameStatus(data.port);
     const submittedPretenders = statusdump.getSubmittedPretenders();
 
     if (statusdump.hasSelectedNations() === false)
@@ -189,8 +192,8 @@ module.exports.restart = function(data)
 
 module.exports.getSubmittedPretenders = function(data)
 {
-	return fetchStatusDump(data.name)
-    .then((statusDumpWrapper) => Promise.resolve(statusDumpWrapper.getSubmittedPretenders()));
+	const status = gameStore.getGameStatus(data.port);
+    return status.getSubmittedPretenders() ?? null;
 };
 
 module.exports.removePretender = function(data)
@@ -213,14 +216,18 @@ module.exports.getStales = function(data)
 {
     const clonedStatusdumpPath = `${configStore.dom5DataPath}/${configStore.tmpFilesDirName}/${data.name}`;
 
-	return fetchStatusDump(data.name, clonedStatusdumpPath)
+	return gameStore.fetchPreviousTurnGameStatus(data.name, clonedStatusdumpPath)
     .then((statusDumpWrapper) => statusDumpWrapper.fetchStales());
 };
 
 module.exports.getUndoneTurns = function(data)
 {
-	return fetchStatusDump(data.name)
-    .then((statusDumpWrapper) => Promise.resolve(statusDumpWrapper.getNationsWithUndoneTurns()));
+    const status = gameStore.getGameStatus(data.port);
+
+    if (status == null)
+        return Promise.reject(`No undone turn data available for ${data.name}`);
+
+	return status.getNationsWithUndoneTurns();
 };
 
 module.exports.backupSavefiles = function(gameData)

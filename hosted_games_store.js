@@ -2,11 +2,13 @@
 const fs = require("fs");
 const fsp = require("fs").promises;
 const log = require("./logger.js");
+const assert = require("./asserter.js");
 const configStore = require("./config_store.js");
 const kill = require("./kill_instance.js");
 const spawn = require("./process_spawn.js").spawn;
 const dom5Interface = require("./dom5_interface.js");
 const reservedPortsStore = require("./reserved_ports_store.js");
+const statusDump = require("./dom5/status_dump_wrapper.js");
 
 /************************************************************
 *                         GAME LIST                         *
@@ -33,7 +35,7 @@ module.exports.populate = function(gameDataArray)
         });
 
         log.general(log.getVerboseLevel(), "List of games after first initialization", hostedGames);
-		return Promise.resolve();
+        return module.exports.updateGames();
     }
     
     log.general(log.getVerboseLevel(), `Comparing existing games with the data received...`);
@@ -81,13 +83,53 @@ module.exports.populate = function(gameDataArray)
     }
 
     log.general(log.getNormalLevel(), "List of games initialized.");
-    
-    return Promise.resolve();
+    return module.exports.updateGames();
+};
+
+module.exports.updateGames = function()
+{
+    const startTime = Date.now();
+    log.general(log.getNormalLevel(), "Starting game update cycle...");
+
+    return hostedGames.forAllPromises((game) =>
+    {
+        log.general(log.getVerboseLevel(), `Updating ${game.name}'s status...`);
+
+        if (assert.isInstanceOfPrototype(game.status, statusDump.StatusDump) === true)
+            return game.status.update();
+        
+        return statusDump.fetchStatusDump(game.name)
+        .then((status) => game.status = status)
+
+    }, false)
+    .then((settledPromises) => 
+    {
+        log.general(log.getNormalLevel(), `Finished game update cycle in ${Date.now() - startTime}ms`);
+        setTimeout(module.exports.updateGames, configStore.updateInterval);
+        return Promise.resolve();
+    });
 };
 
 module.exports.getGame = function(port)
 {
     return hostedGames[port];
+};
+
+module.exports.getGameStatus = function(port)
+{
+    const game = hostedGames[port];
+
+    if (game == null)
+        return null;
+
+    return game.status;
+};
+
+module.exports.fetchPreviousTurnGameStatus = async function(name)
+{
+    const clonedStatusdumpPath = `${configStore.dom5DataPath}/${configStore.tmpFilesDirName}/${name}`;
+    const status = await statusDump.fetchStatusDump(name, clonedStatusdumpPath);
+    return status;
 };
 
 module.exports.getUsedPorts = function()

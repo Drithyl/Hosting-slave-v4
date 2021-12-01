@@ -10,23 +10,35 @@ const NationStatusWrapper = require("./nation_status_wrapper.js");
 const STATUSDUMP_FILENAME = "statusdump.txt";
 
 
-exports.fetchStatusDump = (gameName, filePath = null) =>
+exports.fetchStatusDump = async (gameName, filePath = null) =>
 {
     var rawData;
     const gameDataPath = path.resolve(configStore.dom5DataPath, `savedgames/${gameName}`);
     const statusDumpPath = (assert.isString(filePath) === false) ? path.resolve(gameDataPath, STATUSDUMP_FILENAME) : path.resolve(filePath, STATUSDUMP_FILENAME);
 
     if (fs.existsSync(statusDumpPath) === false)
-        return Promise.reject(new Error(`Could not find ${gameName}'s statusdump at path ${statusDumpPath}`));
+        throw new Error(`Could not find ${gameName}'s statusdump at path ${statusDumpPath}`);
 
-    return fsp.readFile(statusDumpPath, "utf8")
-    .then((statusDumpRawData) =>
-    {
-        rawData = statusDumpRawData;
-        
-        return Promise.resolve(new StatusDump(gameName, statusDumpPath, rawData));
-    })
-    .catch((err) => Promise.reject(new Error(`Could not create statusdump object:\n\n${err.message}`)));
+    // Create wrapper object then update it to parse the latest statusdump data
+    const wrapper = new StatusDump(gameName, statusDumpPath);
+    await wrapper.update();
+    return wrapper;
+};
+
+exports.updateStatusDump = async (statusDumpWrapper) =>
+{
+    var rawData;
+    const gameDataPath = path.resolve(configStore.dom5DataPath, `savedgames/${gameName}`);
+    const statusDumpPath = (assert.isString(filePath) === false) ? path.resolve(gameDataPath, STATUSDUMP_FILENAME) : path.resolve(filePath, STATUSDUMP_FILENAME);
+
+    if (fs.existsSync(statusDumpPath) === false)
+        throw new Error(`Could not find ${gameName}'s statusdump at path ${statusDumpPath}`);
+
+    // Create wrapper object then update with raw data and last modified statusdump time
+    const wrapper = new StatusDump(gameName, statusDumpPath);
+    await wrapper.update();
+
+    return wrapper;
 };
 
 exports.cloneStatusDump = (gameName, targetPath, sourcePath = null) =>
@@ -44,25 +56,79 @@ exports.cloneStatusDump = (gameName, targetPath, sourcePath = null) =>
     .catch((err) => Promise.reject(new Error(`Could not clone statusdump:\n\n${err.message}`)));
 };
 
-function StatusDump(gameName, originalPath, rawData)
+exports.StatusDump = StatusDump;
+
+function StatusDump(gameName, originalPath)
 {
+    assert.isStringOrThrow(gameName);
+    assert.isStringOrThrow(originalPath);
+
     const _gameName = gameName;
     const _originalPath = originalPath;
-    const _parsedData = _parseDumpData(rawData);
     
-    this.turnNbr = _parsedData.turnNbr;
-    this.eraNbr = _parsedData.eraNbr;
-    this.nbrOfMods = _parsedData.nbrOfMods;
-    this.turnLimitNbr = _parsedData.turnLimitNbr;
-
+    this.lastUpdateTimestamp = 0;
+    this.turnNbr = -1;
+    this.eraNbr = -1;
+    this.nbrOfMods = -1;
+    this.turnLimitNbr = -1;
     this.nationStatusArray = [];
 
-    _parsedData.nationsRawData.forEach((nationRawData) =>
+    this.getlastUpdateTimestamp = () => this.lastUpdateTimestamp;
+
+    this.update = async () =>
     {
-        //avoid bad types and empty strings from splitting
-        if (typeof nationRawData === "string" && /\S+/.test(nationRawData) === true)
-            this.nationStatusArray.push(new NationStatusWrapper(nationRawData));
-    });
+        if (fs.existsSync(_originalPath) === false)
+            return;
+
+        // Gather the statusdump file last modified time
+        const stat = await fsp.stat(_originalPath);
+        const statusdumpMTime = stat.mtime;
+
+        // If it hasn't changed, no need to update it
+        if (this.lastUpdateTimestamp === statusdumpMTime)
+            return;
+
+        // Otherwise get the most recent statusdump metadata and update this wrapper
+        const rawData = await fsp.readFile(_originalPath, "utf8");
+        const _parsedData = _parseDumpData(rawData);
+
+        this.lastUpdateTimestamp = statusdumpMTime;
+
+        if (assert.isInteger(_parsedData.turnNbr) === true)
+        {
+            this.turnNbr = _parsedData.turnNbr;
+
+            if (this.turnNbr > 0)
+                this.hasStarted = true;
+
+            // Games in lobby will show turn -1
+            else if (this.turnNbr === -1)
+                this.hasStarted = false;
+        }
+
+        if (assert.isInteger(_parsedData.eraNbr) === true)
+            this.eraNbr = _parsedData.eraNbr;
+
+        if (assert.isInteger(_parsedData.nbrOfMods) === true)
+            this.nbrOfMods = _parsedData.nbrOfMods;
+
+        if (assert.isInteger(_parsedData.turnLimitNbr) === true)
+            this.turnLimitNbr = _parsedData.turnLimitNbr;
+
+        if (assert.isArray(_parsedData.nationsRawData) === true)
+        {
+            this.nationStatusArray = [];
+
+            _parsedData.nationsRawData.forEach((nationData) => 
+            {
+                //avoid bad types and empty strings from splitting
+                if (assert.isString(nationData) === true && /\S+/.test(nationData) === true)
+                    this.nationStatusArray.push(new NationStatusWrapper(nationData));
+            });
+        }
+
+        return this;
+    };
 
     this.getSubmittedPretenders = () =>
     {
@@ -83,7 +149,18 @@ function StatusDump(gameName, originalPath, rawData)
         return this.nationStatusArray.filter((nationStatus) => nationStatus.isHuman || nationStatus.isAi).length > 0;
     };
 
-    this.getNationsWithUndoneTurns = () => this.nationStatusArray.filter((nationStatus) => nationStatus.isTurnFinished === false && nationStatus.isHuman === true);
+    this.getNationsWithUndoneTurns = () => 
+    {
+        if (assert.isArray(this.nationStatusArray) === false || this.nationStatusArray.length <= 0)
+            return null;
+
+        const undoneTurns = this.nationStatusArray.filter((nationStatus) => 
+        {
+            return nationStatus.isTurnFinished === false && nationStatus.isHuman === true;
+        });
+
+        return undoneTurns;
+    };
 
     this.fetchStales = () =>
     {
@@ -111,11 +188,16 @@ function StatusDump(gameName, originalPath, rawData)
 
 function _parseDumpData(rawData)
 {
-    //Remove first line: "Status for '3man_Warhammer'"
-    const lines = rawData.split("\n").slice(1);
-    const turnInfoLine = lines[0];
-    
     const data = {};
+    var lines;
+    var turnInfoLine;
+
+    if (assert.isString(rawData) === false)
+        return data;
+
+    //Remove first line: "Status for '3man_Warhammer'"
+    lines = rawData.split("\n").slice(1);
+    turnInfoLine = lines[0];
 
     data.nationsRawData = lines.slice(1);
     data.turnNbr = +turnInfoLine.replace(/^turn (-?\d+).*$/ig, "$1");
