@@ -193,7 +193,11 @@ module.exports.restart = function(data)
 module.exports.getSubmittedPretenders = function(data)
 {
 	const status = gameStore.getGameStatus(data.port);
-    return status.getSubmittedPretenders() ?? null;
+
+    if (status == null)
+        return null;
+
+    return status.getSubmittedPretenders();
 };
 
 module.exports.removePretender = function(data)
