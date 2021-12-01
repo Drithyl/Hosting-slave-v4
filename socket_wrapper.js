@@ -107,7 +107,6 @@ function _createConnection()
         _socket.on("disconnect", _disconnectHandler);
         _socket.on("reconnect", () => _reconnectHandler);
         _socket.on("reconnect_attempt", (attemptNumber) => log.general(log.getVerboseLevel(), `Attempting to reconnect...`));
-        _socket.on("reconnect_error", (attemptNumber) => log.general(log.getVerboseLevel(), `Reconnect attempt failed.`));
 
         //fired when it can't reconnect within reconnectionAttempts
         _socket.on("reconnect_failed", () => log.general(log.getLeanLevel(), `Could not reconnect to the master server after all the set reconnectionAttempts.`));

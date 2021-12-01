@@ -133,7 +133,7 @@ module.exports.forceHost = function(data)
 //Set 60 seconds to start the game
 module.exports.getStatusDump = async function(data)
 {
-    const status = gameStore.getGameStatus(data.port);
+    const status = await gameStore.fetchGameStatus(data.port);
 
     if (status == null)
         return Promise.reject(`No game status available for ${data.name}`);
@@ -148,7 +148,7 @@ module.exports.start = async function(data)
     // while reinforcing the default timer once again (important in case this is a 
     // start after a restart, we don't want to keep old values)
     const startData = Object.assign(data, { timer: data.timer, currentTimer: 6000 });
-    const statusdump = gameStore.getGameStatus(data.port);
+    const statusdump = await gameStore.fetchGameStatus(data.port);
     const submittedPretenders = statusdump.getSubmittedPretenders();
 
     if (statusdump.hasSelectedNations() === false)
@@ -190,9 +190,9 @@ module.exports.restart = function(data)
 	.catch((err) => Promise.reject(err));
 };
 
-module.exports.getSubmittedPretenders = function(data)
+module.exports.getSubmittedPretenders = async function(data)
 {
-	const status = gameStore.getGameStatus(data.port);
+	const status = await gameStore.fetchGameStatus(data.port);
 
     if (status == null)
         return null;
@@ -224,9 +224,9 @@ module.exports.getStales = function(data)
     .then((statusDumpWrapper) => statusDumpWrapper.fetchStales());
 };
 
-module.exports.getUndoneTurns = function(data)
+module.exports.getUndoneTurns = async function(data)
 {
-    const status = gameStore.getGameStatus(data.port);
+    const status = await gameStore.fetchGameStatus(data.port);
 
     if (status == null)
         return Promise.reject(`No undone turn data available for ${data.name}`);
