@@ -7,7 +7,7 @@ function NationStatusWrapper(nationRawData)
 
     this.filename = _parsedData.filename;
     this.fullName = _parsedData.fullName;
-    this.shortName = _parsedData.shortName;
+    this.name = _parsedData.name;
     
     //the nation number
     this.nationNbr = _parsedData.nationNbr;
@@ -39,7 +39,7 @@ function _parseNationRawData(nationRawData)
 
     data.filename = nationFilename;
     data.fullName = nationFullName;
-    data.shortName = nationShortName;
+    data.name = nationShortName;
 
     data.nationNbr = +nationNumbers[0];
     data.pretenderNbr = +nationNumbers[1];
