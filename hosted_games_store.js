@@ -21,8 +21,6 @@ var gameHostRequests = [];
 
 module.exports.populate = function(gameDataArray)
 {
-    log.general(log.getVerboseLevel(), `Game data received:`, gameDataArray);
-    
 	//first connection to master server
 	if (Object.keys(hostedGames).length <= 0)
 	{
@@ -33,7 +31,7 @@ module.exports.populate = function(gameDataArray)
             log.general(log.getNormalLevel(), `Added game ${gameData.name} at port ${gameData.port}.`);
         });
 
-        log.general(log.getVerboseLevel(), "List of games after first initialization", hostedGames);
+        log.general(log.getNormalLevel(), "Game store populated.");
         return Promise.resolve();
     }
     
@@ -81,7 +79,7 @@ module.exports.populate = function(gameDataArray)
 		}
     }
 
-    log.general(log.getNormalLevel(), "List of games initialized.");
+    log.general(log.getNormalLevel(), "Game store populated.");
     return Promise.resolve();
 };
 
