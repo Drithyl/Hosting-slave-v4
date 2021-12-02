@@ -14,16 +14,12 @@ const _masterServerAddress = `http://${configStore.masterIP}:${configStore.maste
 
 //By default, io will try to reconnect forever with a small delay between each attempt
 var _socket;
+var _timeoutProcess;
 
 exports.connect = () =>
 {
     log.general(log.getNormalLevel(), "Attempting to connect to the master server...");
-    return _createConnection()
-    .then(() =>
-    {
-        log.general(log.getNormalLevel(), `Connected to master server successfully.`);
-        return Promise.resolve();
-    });
+    return _createConnection();
 };
 
 //No function below will be available until the socket connects successfully
@@ -101,18 +97,38 @@ function _createConnection()
     {
         _socket = _socketIoObject(_masterServerAddress);
 
-        _socket.on("connect", () => resolve());
+        _socket.on("connect", () => 
+        {
+            _connectedHandler();
+
+            // This will only fire the first time that _createConnection() is called;
+            // All connection or reconnection logic should be called within this scope,
+            // not in the returned resolved promise
+            resolve();
+        });
+
         _socket.on("connect_error", () => log.general(log.getLeanLevel(), `Could not connect to master`));
-
         _socket.on("disconnect", _disconnectHandler);
-        _socket.on("reconnect", () => _reconnectHandler);
-        _socket.on("reconnect_attempt", (attemptNumber) => log.general(log.getVerboseLevel(), `Attempting to reconnect...`));
 
-        //fired when it can't reconnect within reconnectionAttempts
-        _socket.on("reconnect_failed", () => log.general(log.getLeanLevel(), `Could not reconnect to the master server after all the set reconnectionAttempts.`));
+        // The events below are fired by the manager object and not the socket object:
+        // https://socket.io/docs/v4/client-socket-instance/#events
+        _socket.io.on("reconnect", _reconnectHandler);
+        _socket.io.on("reconnect_attempt", _reconnectAttemptHandler);
+        _socket.io.on("reconnect_failed", _reconnectFailed);
 
         masterCommands.listen(module.exports);
     });
+}
+
+function _connectedHandler()
+{
+    log.general(log.getNormalLevel(), `Connected to master server successfully.`);
+
+    if (_timeoutProcess != null)
+    {
+        log.general(log.getLeanLevel(), `Stopped disconnection timeout`);
+        clearTimeout(_timeoutProcess);
+    }
 }
 
 
@@ -123,21 +139,43 @@ function _disconnectHandler(reason)
 {
     log.general(log.getLeanLevel(), `Socket disconnected. Reason: ${reason}.`);
 
-    //release all reserved ports in assisted hosting instances,
-    //because if it's the master server that crashed, when it comes back up
-    //the ports will be reserved for no instance
-    reservedPortsStore.releaseAllPorts();
-    gameStore.killAllGames();
-
-    if (reason === "io server disconnect")
+    // If the disconnection reason is an explicit one (manually closed the socket,
+    // or called socket.disconnect(), then reconnection must be handled manually).
+    // Otherwise it will try to reconnect on its own after a small random delay:
+    // https://socket.io/docs/v4/client-socket-instance/
+    if (reason === "io server disconnect" || reason === "io client disconnect")
     {
         //reconnect if the server dropped the connection
-        _socket.open();
+        _socket.connect();
     }
 
-    //if the reason is "io client disconnect", the socket will try to
-    //reconnect automatically, since the reconnection flag in the socket
-    //original connection is true
+    // Start a timeout of 5 minutes. If after the 5 minutes the socket
+    // is still not reconnected, shut down all games and free all ports.
+    else
+    {
+        // If the socket reconnected and disconnected again, 
+        // clear the timout and start it up once more
+        if (_timeoutProcess != null)
+            clearTimeout(_timeoutProcess);
+
+        log.general(log.getLeanLevel(), `Starting timeout to shut down games if no reconnection happens.`);
+        _timeoutProcess = setTimeout(() => 
+        {
+            _timeoutProcess = null;
+
+            if (_socket.connected === false)
+            {
+                log.general(log.getLeanLevel(), `Socket is still disconnected after timeout; shutting down all games...`);
+
+                // release all reserved ports in assisted hosting instances,
+                // because if it's the master server that crashed, when it comes back up
+                // the ports will be reserved for no instance
+                reservedPortsStore.releaseAllPorts();
+                gameStore.killAllGames();
+            }
+
+        }, 300000);
+    }
 }
 
 /****************************
@@ -145,7 +183,19 @@ function _disconnectHandler(reason)
 ****************************/
 function _reconnectHandler(attemptNumber)
 {
-    //no need to relaunch games here as the authentication process will kick in again
-    //from the very beginning, on connection, when the master server sends the "init" event
+    // No need to relaunch games here as the authentication process will kick in again
+    // from the very beginning, on connection, when the master server sends the "init" event
     log.general(log.getLeanLevel(), `Reconnected successfully on attempt ${attemptNumber}.`);
+}
+
+function _reconnectAttemptHandler(attemptNumber)
+{
+    log.general(log.getVerboseLevel(), `Attempting to reconnect...`)
+}
+
+// Fired when socket can't reconnect within reconnectionAttempts
+function _reconnectFailed()
+{
+    log.general(log.getLeanLevel(), `Could not reconnect to the master server after all the set reconnectionAttempts.`);
+    _socket.connect();
 }
