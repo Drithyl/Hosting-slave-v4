@@ -81,7 +81,12 @@ Promise.resolve()
     log.backup(log.getNormalLevel(), `Finished backing up turn files, cleaning old ones...`);
     return _cleanUnusedBackups(fetchedStatusDump);
 })
-.catch((err) => log.error(log.getLeanLevel(), `BACKUP ERROR`, err));
+.then(() => process.exit())
+.catch((err) => 
+{
+    log.error(log.getLeanLevel(), `BACKUP ERROR`, err);
+    process.exit();
+});
 
 
 function _cloneStatusdump(gameName)
