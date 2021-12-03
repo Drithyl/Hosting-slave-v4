@@ -65,7 +65,7 @@ function StatusDump(gameName, originalPath)
 
         // Gather the statusdump file last modified time
         const stat = await fsp.stat(_originalPath);
-        const statusdumpMTime = stat.mtime;
+        const statusdumpMTime = stat.mtime.getTime();
 
         // If it hasn't changed, no need to update it
         if (this.lastUpdateTimestamp >= statusdumpMTime)
