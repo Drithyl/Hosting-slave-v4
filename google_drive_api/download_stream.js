@@ -2,6 +2,7 @@
 
 const fs = require("fs");
 const log = require("../logger.js");
+const assert = require("../asserter.js");
 const { google } = require('googleapis');
 
 module.exports = DownloadStream;
@@ -48,10 +49,12 @@ function DownloadStream(oAuth2Object, downloadPath)
             readStream = response.data;
 
             //add ReadStream handlers
-            readStream.on('error', (err) => onReadErrorHandler(err));
-            readStream.on('end', () => onReadEndHandler());
-            readStream.on("close", () => onReadCloseHandler());
-            readStream.on("data", (chunk) => onReadDataHandler(Buffer.byteLength(chunk)));
+                readStream.on('error', (err) => onReadErrorHandler(err));
+                readStream.on('end', () => onReadEndHandler());
+                readStream.on("close", () => onReadCloseHandler());
+
+            if (assert.isFunction(onReadDataHandler) === true)
+                readStream.on("data", (chunk) => onReadDataHandler(Buffer.byteLength(chunk)));
             
             //make sure the dest Writable is safe to write (i.e. no error occurred)
             if (writeStream.writable === false)
