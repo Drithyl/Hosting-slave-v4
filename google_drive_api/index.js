@@ -177,7 +177,6 @@ module.exports.downloadFile = function(fileId, downloadPath)
 		downloadStream.onReadError((err) => reject(err));
 		downloadStream.onReadEnd(() => log.general(log.getNormalLevel(), `Finished reading file.`));
 		downloadStream.onReadClose(() => log.general(log.getNormalLevel(), `Read stream closed.`));
-		downloadStream.onReadData((chunk) => log.general(log.getVerboseLevel(), `Read chunk`, chunk));
 
 		downloadStream.onWriteError((err) => reject(err));
 		downloadStream.onWriteClose(() => log.general(log.getNormalLevel(), `Write stream closed.`));
