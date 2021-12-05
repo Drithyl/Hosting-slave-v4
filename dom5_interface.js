@@ -20,25 +20,24 @@ module.exports.getModList = function()
 	.catch((err) => Promise.reject(err));
 };
 
-module.exports.getMapList = function()
+module.exports.getMapList = async function()
 {
 	const mapsWithProvinceCount = [];
+    const filenames = await fsp.readdir(configStore.dom5MapsPath);
+    const mapFilenames = filenames.filter((filename) => path.extname(filename) === ".map");
 
-	return rw.readDirContents(configStore.dom5MapsPath, ".map")
-	.then((filesContentsByName) =>
-	{
-		filesContentsByName.forEachItem((content, filename) =>
-		{
-			const provs = provCountFn(content);
+    await mapFilenames.forAllPromises(async (filename) =>
+    {
+        const filePath = path.resolve(configStore.dom5MapsPath, filename);
+        const content = await fsp.readFile(filePath, "utf-8");
+        const provs = provCountFn(content);
 
-			if (provs != null)
-			    mapsWithProvinceCount.push({name: filename, ...provs});
-		});
+        if (provs != null)
+            mapsWithProvinceCount.push({name: filename, ...provs});
+    });
 
-		return Promise.resolve(mapsWithProvinceCount);
-	})
-	.catch((err) => Promise.reject(err));
-};
+    return mapsWithProvinceCount;
+}
 
 module.exports.getTurnFiles = function(data)
 {
