@@ -2,6 +2,7 @@
 const configStore = require("./config_store.js").loadConfig();
 
 const fs = require("fs");
+const path = require("path");
 const fsp = require("fs").promises;
 const log = require("./logger.js");
 const rw = require("./reader_writer.js");
@@ -15,10 +16,10 @@ const extensionsToBackupRegex = new RegExp("(\.2h)|(\.trn)|(ftherlnd)$", "i");
 
 const gameName = process.argv[2];
 const type = process.argv[3];
-const savedgamesPath = `${configStore.dom5DataPath}/savedgames/${gameName}`;
-const clonedStatusdumpDir = `${configStore.dom5DataPath}/${configStore.tmpFilesDirName}/${gameName}`;
+const savedgamesPath = path.resolve(configStore.dom5DataPath, "savedgames", gameName);
+const clonedStatusdumpDir = path.resolve(configStore.dom5DataPath, configStore.tmpFilesDirName, gameName);
 
-var targetBackupDir = `${configStore.dataFolderPath}/backups/${gameName}`;
+var targetBackupDir = path.resolve(configStore.dataFolderPath, "backups", gameName);
 var fetchedStatusDump;
 
 
@@ -29,10 +30,10 @@ if (gameName == null)
     return log.error(log.getLeanLevel(), `BACKUP ERROR; NO GAME NAME ARGUMENT RECEIVED`);
 
 if (preexecRegex.test(type) === true)
-    targetBackupDir += `/${configStore.preHostTurnBackupDirName}`;
+    targetBackupDir = path.resolve(targetBackupDir, configStore.preHostTurnBackupDirName);
 
 else if (postexecRegex.test(type) === true)
-    targetBackupDir += `/${configStore.newTurnsBackupDirName}`;
+    targetBackupDir = path.resolve(targetBackupDir, configStore.newTurnsBackupDirName);
 
 else return log.error(log.getLeanLevel(), `INVALID BACKUP TYPE RECEIVED; EXPECTED preexec OR postexec, GOT '${type}'`);
 
@@ -51,7 +52,7 @@ Promise.resolve()
 .then(() => 
 {
     log.backup(log.getNormalLevel(),`Fetching statusdump...`);
-    return statusDump.fetchStatusDump(gameName, clonedStatusdumpDir)
+    return statusDump.fetchStatusDump(gameName, clonedStatusdumpDir);
 })
 .then((statusDumpWrapper) =>
 {
@@ -59,12 +60,14 @@ Promise.resolve()
 
     if (postexecRegex.test(type) === true)
     {
+        // Manually increment turn number for the post-turn backup,
+        // as the turn number we have is the one from the previous turn
         statusDumpWrapper.turnNbr++;
         log.backup(log.getNormalLevel(), `This is post-exec, incremented turn nbr`);
     }
 
     log.backup(log.getNormalLevel(), `Statusdump fetched, turn is ${fetchedStatusDump.turnNbr}`);
-    return _createDirectories(`${targetBackupDir}/Turn ${fetchedStatusDump.turnNbr}`);
+    return _createDirectories(path.resolve(targetBackupDir, `Turn ${fetchedStatusDump.turnNbr}`));
 })
 .then(() => 
 {

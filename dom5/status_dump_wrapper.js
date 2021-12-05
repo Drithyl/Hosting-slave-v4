@@ -26,8 +26,8 @@ exports.fetchStatusDump = async (gameName, filePath = null) =>
 
 exports.cloneStatusDump = (gameName, targetPath, sourcePath = null) =>
 {
-    const gameDataPath = `${configStore.dom5DataPath}/savedgames/${gameName}`;
-    const statusDumpPath = (assert.isString(sourcePath) === false) ? `${gameDataPath}/${STATUSDUMP_FILENAME}` : sourcePath;
+    const gameDataPath = path.resolve(configStore.dom5DataPath, "savedgames", gameName);
+    const statusDumpPath = (assert.isString(sourcePath) === false) ? path.resolve(gameDataPath, STATUSDUMP_FILENAME) : sourcePath;
 
     if (fs.existsSync(targetPath) === false)
         return Promise.reject(new Error(`Target path ${targetPath} does not exist.`));
@@ -163,7 +163,7 @@ function StatusDump(gameName, originalPath)
 
         // Clear this statusdump's file, since it won't be needed again
         fsp.unlink(_originalPath)
-        .then(() => fsp.rmdir(_originalPath.replace(`/${STATUSDUMP_FILENAME}`, "")));
+        .then(() => fsp.rmdir(path.dirname(_originalPath)));
 
         return Promise.resolve(staleObj);
     };
