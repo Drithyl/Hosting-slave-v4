@@ -77,13 +77,14 @@ Promise.resolve()
 .then((filenames) => 
 {
     log.backup(log.getNormalLevel(), `Read filenames, backing up files...`);
-    _backupFiles(filenames, savedgamesPath, `${targetBackupDir}/Turn ${fetchedStatusDump.turnNbr}`)
+    return _backupFiles(filenames, savedgamesPath, `${targetBackupDir}/Turn ${fetchedStatusDump.turnNbr}`)
 })
 .then(() =>
 {
     log.backup(log.getNormalLevel(), `Finished backing up turn files, cleaning old ones...`);
     return _cleanUnusedBackups(fetchedStatusDump);
 })
+.then(() => log.backup(log.getNormalLevel(), `Finished backup process! Exiting...`))
 .then(() => process.exit())
 .catch((err) => 
 {
@@ -110,26 +111,22 @@ function _cloneStatusdump(gameName)
 
 function _createDirectories(targetBackupDir)
 {
-    //Linux base paths begin with / so ignore the first empty element
-    if (targetBackupDir.indexOf("/") === 0)
-        targetBackupDir = targetBackupDir.slice(1);
+    var directories = [];
+    var currentPath = path.dirname(targetBackupDir);
 
-    var directories = targetBackupDir.split("/");
-    var currentPath = directories.shift();
+    while (currentPath !== path.dirname(currentPath))
+    {
+        directories.unshift(currentPath);
+        currentPath = path.dirname(currentPath);
+    }
 
-    if (process.platform === "linux")
-        currentPath = `/${currentPath}`;
-
-    if (fs.existsSync(currentPath) === false)
-        return Promise.reject(new Error(`The base path ${currentPath} specified for the backup target does not exist.`));
+    console.log(`Directories to check and create:`, directories);
 
     return directories.forEachPromise((dir, index, nextPromise) =>
     {
-        currentPath += `/${dir}`;
-
-        if (fs.existsSync(currentPath) === false)
+        if (fs.existsSync(dir) === false)
         {
-            return fsp.mkdir(currentPath)
+            return fsp.mkdir(dir)
             .then(() => nextPromise());
         }
             
