@@ -145,9 +145,22 @@ function StatusDump(gameName, originalPath)
         return undoneTurns;
     };
 
+    this.getNationsWithUncheckedTurns = () => 
+    {
+        if (assert.isArray(this.nationStatusArray) === false || this.nationStatusArray.length <= 0)
+            return null;
+
+        const undoneTurns = this.nationStatusArray.filter((nationStatus) => 
+        {
+            return nationStatus.wasTurnChecked === false && nationStatus.isHuman === true;
+        });
+
+        return undoneTurns;
+    };
+
     this.fetchStales = () =>
     {
-        const undoneTurns = this.getNationsWithUndoneTurns();
+        const undoneTurns = this.getNationsWithUncheckedTurns();
         const staleObj = { 
             stales: [], 
             wentAi: [] 
