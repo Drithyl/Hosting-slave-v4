@@ -120,8 +120,6 @@ function _createDirectories(targetBackupDir)
         currentPath = path.dirname(currentPath);
     }
 
-    console.log(`Directories to check and create:`, directories);
-
     return directories.forEachPromise((dir, index, nextPromise) =>
     {
         if (fs.existsSync(dir) === false)
