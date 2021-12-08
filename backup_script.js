@@ -140,7 +140,7 @@ function _backupFiles(filenames, sourcePath, targetPath)
         log.backup(log.getNormalLevel(), `Checking ${filename}...`);
         
         if (extensionsToBackupRegex.test(filename) === false)
-            log.backup(log.getNormalLevel(), `Not a turn file; skipping.`);
+            return log.backup(log.getNormalLevel(), `Not a turn file; skipping.`);
 
         log.backup(log.getNormalLevel(), `Turn file found, backing up...`);
 
