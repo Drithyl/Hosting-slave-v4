@@ -189,6 +189,24 @@ module.exports.restart = function(data)
 	.catch((err) => Promise.reject(err));
 };
 
+module.exports.getSubmittedPretender = async function(data)
+{
+	const status = await gameStore.fetchGameStatus(data.port);
+    var nations;
+    var foundNation;
+
+    if (status == null)
+        return null;
+
+    nations = status.getSubmittedPretenders();
+    foundNation = nations.find((nation) =>
+    {
+        return data.identifier === nation.filename || +data.identifier === +nation.nationNbr;
+    });
+
+    return foundNation;
+};
+
 module.exports.getSubmittedPretenders = async function(data)
 {
 	const status = await gameStore.fetchGameStatus(data.port);
