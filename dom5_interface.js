@@ -183,7 +183,7 @@ module.exports.restart = function(data)
 	//kill game first so it doesn't automatically regenerate the statuspage file
 	//as soon as it gets deleted
 	return gameStore.killGame(data.port)
-	.then(() => rw.atomicRmDir(gameDirPath))
+	.then(() => rw.deleteDir(gameDirPath))
 	.then(() => gameStore.requestHosting(data))
 	.then(() => Promise.resolve())
 	.catch((err) => Promise.reject(err));
