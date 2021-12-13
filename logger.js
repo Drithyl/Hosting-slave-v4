@@ -12,12 +12,14 @@ const BACKUP_LOG_PATH = `${logsBasePath}/backup.txt`
 const GENERAL_LOG_PATH = `${logsBasePath}/general.txt`;
 const ERROR_LOG_PATH = `${logsBasePath}/error.txt`;
 const UPLOAD_LOG_PATH = `${logsBasePath}/upload.txt`;
+const TEST_LOG_PATH = `${logsBasePath}/test.txt`;
 
 const QUEUES = {
     [BACKUP_LOG_PATH]: [],
     [GENERAL_LOG_PATH]: [],
     [ERROR_LOG_PATH]: [],
-    [UPLOAD_LOG_PATH]: []
+    [UPLOAD_LOG_PATH]: [],
+    [TEST_LOG_PATH]: []
 };
 
 const LEAN_LEVEL = 0;
@@ -89,6 +91,14 @@ module.exports.upload = (logLevel, header, ...data) =>
         return;
 
     return _queueAndLog(UPLOAD_LOG_PATH, header, ...data);
+};
+
+module.exports.test = (logLevel, header, ...data) =>
+{
+    if (logLevel > currentLogLevel)
+        return;
+
+    return _queueAndLog(TEST_LOG_PATH, header, ...data);
 };
 
 module.exports.dumpToFile = () =>
