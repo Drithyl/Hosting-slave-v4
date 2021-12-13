@@ -5,7 +5,7 @@ const fsp = require("fs").promises;
 const log = require("./logger.js");
 const configStore = require("./config_store.js");
 const rw = require("./reader_writer.js");
-const spawn = require("./process_spawn.js").spawn;
+const launchProcess = require("./process_spawn.js").spawn;
 const gameStore = require("./hosted_games_store.js");
 const readFileBuffer = require("./read_file_buffer.js");
 const provCountFn = require("./dom5/parse_province_count.js");
@@ -291,7 +291,7 @@ module.exports.rollback = function(data)
 
 	return rw.copyDir(source, target, false, ["", ".2h", ".trn"])
 	.then(() => gameStore.killGame(game.port))
-	.then(() => spawn(game))
+	.then(() => launchProcess(game, true))
 	.then(() => Promise.resolve())
 	.catch((err) => Promise.reject(err));
 };
