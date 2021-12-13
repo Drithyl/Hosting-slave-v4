@@ -6,9 +6,49 @@ and hexacyanide's answer on Stack Overflow:
 https://stackoverflow.com/questions/19129570/how-can-i-check-if-port-is-busy-in-nodejs/35251815
 */
 
-const net = require('net');
+const net = require("net");
+const log = require("./logger.js");
+const { exec } = require("child_process");
 
 module.exports = function(port)
+{
+	if (process.platform === "linux")
+		return _sockuseScript(port);
+	
+	else return _netServerCheck(port);
+};
+
+function _sockuseScript(port)
+{
+	return new Promise((resolve, reject) =>
+	{
+		exec(`sh sockuse.sh ${port}`, (err, stdout, stderr) =>
+		{
+			log.test(log.getLeanLevel(), `sockuse.sh stdout output:\n\n\t<${stdout}>`);
+			
+			if (err != null)
+				reject(err);
+	
+			else if (+stdout == 0)
+			{
+				// Socket not used, port is open, return true
+				log.test(log.getLeanLevel(), `sockuse.sh port ${port} open!`);
+				resolve(true);
+			}
+	
+			else if (+stdout == 1)
+			{
+				// Socket used, port is in use, return false
+				log.test(log.getLeanLevel(), `sockuse.sh port ${port} currently busy!`);
+				resolve(false);
+			}
+	
+			else reject(new Error("Unexpected sockuse output"));
+		});
+	});
+}
+
+function _netServerCheck(port)
 {
 	var wasPromiseResolved = false;
 	var timeoutMs = 30000;
@@ -70,4 +110,4 @@ module.exports = function(port)
 
 		}, timeoutMs);
 	});
-};
+}
