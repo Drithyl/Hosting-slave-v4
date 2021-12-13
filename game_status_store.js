@@ -20,12 +20,12 @@ module.exports.populate = async () =>
 
     gameNames.forEachPromise(async (gameName, i, nextPromise) =>
     {
-        log.general(log.getNormalLevel(), `Fetching ${gameName}'s status...`);
+        log.general(log.getVerboseLevel(), `Fetching ${gameName}'s status...`);
 
         try
         {
             await _fetchStatus(gameName);
-            log.general(log.getNormalLevel(), `${gameName}'s status fetched!`);
+            log.general(log.getVerboseLevel(), `${gameName}'s status fetched!`);
             return nextPromise();
         }
 
