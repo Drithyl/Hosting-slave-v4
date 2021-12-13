@@ -22,7 +22,7 @@ module.exports.listen = function(socketWrapper)
     socketWrapper.on("DELETE_UNUSED_MAPS", (mapsInUse) => unusedFilesCleaner.deleteUnusedMaps(mapsInUse));
     socketWrapper.on("DELETE_UNUSED_MODS", (modsInUse) => unusedFilesCleaner.deleteUnusedMods(modsInUse));
 
-    socketWrapper.on("ONLINE_CHECK", (port) => Promise.resolve(hostedGamesStore.isGameOnline(port)));
+    socketWrapper.on("ONLINE_CHECK", (port) => Promise.resolve(hostedGamesStore.checkIsGameOnline(port)));
 
     socketWrapper.on("IS_GAME_NAME_FREE", (data) => hostedGamesStore.isGameNameUsed(data.name));
     socketWrapper.on("CREATE_GAME", (data) => hostedGamesStore.create(data.name, data.port, data.gameType, data.args));
