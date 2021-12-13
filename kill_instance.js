@@ -2,20 +2,20 @@
 const log = require("./logger.js");
 const checkIfPortIsAvailable = require("./is_port_open.js");
 
-const MS_BETWEEN_ATTEMPTS = 3000;
-const DELAY_AFTER_KILLED_SUCCESS = 5000;
+const DELAY_BETWEEN_CHECKS = 12000;
+const NUMBER_OF_CHECKS = 10;
 
 
 module.exports = function(game)
 {
 	if (game == null || _isGameRunning(game) === false)
 	{
-		log.general(log.getNormalLevel(), `Game is null or not running; no need to kill. Game instance:`, game);
+		log.general(log.getNormalLevel(), `Game is null or not running; no need to kill`);
 		return Promise.resolve();
 	}
 
 	// Start the kill attempt chain
-	return _killAttempt(game, 0, 6);
+	return _killAttempt(game, 0, NUMBER_OF_CHECKS);
 }
 
 function _isGameRunning(game)
@@ -31,9 +31,11 @@ function _isGameRunning(game)
 // until the game is killed or the maxAttempts have been reached.
 function _killAttempt(game, attempts, maxAttempts)
 {
-	log.general(log.getNormalLevel(), `Attempt ${attempts}. Max attempts ${maxAttempts}.`);
+	log.general(log.getVerboseLevel(), `Attempt ${attempts}. Max attempts ${maxAttempts}.`);
 
-	if (_isGameRunning(game) === true)
+	// When Node's child process instance has its .killed property set to true,
+	// it means it has received the kill signal properly, thus no point in sending more
+	if (game.instance != null && game.instance.killed === false)
 		_kill(game, attempts, maxAttempts);
 	
 	return new Promise((resolve, reject) =>
@@ -44,12 +46,12 @@ function _killAttempt(game, attempts, maxAttempts)
 			.then(() => resolve())
 			.catch((err) => reject(err));
 	
-		}, MS_BETWEEN_ATTEMPTS);
+		}, DELAY_BETWEEN_CHECKS);
 	});
 }
 
 // Sends the necessary kill signals to the game
-function _kill(game, attempts, maxAttempts)
+function _kill(game)
 {
 	// Destroy all data streams before killing the instance
 	if (game.instance.stderr != null)
@@ -61,38 +63,7 @@ function _kill(game, attempts, maxAttempts)
 	if (game.instance.stdout != null)
 		game.instance.stdout.destroy();
 
-
-	// Use SIGKILL as final attempt (SIGKILL closes a process without
-	// elegantly letting it end), or a bash script on Linux
-	if (attempts === maxAttempts - 1)
-	{
-		/*if (process.platform === "linux")
-			_killOnLinux(game);
-
-		else game.instance.kill(game.instance.pid);*/
-		log.general(log.getNormalLevel(), `SIGKILL was sent?: ${game.instance.kill("SIGKILL")}`);
-	}
-
-	else log.general(log.getNormalLevel(), `SIGTERM was sent?: ${game.instance.kill("SIGTERM")}`);
-}
-
-// Does the necessary killing on Linux
-function _killOnLinux(game)
-{
-	log.general(log.getVerboseLevel(), 'Running on Linux, attempting the domk bash /home/steam/bin/domk.sh ...');
-
-	const { spawn } = require('child_process');
-
-	// Killing script in the host servers
-	const domk = spawn('/home/steam/bin/domk.sh', [game.port]/*, {shell: true}*/);
-
-	domk.on("error", (err) => log.error(log.getLeanLevel(), "ERROR RUNNING domk", err));
-
-	domk.stdout.on('data', (data) => log.general(log.getVerboseLevel(), "domk stdout data: ", data));
-	domk.stderr.on('data', (data) => log.general(log.getVerboseLevel(), "domk stderr data: ", data));
-
-	domk.on("close", (code, signal) => log.general(log.getVerboseLevel(), `domk script closed with code ${code} and signal ${signal}.`));
-	domk.on("exit", (code, signal) => log.general(log.getVerboseLevel(), `domk script exited with code ${code} and signal ${signal}.`));
+	return game.instance.kill("SIGTERM");
 }
 
 // Check if port is still in use after a while. If not, resolve, if yes,
@@ -104,17 +75,19 @@ function _timeoutCheckIfKilled(game, attempts, maxAttempts)
 	return checkIfPortIsAvailable(game.port)
 	.then((isPortAvailable) =>
 	{
-		log.general(log.getVerboseLevel(), `isPortAvailable returns ${isPortAvailable}`);
-
-		// All good
-		if (isPortAvailable === true && _isGameTerminated(game) === true)
+		if (_isGameTerminated(game) === true)
 		{
-			log.general(log.getNormalLevel(), "Port available, instance is terminated. Success.");
-			
-			return Promise.resolve((resolve) => setTimeout(resolve, DELAY_AFTER_KILLED_SUCCESS));
+			if (isPortAvailable === true)
+			{
+				log.general(log.getNormalLevel(), "Instance terminated, port available. Success.");
+				return Promise.resolve();
+			}
+
+			else log.general(log.getVerboseLevel(), `Instance terminated, port busy`);
 		}
 
-		log.general(log.getNormalLevel(), "Instance is not killed either.");
+		else log.general(log.getNormalLevel(), "Instance is not killed.");
+		
 
 		if (attempts < maxAttempts)
 			return _killAttempt(game, ++attempts, maxAttempts);
