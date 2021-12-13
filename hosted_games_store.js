@@ -4,9 +4,10 @@ const fsp = require("fs").promises;
 const log = require("./logger.js");
 const configStore = require("./config_store.js");
 const kill = require("./kill_instance.js");
-const spawn = require("./process_spawn.js").spawn;
+const launchProcess = require("./process_spawn.js").spawn;
 const dom5Interface = require("./dom5_interface.js");
 const statusStore = require("./game_status_store.js");
+const checkIfPortIsAvailable = require("./is_port_open.js");
 const reservedPortsStore = require("./reserved_ports_store.js");
 
 /************************************************************
@@ -169,11 +170,12 @@ module.exports.killAllGames = function()
 	});
 };
 
-module.exports.requestHosting = function(gameData)
+module.exports.requestHosting = async function(gameData)
 {
     const delay = configStore.gameHostMsDelay * gameHostRequests.length;
+    const isOnline = await module.exports.checkIsGameOnline(gameData.port);
 
-    if (exports.isGameOnline(gameData.port) === true)
+    if (isOnline === true)
         return Promise.resolve();
 
 	return exports.killGame(gameData.port)
@@ -191,6 +193,19 @@ module.exports.requestHosting = function(gameData)
 module.exports.isGameOnline = function(port)
 {
 	return hostedGames[port] != null && hostedGames[port].instance != null && hostedGames[port].isRunning === true;
+};
+
+module.exports.checkIsGameOnline = function(port)
+{
+    return checkIfPortIsAvailable(port)
+    .then((isAvailable) =>
+    {
+        // if port is not available, then game must be online?
+        if (isAvailable === false && hostedGames[port] && hostedGames[port] != null && hostedGames[port].instance != null)
+            return true;
+
+        else return false;
+    });
 };
 
 module.exports.deleteGame = function(data)
@@ -253,7 +268,7 @@ function _host(gameData)
 {
     gameHostRequests.splice(gameHostRequests.indexOf(gameData.port), 1);
 
-    return spawn(gameData)
+    return launchProcess(gameData, gameData.isCurrentTurnRollback)
     .then(() => 
     {
         hostedGames[gameData.port] = gameData;
