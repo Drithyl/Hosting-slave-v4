@@ -9,7 +9,7 @@ const recentDataEmitted = [];
 const REPETITIVE_DATA_DEBOUNCER_INTERVAL = 600000;
 
 
-module.exports.spawn = function(game)
+module.exports.spawn = function(game, isCurrentTurnRollback = false)
 {
 	const path = configStore.dom5ExePath;
 
@@ -17,7 +17,7 @@ module.exports.spawn = function(game)
 
 	// Arguments must be passed in an array with one element at a time. Even a flag like --mapfile
 	// needs to be its own element, followed by a separate element with its value, i.e. peliwyr.map
-	const finalArgs = game.args.concat(_getAdditionalArgs(game));
+	const finalArgs = game.args.concat(_getAdditionalArgs(game, isCurrentTurnRollback));
 
 	if (fs.existsSync(path) === false)
 		return Promise.reject(`The path ${path} is incorrect. Cannot host game ${game.name} (${game.gameType}).`);
@@ -196,16 +196,18 @@ function _isRelevantData(stdioData)
 	return true;
 }
 
-function _getAdditionalArgs(game)
+function _getAdditionalArgs(game, isCurrentTurnRollback)
 {
     let args = [
         "--nosteam",
         "--statusdump",
 		"--textonly",
-		"--noquickhost",
 		..._backupCmd("--preexec", game.name), 
 		..._backupCmd("--postexec", game.name)
     ];
+
+	if (isCurrentTurnRollback === true)
+		args.push("--noquickhost");
 		
 	if (process.platform === "win32")
         args.push("--nocrashbox");
