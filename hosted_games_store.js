@@ -172,7 +172,6 @@ module.exports.killAllGames = function()
 
 module.exports.requestHosting = async function(gameData)
 {
-    const delay = configStore.gameHostMsDelay * gameHostRequests.length;
     const isOnline = await module.exports.checkIsGameOnline(gameData.port);
 
     if (isOnline === true)
@@ -181,6 +180,9 @@ module.exports.requestHosting = async function(gameData)
 	return exports.killGame(gameData.port)
 	.then(() =>
 	{
+        // Due to the asynchronous code of isOnline above, this variable has to be
+        // declared here or it will always be 0 if declared above
+        const delay = configStore.gameHostMsDelay * gameHostRequests.length;
         gameHostRequests.push(gameData.port);
 		log.general(log.getNormalLevel(), `Requesting hosting for ${gameData.name} on port ${gameData.port}...`);
         
