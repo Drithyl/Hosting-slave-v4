@@ -131,7 +131,10 @@ function _attachStdioListener(type, game)
 		game.instance[type].on('data', function (data)
 		{
 			if (_isRelevantData(game, data) === true)
+			{
+				log.general(log.getNormalLevel(), `${game.name}'s ${type} "data" event triggered:\n`, data);
 				socket.emit("STDIO_DATA", {name: game.name, data: data, type: type});
+			}
 		});
 
 		game.instance[type].on('error', function (err)
