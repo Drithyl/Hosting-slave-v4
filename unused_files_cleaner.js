@@ -55,11 +55,11 @@ module.exports.deleteBackupsUpToTurn = function(dirPath, turnNbrToClean)
     });
 };
 
-module.exports.deleteUnusedMaps = (mapsInUse) => _deleteUnusedFilesInDir(mapsInUse, configStore.dom5MapsPath);
-module.exports.deleteUnusedMods = (modsInUse) => _deleteUnusedFilesInDir(modsInUse, configStore.dom5ModsPath);
+module.exports.deleteUnusedMaps = (mapsInUse, force = false) => _deleteUnusedFilesInDir(mapsInUse, configStore.dom5MapsPath, force);
+module.exports.deleteUnusedMods = (modsInUse, force = false) => _deleteUnusedFilesInDir(modsInUse, configStore.dom5ModsPath, force);
 
 
-function _deleteUnusedFilesInDir(filesInUse, dirPath)
+function _deleteUnusedFilesInDir(filesInUse, dirPath, force = false)
 {
     var relatedFilesInUse = [];
     
@@ -72,7 +72,7 @@ function _deleteUnusedFilesInDir(filesInUse, dirPath)
         relatedFilesInUse = relatedFilesInUse.concat(files);
         return rw.walkDir(dirPath);
     })
-    .then((dirFiles) => _deleteUnusedFiles(dirFiles, relatedFilesInUse))
+    .then((dirFiles) => _deleteUnusedFiles(dirFiles, relatedFilesInUse, force))
     .then((deletedFiles) => 
     {
         log.general(log.getLeanLevel(), `In ${dirPath}, deleted unused files`, deletedFiles);
@@ -128,7 +128,7 @@ function _getListOfRelatedFilesInUse(filesInUse, dirPath)
     .then(() => Promise.resolve(list));
 }
 
-function _deleteUnusedFiles(filePaths, filesInUse)
+function _deleteUnusedFiles(filePaths, filesInUse, force)
 {
     var deletedFiles = [];
     log.general(log.getLeanLevel(), "Total related files to check for cleaning", filePaths.length);
@@ -140,7 +140,14 @@ function _deleteUnusedFiles(filePaths, filesInUse)
     {
         if (filesInUse.includes(filePath) === false)
         {
-            return fsp.unlink(filePath)
+            return Promise.resolve()
+            .then(() =>
+            {
+                if (force === true)
+                    return fsp.unlink(filePath);
+
+                else return Promise.resolve();
+            })
             .then(() => deletedFiles.push(filePath))
             .catch((err) => log.general(log.getLeanLevel(), `Failed to delete file ${filePath}`, err));
         }
