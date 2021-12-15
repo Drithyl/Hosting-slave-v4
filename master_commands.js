@@ -19,8 +19,8 @@ module.exports.listen = function(socketWrapper)
 
     socketWrapper.on("VERIFY_MAP", (mapFilename) => dom5Interface.validateMapfile(mapFilename));
     socketWrapper.on("VERIFY_MODS", (modFilenames) => dom5Interface.validateMods(modFilenames));
-    socketWrapper.on("DELETE_UNUSED_MAPS", (mapsInUse) => unusedFilesCleaner.deleteUnusedMaps(mapsInUse));
-    socketWrapper.on("DELETE_UNUSED_MODS", (modsInUse) => unusedFilesCleaner.deleteUnusedMods(modsInUse));
+    socketWrapper.on("DELETE_UNUSED_MAPS", (data) => unusedFilesCleaner.deleteUnusedMaps(data.mapsInUse, data.force));
+    socketWrapper.on("DELETE_UNUSED_MODS", (data) => unusedFilesCleaner.deleteUnusedMods(data.modsInUse, data.force));
 
     socketWrapper.on("ONLINE_CHECK", (port) => Promise.resolve(hostedGamesStore.checkIsGameOnline(port)));
 
