@@ -14,6 +14,8 @@ module.exports = function(game)
 		return Promise.resolve();
 	}
 
+	log.general(log.getNormalLevel(), `'${game.name}' at ${game.port}: Starting kill attempts...`);
+
 	// Start the kill attempt chain
 	return _killAttempt(game, 0, NUMBER_OF_CHECKS);
 }
@@ -31,7 +33,7 @@ function _isGameRunning(game)
 // until the game is killed or the maxAttempts have been reached.
 function _killAttempt(game, attempts, maxAttempts)
 {
-	log.general(log.getVerboseLevel(), `Attempt ${attempts}. Max attempts ${maxAttempts}.`);
+	log.general(log.getVerboseLevel(), `'${game.name}' at ${game.port}: Attempt ${attempts}. Max attempts ${maxAttempts}.`);
 
 	// When Node's child process instance has its .killed property set to true,
 	// it means it has received the kill signal properly, thus no point in sending more
@@ -70,7 +72,7 @@ function _kill(game)
 // count an attempt and try again.
 function _timeoutCheckIfKilled(game, attempts, maxAttempts)
 {
-	log.general(log.getVerboseLevel(), "Checking if port is still in use...");
+	log.general(log.getVerboseLevel(), `'${game.name}' at ${game.port}: Checking if port is still in use...`);
 
 	return checkIfPortIsAvailable(game.port)
 	.then((isPortAvailable) =>
@@ -79,14 +81,14 @@ function _timeoutCheckIfKilled(game, attempts, maxAttempts)
 		{
 			if (isPortAvailable === true)
 			{
-				log.general(log.getNormalLevel(), "Instance terminated, port available. Success.");
+				log.general(log.getNormalLevel(), `'${game.name}' at ${game.port}: Instance terminated, port available. Success.`);
 				return Promise.resolve();
 			}
 
-			else log.general(log.getVerboseLevel(), `Instance terminated, port busy`);
+			else log.general(log.getVerboseLevel(), `'${game.name}' at ${game.port}: Instance terminated, port busy`);
 		}
 
-		else log.general(log.getNormalLevel(), "Instance is not killed.");
+		else log.general(log.getNormalLevel(), `'${game.name}' at ${game.port}: Instance is not killed.`);
 		
 
 		if (attempts < maxAttempts)
@@ -95,13 +97,13 @@ function _timeoutCheckIfKilled(game, attempts, maxAttempts)
 		// Max attempts reached and port still not available
 		if (isPortAvailable === false && _isGameTerminated(game) === true)
 		{
-			log.error(log.getLeanLevel(), `${game.name}'s TERMINATED BUT PORT STILL IN USE AFTER ${maxAttempts} ATTEMPTS`);
+			log.error(log.getLeanLevel(), `'${game.name}' at ${game.port}: TERMINATED BUT PORT STILL IN USE AFTER ${maxAttempts} ATTEMPTS`);
 			return Promise.reject(new Error(`The game instance was terminated, but port ${game.port} still in use. You might have to wait a bit.`));
 		}
 
 		else
 		{
-			log.error(log.getLeanLevel(), `${game.name}'s COULD NOT BE TERMINATED.`);
+			log.error(log.getLeanLevel(), `'${game.name}' at ${game.port}: COULD NOT BE TERMINATED.`);
 			return Promise.reject(new Error(`The game instance could not be terminated and port ${game.port} is still in use. You might have to try again.`));
 		}
 	});
