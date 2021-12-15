@@ -25,14 +25,14 @@ module.exports.populate = function(gameDataArray)
 	//first connection to master server
 	if (Object.keys(hostedGames).length <= 0)
 	{
-        log.general(log.getVerboseLevel(), `First connection to the master server since node started; populating the store...`);
+        log.general(log.getLeanLevel(), `First connection to the master server since node started; populating the store...`);
         gameDataArray.forEach((gameData) => 
         {
             hostedGames[gameData.port] = gameData;
-            log.general(log.getNormalLevel(), `Added game ${gameData.name} at port ${gameData.port}.`);
+            log.general(log.getLeanLevel(), `Added game ${gameData.name} at port ${gameData.port}.`);
         });
 
-        log.general(log.getNormalLevel(), "Game store populated.");
+        log.general(log.getLeanLevel(), "Game store populated.");
         return Promise.resolve();
     }
     
@@ -80,7 +80,7 @@ module.exports.populate = function(gameDataArray)
 		}
     }
 
-    log.general(log.getNormalLevel(), "Game store populated.");
+    log.general(log.getLeanLevel(), "Game store populated.");
     return Promise.resolve();
 };
 
@@ -172,10 +172,14 @@ module.exports.killAllGames = function()
 
 module.exports.requestHosting = async function(gameData)
 {
+    log.general(log.getNormalLevel(), `'${gameData.name}' at ${gameData.port}: Requesting hosting...`);
     const isOnline = await module.exports.checkIsGameOnline(gameData.port);
 
     if (isOnline === true)
+    {
+        log.general(log.getNormalLevel(), `'${gameData.name}' at ${gameData.port}: Already online; no need to launch`);
         return Promise.resolve();
+    }
 
 	return exports.killGame(gameData.port)
 	.then(() =>
@@ -184,7 +188,7 @@ module.exports.requestHosting = async function(gameData)
         // declared here or it will always be 0 if declared above
         const delay = configStore.gameHostMsDelay * gameHostRequests.length;
         gameHostRequests.push(gameData.port);
-		log.general(log.getNormalLevel(), `Requesting hosting for ${gameData.name} on port ${gameData.port}...`);
+        log.general(log.getNormalLevel(), `'${gameData.name}' at ${gameData.port}: Added to hosting queue with ${delay}ms delay`);
         
         return _setTimeoutPromise(delay, _host.bind(null, gameData));
     })
@@ -269,12 +273,13 @@ function _setTimeoutPromise(delay, fnToCall)
 function _host(gameData)
 {
     gameHostRequests.splice(gameHostRequests.indexOf(gameData.port), 1);
+    log.general(log.getNormalLevel(), `'${gameData.name}' at ${gameData.port}: Launching process...`);
 
     return launchProcess(gameData, gameData.isCurrentTurnRollback)
     .then(() => 
     {
         hostedGames[gameData.port] = gameData;
-        log.general(log.getNormalLevel(), `Added ${gameData.name} to game store`);
+        log.general(log.getNormalLevel(), `'${gameData.name}' at ${gameData.port}: Launched and added to game store`);
         
         /** If the game is not in the lobby, then change the timer to the
          *  default and current ones sent by the master server to ensure
