@@ -1,11 +1,11 @@
 
 const fs = require("fs");
 const log = require("./logger.js");
+const assert = require("./asserter.js");
 const configStore = require("./config_store.js");
 const spawn = require('child_process').spawn;
 const socket = require("./socket_wrapper.js");
 
-const recentDataEmitted = [];
 const REPETITIVE_DATA_DEBOUNCER_INTERVAL = 600000;
 
 
@@ -33,6 +33,7 @@ module.exports.spawn = function(game, isCurrentTurnRollback = false)
 	// stdio array is [stdin, stdout, stderr]
     game.instance = spawn(path, finalArgs, { stdio: ["ignore", "pipe", "pipe"] });
     game.isRunning = true;
+	game.recentDataEmitted = [];
 
 	_attachOnExitListener(game);
 	_attachOnCloseListener(game);
@@ -129,13 +130,13 @@ function _attachStdioListener(type, game)
 
 		game.instance[type].on('data', function (data)
 		{
-			if (_isRelevantData(data) === true)
+			if (_isRelevantData(game, data) === true)
 				socket.emit("STDIO_DATA", {name: game.name, data: data, type: type});
 		});
 
 		game.instance[type].on('error', function (err)
 		{
-			if (_isRelevantData(err) === true)
+			if (_isRelevantData(game, err) === true)
 			{
 				log.error(log.getLeanLevel(), `${game.name}'s ${type} "error" event triggered:\n`, err);
 				socket.emit("STDIO_ERROR", {name: game.name, error: err, type: type});
@@ -144,8 +145,11 @@ function _attachStdioListener(type, game)
 	}
 }
 
-function _wasDataEmittedRecently(data)
+function _wasDataEmittedRecently(game, data)
 {
+	if (assert.isArray(game.recentDataEmitted) === false)
+		game.recentDataEmitted = [];
+
 	// If data was emitted recently, don't send it again
 	if (data != null && recentDataEmitted.includes(data) === true)
 		return true;
@@ -153,20 +157,21 @@ function _wasDataEmittedRecently(data)
 	else return false;
 }
 
-function _debounceData(data)
+function _debounceData(game, data)
 {
+	if (assert.isArray(game.recentDataEmitted) === false)
+		game.recentDataEmitted = [];
+
 	// Store sent data to make sure we don't keep sending it later in short intervals
-	recentDataEmitted.push(data);
+	game.recentDataEmitted.push(data);
 
 	// After a while, release the record of the previously sent data so it can be sent again if needed
-	setTimeout(recentDataEmitted.shift, REPETITIVE_DATA_DEBOUNCER_INTERVAL);
+	setTimeout(game.recentDataEmitted.shift, REPETITIVE_DATA_DEBOUNCER_INTERVAL);
 }
 
-function _isRelevantData(stdioData)
+function _isRelevantData(game, stdioData)
 {	
 	const nationsTurnStatusMessageRegExp = new RegExp("^(\\(?\\*?(\\w*|\\?)(\\)|\\?|\\-|\\+)?\\s*)+$", "i");
-
-	_debounceData(stdioData);
 
 	// Ignore data buffers that the game puts out
 	if (stdioData.type === "Buffer")
@@ -175,6 +180,8 @@ function _isRelevantData(stdioData)
 	// Nation turn status data is ignorable
 	if (_wasDataEmittedRecently(stdioData) === true)
 		return false;
+	
+	_debounceData(game, stdioData);
 
 	// Heartbeat data showing the status of nation turns
 	if (nationsTurnStatusMessageRegExp.test(stdioData) === true)
