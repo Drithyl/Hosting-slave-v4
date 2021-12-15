@@ -26,22 +26,18 @@ function _sockuseScript(port)
 	{
 		exec(`sh sockuse.sh ${port}`, (err, stdout, stderr) =>
 		{
-			log.test(log.getLeanLevel(), `sockuse.sh stdout output:\n\n\t<${stdout}>`);
-			
 			if (err != null)
 				reject(err);
 	
 			else if (+stdout == 0)
 			{
 				// Socket not used, port is open, return true
-				log.test(log.getLeanLevel(), `sockuse.sh port ${port} open!`);
 				resolve(true);
 			}
 	
 			else if (+stdout == 1)
 			{
 				// Socket used, port is in use, return false
-				log.test(log.getLeanLevel(), `sockuse.sh port ${port} currently busy!`);
 				resolve(false);
 			}
 	
