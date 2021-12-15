@@ -201,7 +201,7 @@ module.exports.checkIsGameOnline = function(port)
     .then((isAvailable) =>
     {
         // if port is not available, then game must be online?
-        if (isAvailable === false && hostedGames[port] && hostedGames[port] != null && hostedGames[port].instance != null)
+        if (isAvailable === false && hostedGames[port] != null && hostedGames[port].instance != null)
             return true;
 
         else return false;
