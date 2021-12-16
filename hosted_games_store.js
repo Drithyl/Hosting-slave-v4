@@ -278,6 +278,8 @@ function _host(gameData)
     return launchProcess(gameData, gameData.isCurrentTurnRollback)
     .then(() => 
     {
+        // Set online in status store for uptime counter to start ticking
+        statusStore.setOnline(gameData.name);
         hostedGames[gameData.port] = gameData;
         log.general(log.getNormalLevel(), `'${gameData.name}' at ${gameData.port}: Launched and added to game store`);
         
