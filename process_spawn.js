@@ -5,6 +5,7 @@ const assert = require("./asserter.js");
 const configStore = require("./config_store.js");
 const spawn = require('child_process').spawn;
 const socket = require("./socket_wrapper.js");
+const statusStore = require("./game_status_store.js");
 
 const REPETITIVE_DATA_DEBOUNCER_INTERVAL = 600000;
 
@@ -47,10 +48,13 @@ module.exports.spawn = function(game, isCurrentTurnRollback = false)
 
 function _attachOnExitListener(game)
 {
-	//Fires when the process itself exits. See https://nodejs.org/api/child_process.html#child_process_event_exit
+	//Fires when the process exits. See https://nodejs.org/api/child_process.html#child_process_event_exit
 	game.instance.on("exit", (code, signal) =>
 	{
         game.isRunning = false;
+
+		// Set offline in status store for uptime counter to stop ticking
+		statusStore.setOffline(game.name);
 
 		//If process exited, code is its final code and signal is null;
 		//if it was terminated due to a signal, then code is null.
@@ -173,8 +177,10 @@ function _debounceData(game, data)
 }
 
 function _isRelevantData(game, stdioData)
-{	
+{
 	const nationsTurnStatusMessageRegExp = new RegExp("^(\\(?\\*?(\\w*|\\?)(\\)|\\?|\\-|\\+)?\\s*)+$", "i");
+	const serverStatusMessageRegExp = /^Setup port \d+\,/i;
+	const brokenPipe = /^send\: Broken pipe/i;
 
 	// Ignore data buffers that the game puts out
 	if (stdioData.type === "Buffer")
@@ -186,8 +192,9 @@ function _isRelevantData(game, stdioData)
 	
 	_debounceData(game, stdioData);
 
-	// Heartbeat data showing the status of nation turns
-	if (nationsTurnStatusMessageRegExp.test(stdioData) === true)
+	if (nationsTurnStatusMessageRegExp.test(stdioData) === true ||
+		serverStatusMessageRegExp.test(stdioData) === true ||
+		brokenPipe.test(stdioData) === true)
 		return false;
 
 	// A timestamp used by the logger.js, this will happen
