@@ -3,6 +3,7 @@ const fs = require("fs");
 const path = require("path");
 const fsp = require("fs").promises;
 const log = require("./logger.js");
+const Counter = require("./counter.js");
 const configStore = require("./config_store.js");
 const statusdumpFactory = require("./dom5/status_dump_wrapper.js");
 
@@ -18,7 +19,7 @@ module.exports.populate = async () =>
 {
     const gameNames = await fsp.readdir(SAVEDGAMES_PATH);
 
-    gameNames.forEachPromise(async (gameName, i, nextPromise) =>
+    return gameNames.forEachPromise(async (gameName, i, nextPromise) =>
     {
         log.general(log.getVerboseLevel(), `Fetching ${gameName}'s status...`);
 
@@ -46,6 +47,26 @@ module.exports.startUpdateCycle = () =>
     setTimeout(_statusUpdateCycle, configStore.updateInterval);
 };
 
+module.exports.setOffline = (gameName) =>
+{
+    const status = STATUS_WRAPPERS_BY_NAME[gameName];
+
+    if (status == null)
+        return;
+        
+    status.counter.stop();
+};
+
+module.exports.setOnline = (gameName) =>
+{
+    const status = STATUS_WRAPPERS_BY_NAME[gameName];
+
+    if (status == null)
+        return;
+        
+    status.counter.start();
+};
+
 module.exports.fetchStatus = async (gameName) =>
 {
     const statusdumpPath = path.resolve(SAVEDGAMES_PATH, gameName);
@@ -57,6 +78,8 @@ module.exports.fetchStatus = async (gameName) =>
     if (status == null)
         return Promise.reject(`No game status available for ${gameName}`);
 
+    // Calculates uptime since last check and adds it to status wrapper sent back
+    status.uptime = status.counter.getUptime();
     return Promise.resolve(status);
 };
 
@@ -108,5 +131,10 @@ async function _fetchStatus(gameName)
     const statusdumpPath = path.resolve(SAVEDGAMES_PATH, gameName);
     const wrapper = await statusdumpFactory.fetchStatusDump(gameName, statusdumpPath);
     STATUS_WRAPPERS_BY_NAME[gameName] = wrapper;
+
+    // Attach a counter to the status if there isn't one already
+    if (wrapper.counter == null)
+        wrapper.counter = new Counter();
+
     return wrapper;
 }
