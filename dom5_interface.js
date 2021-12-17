@@ -7,6 +7,7 @@ const configStore = require("./config_store.js");
 const rw = require("./reader_writer.js");
 const gameStore = require("./hosted_games_store.js");
 const readFileBuffer = require("./read_file_buffer.js");
+const gameStatusStore = require("./game_status_store.js");
 const provCountFn = require("./dom5/parse_province_count.js");
 
 const _savedGamesPath = `${configStore.dom5DataPath}/savedgames`;
@@ -129,24 +130,13 @@ module.exports.forceHost = function(data)
 };
 
 //Set 60 seconds to start the game
-module.exports.getStatusDump = async function(data)
-{
-    const status = await gameStore.fetchGameStatus(data.port);
-
-    if (status == null)
-        return Promise.reject(`No game status available for ${data.name}`);
-
-    return Promise.resolve(status);
-};
-
-//Set 60 seconds to start the game
 module.exports.start = async function(data)
 {
     // Change current timer to 6 seconds, which will make the start countdown begin;
     // while reinforcing the default timer once again (important in case this is a 
     // start after a restart, we don't want to keep old values)
     const startData = Object.assign(data, { timer: data.timer, currentTimer: 6000 });
-    const statusdump = await gameStore.fetchGameStatus(data.port);
+    const statusdump = await gameStatusStore.fetchStatus(data.name);
     const submittedPretenders = statusdump.getSubmittedPretenders();
 
     if (statusdump.hasSelectedNations() === false)
@@ -189,7 +179,7 @@ module.exports.restart = function(data)
 
 module.exports.getSubmittedPretender = async function(data)
 {
-	const status = await gameStore.fetchGameStatus(data.port);
+	const status = await gameStatusStore.fetchStatus(data.name);
     var nations;
     var foundNation;
 
@@ -207,7 +197,7 @@ module.exports.getSubmittedPretender = async function(data)
 
 module.exports.getSubmittedPretenders = async function(data)
 {
-	const status = await gameStore.fetchGameStatus(data.port);
+	const status = await gameStatusStore.fetchStatus(data.name);
 
     if (status == null)
         return null;
@@ -241,7 +231,7 @@ module.exports.getStales = function(data)
 
 module.exports.getUndoneTurns = async function(data)
 {
-    const status = await gameStore.fetchGameStatus(data.port);
+    const status = await gameStatusStore.fetchStatus(data.name);
 
     if (status == null)
         return Promise.reject(`No undone turn data available for ${data.name}`);
