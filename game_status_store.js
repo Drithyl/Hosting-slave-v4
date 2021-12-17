@@ -55,6 +55,7 @@ module.exports.setOffline = (gameName) =>
         return;
         
     status.counter.stop();
+    status.isOnline = false;
 };
 
 module.exports.setOnline = (gameName) =>
@@ -65,6 +66,7 @@ module.exports.setOnline = (gameName) =>
         return;
         
     status.counter.start();
+    status.isOnline = true;
 };
 
 module.exports.fetchStatus = async (gameName) =>
