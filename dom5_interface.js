@@ -5,7 +5,6 @@ const fsp = require("fs").promises;
 const log = require("./logger.js");
 const configStore = require("./config_store.js");
 const rw = require("./reader_writer.js");
-const launchProcess = require("./process_spawn.js").spawn;
 const gameStore = require("./hosted_games_store.js");
 const readFileBuffer = require("./read_file_buffer.js");
 const provCountFn = require("./dom5/parse_province_count.js");
@@ -162,9 +161,8 @@ module.exports.start = async function(data)
 	.catch((err) => Promise.reject(err));
 };
 
-module.exports.hasStarted = function(data)
+module.exports.hasStarted = function(gameName)
 {
-    const gameName = data.name;
     const ftherlndPath = path.resolve(_savedGamesPath, gameName, "ftherlnd");
 
     if (fs.existsSync(ftherlndPath) === true)
@@ -235,7 +233,7 @@ module.exports.removePretender = function(data)
 
 module.exports.getStales = function(data)
 {
-    const clonedStatusdumpPath = `${configStore.dom5DataPath}/${configStore.tmpFilesDirName}/${data.name}`;
+    const clonedStatusdumpPath = path.resolve(configStore.dom5DataPath, configStore.tmpFilesDirName, data.name);
 
 	return gameStore.fetchPreviousTurnGameStatus(data.name, clonedStatusdumpPath)
     .then((statusDumpWrapper) => statusDumpWrapper.fetchStales());
@@ -270,7 +268,7 @@ module.exports.backupSavefiles = function(gameData)
 module.exports.rollback = function(data)
 {
     const game = gameStore.getGame(data.port);
-	const gameName = game.name;
+	const gameName = game.getName();
 	const target = path.resolve(_savedGamesPath, gameName);
 	var source = path.resolve(configStore.dataFolderPath, "backups", gameName, configStore.preHostTurnBackupDirName, `Turn ${data.turnNbr}`);
 
@@ -290,8 +288,8 @@ module.exports.rollback = function(data)
     log.general(log.getNormalLevel(), `${gameName}: Copying backup of turn ${data.turnNbr} into into the game's savedgames...`, source);
 
 	return rw.copyDir(source, target, false, ["", ".2h", ".trn"])
-	.then(() => gameStore.killGame(game.port))
-	.then(() => launchProcess(game, true))
+	.then(() => gameStore.killGame(data.port))
+	.then(() => game.launchProcessWithRollbackedTurn())
 	.then(() => Promise.resolve())
 	.catch((err) => Promise.reject(err));
 };
