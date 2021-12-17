@@ -123,18 +123,6 @@ module.exports.requestHosting = async function(gameData)
     return _setTimeoutPromise(delay, _host.bind(null, game, gameData));
 };
 
-module.exports.fetchGameStatus = async function(port)
-{
-    const game = hostedGames[port];
-    var status;
-
-    if (game == null)
-        return null;
-    
-    status = await statusStore.fetchStatus(game.getName());
-    return status;
-};
-
 module.exports.fetchPreviousTurnGameStatus = async function(name)
 {
     return statusStore.fetchPreviousTurnStatus(name);
