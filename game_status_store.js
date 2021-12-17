@@ -95,9 +95,9 @@ module.exports.fetchPreviousTurnStatus = async (gameName) =>
 async function _statusUpdateCycle()
 {
     const startTime = Date.now();
-    const gameNames = await fsp.readdir(SAVEDGAMES_PATH);
     log.general(log.getNormalLevel(), "Starting game update cycle...");
 
+    const gameNames = await fsp.readdir(SAVEDGAMES_PATH);
     return gameNames.forAllPromises(async (gameName) =>
     {
         const statusWrapper = STATUS_WRAPPERS_BY_NAME[gameName];
