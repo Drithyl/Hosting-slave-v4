@@ -2,12 +2,11 @@
 const fs = require("fs");
 const fsp = require("fs").promises;
 const log = require("./logger.js");
+const Game = require("./dom5/game.js");
 const configStore = require("./config_store.js");
 const kill = require("./kill_instance.js");
-const launchProcess = require("./process_spawn.js").spawn;
 const dom5Interface = require("./dom5_interface.js");
 const statusStore = require("./game_status_store.js");
-const checkIfPortIsAvailable = require("./is_port_open.js");
 const reservedPortsStore = require("./reserved_ports_store.js");
 
 /************************************************************
@@ -28,7 +27,7 @@ module.exports.populate = function(gameDataArray)
         log.general(log.getLeanLevel(), `First connection to the master server since node started; populating the store...`);
         gameDataArray.forEach((gameData) => 
         {
-            hostedGames[gameData.port] = gameData;
+            hostedGames[gameData.port] = new Game(gameData.name, gameData.port, gameData.args);
             log.general(log.getLeanLevel(), `Added game ${gameData.name} at port ${gameData.port}.`);
         });
 
@@ -44,20 +43,29 @@ module.exports.populate = function(gameDataArray)
 	{
         if (hostedGames[gameData.port] == null)
         {
-            hostedGames[gameData.port] = gameData;
+            hostedGames[gameData.port] = new Game(gameData.name, gameData.port, gameData.args);
             log.general(log.getVerboseLevel(), `Game ${gameData.name} at port ${gameData.port} is new; added to store.`);
         }
 
-		//if game data is already in this store, overwrite it
+		//if there's a game in the same port, check if it needs overwriting
         else 
         {
-            // Overwrite it by reassigning the properties received; but don't remove old
-            // keys like .instance or isRunning so that the slave is aware that it's still
-            // running and doesn't try to launch it again when requested, or it won't be able
-            // to kill it even if the requestHosting() function tries to (since the instance
-            // property will be lost)
-            Object.assign(hostedGames[gameData.port], gameData);
-            log.general(log.getVerboseLevel(), `Game ${gameData.name} already exists at port ${gameData.port}; data was overwritten.`);
+            const oldGame = hostedGames[gameData.port];
+            const newGame = new Game(gameData.name, gameData.port, gameData.args);
+
+            // If not same settings, kill old game and overwrite with new game
+            if (Game.areSameSettings(oldGame, newGame) === false)
+            {
+                log.general(log.getVerboseLevel(), `Game ${gameData.name} already exists at port ${gameData.port} but with different settings; data is being overwritten...`);
+                module.exports.killGame(oldGame.getPort())
+                .then(() => 
+                {
+                    hostedGames[newGame.getPort()] = newGame;
+                    log.general(log.getVerboseLevel(), `New data for game ${newGame.getName()} added`);
+                });
+            }
+
+            else log.general(log.getVerboseLevel(), `Game ${gameData.name} already exists at port with same settings`);
         }
     });
 
@@ -66,15 +74,15 @@ module.exports.populate = function(gameDataArray)
     {
         const existingGame = hostedGames[port];
 
-        if (gameDataArray.find((gameData) => gameData.port === existingGame.port) == null)
+        if (gameDataArray.find((gameData) => gameData.port === existingGame.getPort()) == null)
 		{
-            log.general(log.getVerboseLevel(), `${existingGame.name} at port ${existingGame.port} was not found on master data; killing and removing it...`);
+            log.general(log.getVerboseLevel(), `${existingGame.getName()} at port ${existingGame.getPort()} was not found on master data; killing and removing it...`);
 
             exports.killGame(port)
             .then(() =>
             {
+                log.general(log.getVerboseLevel(), `${existingGame.getName()} at port ${existingGame.getPort()} was removed.`);
                 delete hostedGames[port];
-                log.general(log.getVerboseLevel(), `${existingGame.name} at port ${existingGame.port} was removed.`);
             })
             .catch((err) => log.error(log.getLeanLevel(), `ERROR KILLING ABANDONED GAME`, err));
 		}
@@ -89,6 +97,32 @@ module.exports.getGame = function(port)
     return hostedGames[port];
 };
 
+module.exports.requestHosting = async function(gameData)
+{
+    log.general(log.getNormalLevel(), `'${gameData.name}' at ${gameData.port}: Requesting hosting...`);
+    var game = hostedGames[gameData.port];
+
+    if (game == null)
+    {
+        game = new Game(gameData.name, gameData.port, gameData.args);
+        hostedGames[gameData.port] = game;
+    }
+
+    if (game.isOnline() === true)
+    {
+        log.general(log.getNormalLevel(), `'${game.getName()}' at ${game.getPort()}: Already online; no need to launch`);
+        return Promise.resolve();
+    }
+
+    // Due to the asynchronous code of isOnline above, this variable has to be
+    // declared here or it will always be 0 if declared above
+    const delay = configStore.gameHostMsDelay * gameHostRequests.length;
+    gameHostRequests.push(game.getPort());
+    log.general(log.getNormalLevel(), `'${game.getName()}' at ${game.getPort()}: Added to hosting queue with ${delay}ms delay`);
+    
+    return _setTimeoutPromise(delay, _host.bind(null, game, gameData));
+};
+
 module.exports.fetchGameStatus = async function(port)
 {
     const game = hostedGames[port];
@@ -97,7 +131,7 @@ module.exports.fetchGameStatus = async function(port)
     if (game == null)
         return null;
     
-    status = await statusStore.fetchStatus(game.name);
+    status = await statusStore.fetchStatus(game.getName());
     return status;
 };
 
@@ -120,9 +154,9 @@ module.exports.resetPort = function(gameData)
     .then(() =>
     {
         hostedGames[newPort] = game;
-        game.port = newPort;
+        game.setPort(newPort);
 
-        if (gameData.name == game.name)
+        if (gameData.name == game.getName())
             delete hostedGames[gameData.port];
 
         return Promise.resolve(newPort);
@@ -160,58 +194,19 @@ module.exports.killAllGames = function()
 {
 	hostedGames.forEachItem((game, port) =>
 	{
-        if (game.instance != null)
+        if (game.isOnline()  === true)
         {
-            log.general(log.getNormalLevel(), `Killing ${game.name}...`);
+            log.general(log.getNormalLevel(), `Killing ${game.getName()}...`);
 
             return exports.killGame(port)
-            .catch((err) => log.error(log.getLeanLevel(), `COULD NOT KILL ${game.name} AT PORT ${port}`, err));
+            .catch((err) => log.error(log.getLeanLevel(), `COULD NOT KILL ${game.getName()} AT PORT ${port}`, err));
         }
 	});
 };
 
-module.exports.requestHosting = async function(gameData)
-{
-    log.general(log.getNormalLevel(), `'${gameData.name}' at ${gameData.port}: Requesting hosting...`);
-    const isOnline = await module.exports.checkIsGameOnline(gameData.port);
-
-    if (isOnline === true)
-    {
-        log.general(log.getNormalLevel(), `'${gameData.name}' at ${gameData.port}: Already online; no need to launch`);
-        return Promise.resolve();
-    }
-
-	return exports.killGame(gameData.port)
-	.then(() =>
-	{
-        // Due to the asynchronous code of isOnline above, this variable has to be
-        // declared here or it will always be 0 if declared above
-        const delay = configStore.gameHostMsDelay * gameHostRequests.length;
-        gameHostRequests.push(gameData.port);
-        log.general(log.getNormalLevel(), `'${gameData.name}' at ${gameData.port}: Added to hosting queue with ${delay}ms delay`);
-        
-        return _setTimeoutPromise(delay, _host.bind(null, gameData));
-    })
-    .then(() => Promise.resolve())
-    .catch((err) => Promise.reject(err));
-};
-
 module.exports.isGameOnline = function(port)
 {
-	return hostedGames[port] != null && hostedGames[port].instance != null && hostedGames[port].isRunning === true;
-};
-
-module.exports.checkIsGameOnline = function(port)
-{
-    return checkIfPortIsAvailable(port)
-    .then((isAvailable) =>
-    {
-        // if port is not available, then game must be online?
-        if (isAvailable === false && hostedGames[port] != null && hostedGames[port].instance != null)
-            return true;
-
-        else return false;
-    });
+	return hostedGames[port] != null && hostedGames[port].isOnline();
 };
 
 module.exports.deleteGame = function(data)
@@ -242,10 +237,9 @@ module.exports.deleteGameData = function(data)
 module.exports.overwriteSettings = function(data)
 {
 	const game = hostedGames[data.port];
-    const ftherlndPath = `${configStore.dom5DataPath}/savedgames/${gameName}/ftherlnd`;
+    const ftherlndPath = `${configStore.dom5DataPath}/savedgames/${game.getName()}/ftherlnd`;
 
-	delete game.args;
-	game.args = [...data.args];
+	game.setArgs(data.args);
 
     // If ftherlnd exists, it must be deleted, as some settings
     // are hardcoded inside it once the savedgames folder of
@@ -270,29 +264,26 @@ function _setTimeoutPromise(delay, fnToCall)
     });
 }
 
-function _host(gameData)
+async function _host(game, timerData, isCurrentTurnRollback)
 {
-    gameHostRequests.splice(gameHostRequests.indexOf(gameData.port), 1);
-    log.general(log.getNormalLevel(), `'${gameData.name}' at ${gameData.port}: Launching process...`);
+    gameHostRequests.splice(gameHostRequests.indexOf(game.getPort()), 1);
+    log.general(log.getNormalLevel(), `'${game.getName()}' at ${game.getPort()}: Launching process...`);
 
-    return launchProcess(gameData, gameData.isCurrentTurnRollback)
-    .then(() => 
-    {
-        // Set online in status store for uptime counter to start ticking
-        statusStore.setOnline(gameData.name);
-        hostedGames[gameData.port] = gameData;
-        log.general(log.getNormalLevel(), `'${gameData.name}' at ${gameData.port}: Launched and added to game store`);
-        
-        /** If the game is not in the lobby, then change the timer to the
-         *  default and current ones sent by the master server to ensure
-         *  that they are both correct even after a turn rolls.
-         */
-        if (dom5Interface.hasStarted(gameData) === true)
-            return dom5Interface.changeTimer(gameData);
+    if (isCurrentTurnRollback === true)
+        await game.launchProcessWithRollbackedTurn();
 
-        else return Promise.resolve();
-    })
-    .catch((err) => Promise.reject(err));
+    else await game.launchProcess();
+
+    log.general(log.getNormalLevel(), `'${game.getName()}' at ${game.getPort()}: Process launched successfully!`);
+    
+    /** If the game is not in the lobby, then change the timer to the
+     *  default and current ones sent by the master server to ensure
+     *  that they are both correct even after a turn rolls.
+     */
+    if (dom5Interface.hasStarted(game.getName()) === true)
+        return dom5Interface.changeTimer(timerData);
+
+    else return Promise.resolve();
 }
 
 function _getGameByName(gameName)
