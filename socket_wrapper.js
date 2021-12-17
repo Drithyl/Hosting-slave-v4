@@ -19,7 +19,7 @@ var _timeoutProcess;
 exports.connect = () =>
 {
     log.general(log.getNormalLevel(), "Attempting to connect to the master server...");
-    return _createConnection();
+    return Promise.resolve(_createConnection());
 };
 
 //No function below will be available until the socket connects successfully
@@ -44,9 +44,6 @@ exports.on = (trigger, handler) =>
                 //and reject the higher promise
                 log.error(log.getNormalLevel(), `ERROR FULFILLING '${trigger}' REQUEST`, err);
                 serverCallback(err.message);
-                
-                /** Could reject here but would need to handle it in every single handler attached
-                reject();*/
             });
         });
     });
@@ -93,31 +90,20 @@ exports.emitPromise = (trigger, data) =>
 
 function _createConnection()
 {
-    return new Promise((resolve, reject) =>
-    {
-        _socket = _socketIoObject(_masterServerAddress);
+    _socket = _socketIoObject(_masterServerAddress);
 
-        _socket.on("connect", () => 
-        {
-            _connectedHandler();
+    _socket.on("connect", _connectedHandler);
+    _socket.on("connect_error", () => log.general(log.getLeanLevel(), `Could not connect to master`));
+    _socket.on("disconnect", _disconnectHandler);
 
-            // This will only fire the first time that _createConnection() is called;
-            // All connection or reconnection logic should be called within this scope,
-            // not in the returned resolved promise
-            resolve();
-        });
+    // The events below are fired by the manager object and not the socket object:
+    // https://socket.io/docs/v4/client-socket-instance/#events
+    _socket.io.on("reconnect", _reconnectHandler);
+    _socket.io.on("reconnect_attempt", _reconnectAttemptHandler);
+    _socket.io.on("reconnect_failed", _reconnectFailed);
+    _socket.io.on("ping", () => log.general(log.getLeanLevel(), `Ping received from master server`));
 
-        _socket.on("connect_error", () => log.general(log.getLeanLevel(), `Could not connect to master`));
-        _socket.on("disconnect", _disconnectHandler);
-
-        // The events below are fired by the manager object and not the socket object:
-        // https://socket.io/docs/v4/client-socket-instance/#events
-        _socket.io.on("reconnect", _reconnectHandler);
-        _socket.io.on("reconnect_attempt", _reconnectAttemptHandler);
-        _socket.io.on("reconnect_failed", _reconnectFailed);
-
-        masterCommands.listen(module.exports);
-    });
+    masterCommands.listen(module.exports);
 }
 
 function _connectedHandler()
