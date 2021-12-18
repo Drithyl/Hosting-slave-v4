@@ -8,7 +8,7 @@ const rw = require("./reader_writer.js");
 
 module.exports.deleteAllTurnBackups = function(gameName)
 {
-    const target = `${configStore.dataFolderPath}/backups/${gameName}`;
+    const target = path.resolve(configStore.dataFolderPath, "backups", gameName);
     const pathToNewTurnBackups = path.resolve(target, configStore.newTurnsBackupDirName);
     const pathTPreHostBackups = path.resolve(target, configStore.preHostTurnBackupDirName);
 
@@ -34,7 +34,7 @@ module.exports.deleteBackupsUpToTurn = function(dirPath, turnNbrToClean)
     {
         return filenames.forAllPromises((filename) =>
         {
-            return fsp.stat(`${dirPath}/${filename}`)
+            return fsp.stat(path.resolve(dirPath, filename))
             .then((stats) =>
             {
                 const dirTurnNbr = +filename.replace(/\D*/g, "");
@@ -47,7 +47,7 @@ module.exports.deleteBackupsUpToTurn = function(dirPath, turnNbrToClean)
                     return;
 
                 // Folders of turns at the number given or before will be deleted
-                return rw.deleteDir(`${dirPath}/${filename}`)
+                return rw.deleteDir(path.resolve(dirPath, filename))
                 .then(() => log.general(log.getNormalLevel(), `Cleaned backup of turn ${dirTurnNbr}.`))
                 .catch((err) => log.error(log.getNormalLevel(), `Could not clean ${filename}`, err));
             });
@@ -75,7 +75,7 @@ function _deleteUnusedFilesInDir(filesInUse, dirPath, force = false)
     .then((dirFiles) => _deleteUnusedFiles(dirFiles, relatedFilesInUse, force))
     .then((deletedFiles) => 
     {
-        log.general(log.getLeanLevel(), `In ${dirPath}, deleted unused files`, deletedFiles);
+        log.general(log.getLeanLevel(), `In ${dirPath}, deleted unused files`);
         return Promise.resolve(deletedFiles);
     })
     .catch((err, deletedFiles) => 
@@ -112,7 +112,7 @@ function _getListOfRelatedFilesInUse(filesInUse, dirPath)
 
             assetTagssMatch.forEach((assetTag) =>
             {
-                const relPath = assetTag.replace(/^\#\w+\s*"?(.+)"?$/i, "$1");
+                const relPath = assetTag.replace(/^\#\w+\s*("?.+"?)$/i, "$1").replace(/"/ig, "");
                 const absolutePath = path.resolve(dirPath, relPath);
 
                 if (fs.existsSync(absolutePath) === true)
