@@ -2,6 +2,7 @@
 const fs = require("fs");
 const path = require("path");
 const fsp = require("fs").promises;
+const log = require("../logger.js");
 const assert = require("../asserter.js");
 const rw = require("../reader_writer.js");
 const configStore = require("../config_store.js");
@@ -69,7 +70,7 @@ function StatusDump(gameName, originalPath)
 
         // If it hasn't changed, no need to update it
         if (this.lastUpdateTimestamp >= statusdumpMTime)
-            return;
+            return log.general(log.getVerboseLevel(), `${_gameName}'s status has not changed; no need to update`);
 
         // Otherwise get the most recent statusdump metadata and update this wrapper
         const rawData = await fsp.readFile(_originalPath, "utf8");
