@@ -1,29 +1,42 @@
 
 const fs = require("fs");
 const log = require("./logger.js");
+const assert = require("./asserter.js");
 const configStore = require("./config_store.js");
 const spawn = require('child_process').spawn;
-const socket = require("./socket_wrapper.js");
 
-const recentDataEmitted = [];
 const REPETITIVE_DATA_DEBOUNCER_INTERVAL = 600000;
+const DOM5_EXE_PATH = configStore.dom5ExePath;
+const MISSING_EXE_MESSAGE = `The dom5 executable path ${DOM5_EXE_PATH} does not exist!`;
 
 
-module.exports.spawn = function(game)
+if (fs.existsSync(DOM5_EXE_PATH) === false)
+	throw new Error(MISSING_EXE_MESSAGE);
+
+
+module.exports.SpawnedProcessWrapper = SpawnedProcessWrapper;
+
+function SpawnedProcessWrapper(gameName, args, onSpawned)
 {
-	const path = configStore.dom5ExePath;
+    assert.isStringOrThrow(gameName);
+    assert.isArrayOrThrow(args);
 
-	log.general(log.getVerboseLevel(), `Base game arguments received`, game.args);
+	// Exe must be present when spawning occurs!
+	if (fs.existsSync(DOM5_EXE_PATH) === false)
+		throw new Error(MISSING_EXE_MESSAGE);
 
-	// Arguments must be passed in an array with one element at a time. Even a flag like --mapfile
-	// needs to be its own element, followed by a separate element with its value, i.e. peliwyr.map
-	const finalArgs = game.args.concat(_getAdditionalArgs(game));
 
-	if (fs.existsSync(path) === false)
-		return Promise.reject(`The path ${path} is incorrect. Cannot host game ${game.name} (${game.gameType}).`);
+	const _name = gameName;
+	const _args = args;
+	const _recentDataEmitted = [];
+	const _onSpawned = onSpawned;
+	var _spawnedSuccessfully = false;
+	var _onError;
+	var _onExit;
+	var _onClose;
+	var _onStderr;
+	var _onStdout;
 
-	if (finalArgs == null)
-		return Promise.reject(`No args were provided to host the game ${game.name} (${game.gameType}).`);
 
 	// Stdio pipes are not ignored by default. If these pipes are not listened to (with .on("data") or .pipe())
 	// in flowing mode, or periodically read from in paused mode and consuming the data chunks, the instance
@@ -31,153 +44,81 @@ module.exports.spawn = function(game)
 	// This makes the games remain running but unable to be connected, hanging at "Waiting for info..."
 	// https://nodejs.org/api/stream.html#stream_class_stream_readable
 	// stdio array is [stdin, stdout, stderr]
-    game.instance = spawn(path, finalArgs, { stdio: ["ignore", "pipe", "pipe"] });
-    game.isRunning = true;
+	const _instance = spawn(DOM5_EXE_PATH, _args, { stdio: ["ignore", "pipe", "pipe"] });
 
-	_attachOnExitListener(game);
-	_attachOnCloseListener(game);
-	_attachOnErrorListener(game);
-	_attachStdioListener("stderr", game);
-	_attachStdioListener("stdout", game);
+	_instance.onProcessError = (handler) => _onError = handler;
+	_instance.onProcessExit = (handler) => _onExit = handler;
+	_instance.onProcessClose = (handler) => _onClose = handler;
+	_instance.onProcessStderr = (handler) => _onStderr = handler;
+	_instance.onProcessStdout = (handler) => _onStdout = handler;
 
-	log.general(log.getLeanLevel(), `Process for ${game.name} spawned.`);
-	return Promise.resolve(game);
-};
 
-function _attachOnExitListener(game)
-{
-	//Fires when the process itself exits. See https://nodejs.org/api/child_process.html#child_process_event_exit
-	game.instance.on("exit", (code, signal) =>
+	_instance.on("spawn", () =>
 	{
-        game.isRunning = false;
-
-		//If process exited, code is its final code and signal is null;
-		//if it was terminated due to a signal, then code is null.
-		if (signal === "SIGKILL" || signal === "SIGTERM" || signal === "SIGINT")
-		{
-			log.general(log.getLeanLevel(), `${game.name}'s was terminated by ${signal}.`);
-		}
-
-		else if (code === 0)
-		{
-			log.general(log.getLeanLevel(), `${game.name}'s exited without errors (perhaps port was already in use).`);
-		}
-
-		else if (signal == null)
-		{
-			log.error(log.getLeanLevel(), `${game.name}'s "exit" TRIGGERED. Maybe an ingame error occurred, or an arg made it crash`, {port: game.port, args: game.args, code: code, signal: signal});
-			socket.emit("GAME_EXITED", {name: game.name, code: code});
-		}
-
-		//SIGKILL would mean that the kill_instance.js code was called, so it's as expected
-		else if (game.instance.killed === false && signal !== "SIGKILL")
-		{
-			log.error(log.getLeanLevel(), `${game.name}'s "exit" TRIGGERED. Process was abnormally terminated`, {signal: signal});
-			socket.emit("GAME_TERMINATED", {name: game.name, signal: signal});
-		}
+		_spawnedSuccessfully = true;
+		onSpawned();
 	});
-}
 
-function _attachOnCloseListener(game)
-{
-	//Event fires if the stdio streams are closed (which might be *before* or *after* the actual
-	//process exits. See https://nodejs.org/api/child_process.html#child_process_event_close and
-	//https://stackoverflow.com/questions/37522010/difference-between-childprocess-close-exit-events)
-	game.instance.on("close", (code, signal) =>
+	_instance.on("error", (err) => 
 	{
-		if (signal === "SIGKILL" || signal === "SIGTERM" || signal === "SIGINT")
-		{
-			log.general(log.getLeanLevel(), `${game.name}'s stdio got closed by ${signal}.`);
-		}
-
-		else if (code === 0)
-		{
-			log.general(log.getLeanLevel(), `${game.name}'s stdio got closed with code 0.`);
-		}
-
-		//code 0 means there were no errors. If instance is null, then "exit" above
-		//must have run already, so don't ping the master server again
-		if (game.instance != null && game.instance.killed === false && code !== 0)
-		{
-			socket.emit("STDIO_CLOSED", {name: game.name, code: code, signal: signal});
-			log.general(log.getLeanLevel(), `${game.name}'s stdio closed:\n`, {port: game.port, args: game.args, code: code, signal: signal});
-		}
+		if (_spawnedSuccessfully === false)
+			_onSpawned(err);
+			
+		else if (assert.isFunction(_onError) === true)
+			_onError(err)
 	});
-}
 
-function _attachOnErrorListener(game)
-{
-	//The process could not be spawned, or
-	//the process could not be killed
-	//Sometimes an instance will get spawned with an error occurring, but will still be live
-	game.instance.on("error", (err) =>
+	_instance.on("exit", (code, signal) => 
 	{
-		game.instance = null;
-		log.error(log.getLeanLevel(), `${game.name}'s "error" TRIGGERED`, err);
-		socket.emit("GAME_ERROR", {name: game.name, error: err.message});
+		if (assert.isFunction(_onExit) === true)
+			_onExit(code, signal)
 	});
-}
 
-function _attachStdioListener(type, game)
-{
-	// Dom instances push stdout data very often. This is probably what leads to buffer
-	// overflow and the instances hanging when it's not being ignored nor listened to
-	if (game.instance[type] != null)
+	_instance.on("close", (code, signal) => 
 	{
-        game.instance[type].setEncoding("utf8");
-        log.general(log.getNormalLevel(), `Listening to ${game.name}'s ${type} stream.`);
+		if (assert.isFunction(_onClose) === true)
+			_onClose(code, signal)
+	});
 
-		game.instance[type].on('data', function (data)
-		{
-			if (_isRelevantData(data) === true)
-				socket.emit("STDIO_DATA", {name: game.name, data: data, type: type});
-		});
+	_instance["stderr"].setEncoding("utf8");
+	_instance["stderr"].on("data", (data) => 
+	{
+		if (assert.isFunction(_onStderr) === true)
+			if (_isRelevantData(_recentDataEmitted, data) === true)
+				_onStderr(data)
+	});
 
-		game.instance[type].on('error', function (err)
-		{
-			if (_isRelevantData(err) === true)
-			{
-				log.error(log.getLeanLevel(), `${game.name}'s ${type} "error" event triggered:\n`, err);
-				socket.emit("STDIO_ERROR", {name: game.name, error: err, type: type});
-			}
-		});
-	}
+	_instance["stdout"].setEncoding("utf8");
+	_instance["stdout"].on("data", (data) => 
+	{
+		if (assert.isFunction(_onStdout) === true)
+			if (_isRelevantData(_recentDataEmitted, data) === true)
+				_onStdout(data)
+	});
+
+	return _instance;
 }
 
-function _wasDataEmittedRecently(data)
+
+function _isRelevantData(recentDataEmitted, stdioData)
 {
-	// If data was emitted recently, don't send it again
-	if (data != null && recentDataEmitted.includes(data) === true)
-		return true;
-
-	else return false;
-}
-
-function _debounceData(data)
-{
-	// Store sent data to make sure we don't keep sending it later in short intervals
-	recentDataEmitted.push(data);
-
-	// After a while, release the record of the previously sent data so it can be sent again if needed
-	setTimeout(recentDataEmitted.shift, REPETITIVE_DATA_DEBOUNCER_INTERVAL);
-}
-
-function _isRelevantData(stdioData)
-{	
 	const nationsTurnStatusMessageRegExp = new RegExp("^(\\(?\\*?(\\w*|\\?)(\\)|\\?|\\-|\\+)?\\s*)+$", "i");
-
-	_debounceData(stdioData);
+	const serverStatusMessageRegExp = /^Setup port \d+\,/i;
+	const brokenPipe = /^send\: Broken pipe/i;
 
 	// Ignore data buffers that the game puts out
 	if (stdioData.type === "Buffer")
 		return false;
 	
 	// Nation turn status data is ignorable
-	if (_wasDataEmittedRecently(stdioData) === true)
+	if (_wasDataEmittedRecently(recentDataEmitted, stdioData) === true)
 		return false;
+	
+	_debounceData(recentDataEmitted, stdioData);
 
-	// Heartbeat data showing the status of nation turns
-	if (nationsTurnStatusMessageRegExp.test(stdioData) === true)
+	if (nationsTurnStatusMessageRegExp.test(stdioData) === true ||
+		serverStatusMessageRegExp.test(stdioData) === true ||
+		brokenPipe.test(stdioData) === true)
 		return false;
 
 	// A timestamp used by the logger.js, this will happen
@@ -196,35 +137,20 @@ function _isRelevantData(stdioData)
 	return true;
 }
 
-function _getAdditionalArgs(game)
+function _wasDataEmittedRecently(recentDataEmitted, data)
 {
-    let args = [
-        "--nosteam",
-        "--statusdump",
-		"--textonly",
-		"--noquickhost",
-		..._backupCmd("--preexec", game.name), 
-		..._backupCmd("--postexec", game.name)
-    ];
-		
-	if (process.platform === "win32")
-        args.push("--nocrashbox");
+	// If data was emitted recently, don't send it again
+	if (data != null && recentDataEmitted.includes(data) === true)
+		return true;
 
-	log.general(log.getVerboseLevel(), `Additional arguments added`, args);
-
-	return args;
+	else return false;
 }
 
-function _backupCmd(type, gameName)
+function _debounceData(recentDataEmitted, data)
 {
-	let typeName = type.slice(2);
-	let backupModulePath = require.resolve("./backup_script.js");
+	// Store sent data to make sure we don't keep sending it later in short intervals
+	recentDataEmitted.push(data);
 
-	if (typeof backupModulePath !== "string")
-	    return [];
-
-	// Pass the dom5 flag (--preexec or --postexec) plus the cmd command to launch
-	// the node script, "node [path to backup_script.js]" plus the game's name and
-	// type as arguments to the script
-	else return [`${type}`, `node "${backupModulePath}" ${gameName} ${typeName}`];
+	// After a while, release the record of the previously sent data so it can be sent again if needed
+	setTimeout(recentDataEmitted.shift, REPETITIVE_DATA_DEBOUNCER_INTERVAL);
 }

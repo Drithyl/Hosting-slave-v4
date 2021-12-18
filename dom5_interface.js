@@ -5,9 +5,9 @@ const fsp = require("fs").promises;
 const log = require("./logger.js");
 const configStore = require("./config_store.js");
 const rw = require("./reader_writer.js");
-const spawn = require("./process_spawn.js").spawn;
 const gameStore = require("./hosted_games_store.js");
 const readFileBuffer = require("./read_file_buffer.js");
+const gameStatusStore = require("./game_status_store.js");
 const provCountFn = require("./dom5/parse_province_count.js");
 
 const _savedGamesPath = `${configStore.dom5DataPath}/savedgames`;
@@ -130,24 +130,13 @@ module.exports.forceHost = function(data)
 };
 
 //Set 60 seconds to start the game
-module.exports.getStatusDump = async function(data)
-{
-    const status = await gameStore.fetchGameStatus(data.port);
-
-    if (status == null)
-        return Promise.reject(`No game status available for ${data.name}`);
-
-    return Promise.resolve(status);
-};
-
-//Set 60 seconds to start the game
 module.exports.start = async function(data)
 {
     // Change current timer to 6 seconds, which will make the start countdown begin;
     // while reinforcing the default timer once again (important in case this is a 
     // start after a restart, we don't want to keep old values)
     const startData = Object.assign(data, { timer: data.timer, currentTimer: 6000 });
-    const statusdump = await gameStore.fetchGameStatus(data.port);
+    const statusdump = await gameStatusStore.fetchStatus(data.name);
     const submittedPretenders = statusdump.getSubmittedPretenders();
 
     if (statusdump.hasSelectedNations() === false)
@@ -162,9 +151,8 @@ module.exports.start = async function(data)
 	.catch((err) => Promise.reject(err));
 };
 
-module.exports.hasStarted = function(data)
+module.exports.hasStarted = function(gameName)
 {
-    const gameName = data.name;
     const ftherlndPath = path.resolve(_savedGamesPath, gameName, "ftherlnd");
 
     if (fs.existsSync(ftherlndPath) === true)
@@ -191,7 +179,7 @@ module.exports.restart = function(data)
 
 module.exports.getSubmittedPretender = async function(data)
 {
-	const status = await gameStore.fetchGameStatus(data.port);
+	const status = await gameStatusStore.fetchStatus(data.name);
     var nations;
     var foundNation;
 
@@ -209,7 +197,7 @@ module.exports.getSubmittedPretender = async function(data)
 
 module.exports.getSubmittedPretenders = async function(data)
 {
-	const status = await gameStore.fetchGameStatus(data.port);
+	const status = await gameStatusStore.fetchStatus(data.name);
 
     if (status == null)
         return null;
@@ -235,7 +223,7 @@ module.exports.removePretender = function(data)
 
 module.exports.getStales = function(data)
 {
-    const clonedStatusdumpPath = `${configStore.dom5DataPath}/${configStore.tmpFilesDirName}/${data.name}`;
+    const clonedStatusdumpPath = path.resolve(configStore.dom5DataPath, configStore.tmpFilesDirName, data.name);
 
 	return gameStore.fetchPreviousTurnGameStatus(data.name, clonedStatusdumpPath)
     .then((statusDumpWrapper) => statusDumpWrapper.fetchStales());
@@ -243,7 +231,7 @@ module.exports.getStales = function(data)
 
 module.exports.getUndoneTurns = async function(data)
 {
-    const status = await gameStore.fetchGameStatus(data.port);
+    const status = await gameStatusStore.fetchStatus(data.name);
 
     if (status == null)
         return Promise.reject(`No undone turn data available for ${data.name}`);
@@ -270,7 +258,7 @@ module.exports.backupSavefiles = function(gameData)
 module.exports.rollback = function(data)
 {
     const game = gameStore.getGame(data.port);
-	const gameName = game.name;
+	const gameName = game.getName();
 	const target = path.resolve(_savedGamesPath, gameName);
 	var source = path.resolve(configStore.dataFolderPath, "backups", gameName, configStore.preHostTurnBackupDirName, `Turn ${data.turnNbr}`);
 
@@ -290,8 +278,8 @@ module.exports.rollback = function(data)
     log.general(log.getNormalLevel(), `${gameName}: Copying backup of turn ${data.turnNbr} into into the game's savedgames...`, source);
 
 	return rw.copyDir(source, target, false, ["", ".2h", ".trn"])
-	.then(() => gameStore.killGame(game.port))
-	.then(() => spawn(game))
+	.then(() => gameStore.killGame(data.port))
+	.then(() => game.launchProcessWithRollbackedTurn())
 	.then(() => Promise.resolve())
 	.catch((err) => Promise.reject(err));
 };

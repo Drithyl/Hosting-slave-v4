@@ -25,7 +25,7 @@
 
 	"newTurnsBackupDirName": "New Blank Turns",
 	"preHostTurnBackupDirName": "Pre-host Turns",
-	"gameCostMsDelay": 250,
+	"gameHostMsDelay": 250,
 	"updateInterval": 10000,
 	"loggingInterval": 60000
 }

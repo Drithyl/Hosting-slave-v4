@@ -3,6 +3,7 @@ const log = require("./logger.js");
 const configStore = require("./config_store.js");
 const downloader = require("./file_downloader.js");
 const dom5Interface = require("./dom5_interface.js");
+const gameStatusStore = require("./game_status_store.js");
 const hostedGamesStore = require("./hosted_games_store.js");
 const reservedPortsStore = require("./reserved_ports_store.js");
 const unusedFilesCleaner = require("./unused_files_cleaner.js");
@@ -19,8 +20,8 @@ module.exports.listen = function(socketWrapper)
 
     socketWrapper.on("VERIFY_MAP", (mapFilename) => dom5Interface.validateMapfile(mapFilename));
     socketWrapper.on("VERIFY_MODS", (modFilenames) => dom5Interface.validateMods(modFilenames));
-    socketWrapper.on("DELETE_UNUSED_MAPS", (mapsInUse) => unusedFilesCleaner.deleteUnusedMaps(mapsInUse));
-    socketWrapper.on("DELETE_UNUSED_MODS", (modsInUse) => unusedFilesCleaner.deleteUnusedMods(modsInUse));
+    socketWrapper.on("DELETE_UNUSED_MAPS", (data) => unusedFilesCleaner.deleteUnusedMaps(data.mapsInUse, data.force));
+    socketWrapper.on("DELETE_UNUSED_MODS", (data) => unusedFilesCleaner.deleteUnusedMods(data.modsInUse, data.force));
 
     socketWrapper.on("ONLINE_CHECK", (port) => Promise.resolve(hostedGamesStore.isGameOnline(port)));
 
@@ -41,7 +42,7 @@ module.exports.listen = function(socketWrapper)
     socketWrapper.on("GET_UNDONE_TURNS", (data) => dom5Interface.getUndoneTurns(data));
     socketWrapper.on("GET_SUBMITTED_PRETENDER", (data) => dom5Interface.getSubmittedPretender(data));
     socketWrapper.on("GET_SUBMITTED_PRETENDERS", (data) => dom5Interface.getSubmittedPretenders(data));
-    socketWrapper.on("GET_STATUS_DUMP", (data) => dom5Interface.getStatusDump(data));
+    socketWrapper.on("GET_STATUS_DUMP", (data) => gameStatusStore.fetchStatus(data.name));
     socketWrapper.on("OVERWRITE_SETTINGS", (data) => hostedGamesStore.overwriteSettings(data));
     socketWrapper.on("START_GAME", (data) => dom5Interface.start(data));
     socketWrapper.on("RESTART_GAME", (data) => dom5Interface.restart(data));
