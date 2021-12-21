@@ -61,7 +61,7 @@ function SpawnedProcessWrapper(gameName, args, onSpawned)
 	_instance.onProcessStdout = (handler) => _onStdout = handler;
 
 
-	_instance.on("spawn", () =>
+	_instance.on("spawn", async () =>
 	{
 		_spawnedSuccessfully = true;
 		await _pipeToLog(_instance.stdout, _stdoutLogPath, "stdout.txt");
