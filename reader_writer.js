@@ -200,38 +200,29 @@ module.exports.atomicRmDir = async function(targetDir, filter = null)
 //If a directory does not exist, this will create it
 module.exports.checkAndCreateFilePath = function(filePath)
 {
-	var splitPath = filePath.split("/");
-	var compoundPath = splitPath[0];
+    var directories = [];
+    var currentPath = path.dirname(filePath);
 
-	return splitPath.forEachPromise((pathSegment, index, nextPromise) =>
-	{
-		//last element of the path should not be iterated through as it will be a file
-		if (index >= splitPath.length - 1)
-		{
-			log.general(log.getVerboseLevel(), "Reached last path element, returning");
-			return nextPromise();
-		}
+	if (fs.existsSync(currentPath) === true)
+		return Promise.resolve();
 
-		//prevent empty paths from being created
-		if (fs.existsSync(compoundPath) === false && /[\w]/.test(compoundPath) === true)
-		{
-			return fsp.mkdir(compoundPath)
-			.then(() => 
-			{
-				log.general(log.getVerboseLevel(), "Created dir " + compoundPath);
-				compoundPath += `/${splitPath[index+1]}`;
-				return nextPromise();
-			});
-		}
-			
-		else
-		{
-			log.general(log.getVerboseLevel(), "Dir already exists " + compoundPath);
-			compoundPath += `/${splitPath[index+1]}`;
-			return nextPromise();
-		}
-	})
-	.catch((err) => Promise.reject(err));
+    while (currentPath !== path.dirname(currentPath))
+    {
+        directories.unshift(currentPath);
+        currentPath = path.dirname(currentPath);
+    }
+
+    return directories.forEachPromise((dir, index, nextPromise) =>
+    {
+        if (fs.existsSync(dir) === false)
+        {
+            return fsp.mkdir(dir)
+            .then(() => nextPromise());
+        }
+            
+        else return nextPromise();
+    })
+    .catch((err) => Promise.reject(err));
 };
 
 module.exports.getDirFilenames = function(dirPath, extensionFilter = "")
