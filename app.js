@@ -42,12 +42,6 @@ function _initializeComponents()
     process.on("SIGINT", () =>
     {
         log.general(log.getLeanLevel(), `Gracefully shutting down...`);
-        
-        return log.dumpToFile()
-        .then(() => 
-        {
-            // Graceful shutdown
-            process.exit("SIGINT");
-        });
+        process.exit("SIGINT");
     });
 }
