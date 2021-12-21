@@ -31,10 +31,8 @@ module.exports = function(mapData)
 	{
 		terrainMask = +provLines[i].slice(provLines[i].indexOf(" ", provLines[i].indexOf(" ") + 1) + 1).replace(/\D/g, "");
 
-		//4 is the sea code and 2052 is the deep sea code in the .map files
-		if ((terrainMask 			  % 4 == 0 &&    terrainMask 			% 8 != 0) ||
-		    ((terrainMask - 1) 	% 4 == 0 && (terrainMask - 1) 	% 8 != 0) ||
-			((terrainMask - 2) 	% 4 == 0 && (terrainMask - 2) 	% 8 != 0))
+		//4 is the sea flag
+		if (terrainMask & 4)
 		{
 			provCount.sea++;
 		}
