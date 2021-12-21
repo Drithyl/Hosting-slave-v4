@@ -1,37 +1,21 @@
 
 const fs = require("fs");
+const path = require("path");
 const configStore = require("./config_store.js");
 const assert = require("./asserter.js");
-const rw = require("./reader_writer.js");
 
-const LOGGING_INTERVAL = configStore.loggingInterval;
-
-const logsBasePath = `${configStore.dataFolderPath}/logs`;
-
-const BACKUP_LOG_PATH = `${logsBasePath}/backup.txt`
-const GENERAL_LOG_PATH = `${logsBasePath}/general.txt`;
-const ERROR_LOG_PATH = `${logsBasePath}/error.txt`;
-const UPLOAD_LOG_PATH = `${logsBasePath}/upload.txt`;
-const TEST_LOG_PATH = `${logsBasePath}/test.txt`;
-
-const QUEUES = {
-    [BACKUP_LOG_PATH]: [],
-    [GENERAL_LOG_PATH]: [],
-    [ERROR_LOG_PATH]: [],
-    [UPLOAD_LOG_PATH]: [],
-    [TEST_LOG_PATH]: []
-};
+const BASE_LOG_PATH = `${configStore.dataFolderPath}/logs`;
 
 const LEAN_LEVEL = 0;
 const NORMAL_LEVEL = 1;
 const VERBOSE_LEVEL = 2;
 
 var currentLogLevel = configStore.defaultLogLevel;
-var logToFile = true;
+var isLoggingToFile = true;
 
 
-if (fs.existsSync(logsBasePath) === false)
-    fs.mkdirSync(logsBasePath);
+if (fs.existsSync(BASE_LOG_PATH) === false)
+    fs.mkdirSync(BASE_LOG_PATH);
 
 
 module.exports.getLeanLevel = () => LEAN_LEVEL;
@@ -48,14 +32,14 @@ module.exports.setLogLevel = (level) =>
     exports.general(LEAN_LEVEL, `logLevel set to ${level}.`);
 };
 
-module.exports.isLoggingToFile = () => logToFile;
+module.exports.isLoggingToFile = () => isLoggingToFile;
 module.exports.setLogToFile = (shouldLogToFile) =>
 {
     if (assert.isBoolean(shouldLogToFile) === false)
         return;
 
-    logToFile = shouldLogToFile;
-    exports.general(LEAN_LEVEL, `logToFile set to ${shouldLogToFile}.`);
+    isLoggingToFile = shouldLogToFile;
+    exports.general(LEAN_LEVEL, `isLoggingToFile set to ${shouldLogToFile}.`);
 };
 
 // Used by the backup_script.js, does not need to print to console
@@ -63,60 +47,30 @@ module.exports.setLogToFile = (shouldLogToFile) =>
 // by the stdio pipes and emitted to the master server
 module.exports.backup = (logLevel, header, ...data) =>
 {
-    if (logLevel > currentLogLevel)
-        return;
-
-    return _queueAndLog(BACKUP_LOG_PATH, header, ...data);
+    var logStr = _log(logLevel, header, ...data);
+    _logToFile(logStr, "backup.txt");
 };
 
 module.exports.general = (logLevel, header, ...data) =>
 {
-    if (logLevel > currentLogLevel)
-        return;
-
-    return _queueAndLog(GENERAL_LOG_PATH, header, ...data);
+    var logStr = _log(logLevel, header, ...data);
+    _logToFile(logStr, "general.txt");
 };
 
 module.exports.error = (logLevel, header, ...data) =>
 {
-    if (logLevel > currentLogLevel)
-        return;
-
-    return _queueAndLog(ERROR_LOG_PATH, header, ...data);
+    var logStr = _log(logLevel, header, ...data);
+    _logToFile(logStr, "error.txt");
 };
 
 module.exports.upload = (logLevel, header, ...data) =>
 {
-    if (logLevel > currentLogLevel)
-        return;
-
-    return _queueAndLog(UPLOAD_LOG_PATH, header, ...data);
+    var logStr = _log(logLevel, header, ...data);
+    _logToFile(logStr, "upload.txt");
 };
 
-module.exports.test = (logLevel, header, ...data) =>
-{
-    if (logLevel > currentLogLevel)
-        return;
 
-    return _queueAndLog(TEST_LOG_PATH, header, ...data);
-};
-
-module.exports.dumpToFile = () =>
-{
-    return QUEUES.forAllPromises((logArr, path) =>
-    {
-        var content = logArr.splice(0, logArr.length-1).join("\n");
-        return rw.append(path, content)
-        .catch((err) => _log(`LOGGER ERROR: Could not log to file.`, `${err.message}\n\n${err.stack}`));
-
-    }, false);
-}
-
-// Start the logging interval
-setInterval(module.exports.dumpToFile, LOGGING_INTERVAL);
-
-
-function _log(header, ...data)
+function _log(logLevel, header, ...data)
 {
     var logStr = `${_getTimestamp()}\t${header}\n`;
 
@@ -129,18 +83,21 @@ function _log(header, ...data)
     });
 
     logStr += "\n";
-    console.log(logStr);
+
+    if (logLevel <= currentLogLevel)
+        console.log(logStr);
+
     return logStr;
 }
 
-function _queueAndLog(path, header, ...data)
+function _logToFile(logStr, filename)
 {
-    const logStr = _log(header, ...data);
-
-    if (logToFile === false)
+    if (isLoggingToFile === false)
         return;
 
-    QUEUES[path].push(logStr);
+    const date = new Date();
+    const logPath = path.resolve(BASE_LOG_PATH, `${date.getDate()}-${date.getMonth() + 1}-${date.getFullYear()}-${filename}`);
+    fs.createWriteStream(logPath, { flags: "a" }).write(logStr);
 }
 
 function _getTimestamp()
