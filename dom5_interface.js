@@ -289,9 +289,11 @@ module.exports.deleteGameSavefiles = function(data)
 	const gameName = data.name;
     const dirPath = path.resolve(_savedGamesPath, gameName);
     const backupPath = path.resolve(configStore.dataFolderPath, "backups", gameName);
+    const logPath = path.resolve(configStore.dataFolderPath, "logs", "games", gameName);
 
 	return rw.deleteDir(dirPath)
     .then(() => rw.deleteDir(backupPath))
+    .then(() => rw.deleteDir(logPath))
     .then(() => 
     {
         log.general(log.getNormalLevel(), `${gameName}: deleted the savedgames files and their backups.`);
