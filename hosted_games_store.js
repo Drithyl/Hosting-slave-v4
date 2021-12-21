@@ -120,7 +120,8 @@ module.exports.requestHosting = async function(gameData)
     gameHostRequests.push(game.getPort());
     log.general(log.getNormalLevel(), `'${game.getName()}' at ${game.getPort()}: Added to hosting queue with ${delay}ms delay`);
     
-    return _setTimeoutPromise(delay, _host.bind(null, game, gameData));
+    _setTimeoutPromise(delay, _host.bind(null, game, gameData));
+    return Promise.resolve();
 };
 
 module.exports.fetchPreviousTurnGameStatus = async function(name)
