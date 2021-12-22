@@ -1,6 +1,7 @@
 
 const fs = require("fs");
 const path = require("path");
+const stream = require("stream");
 const log = require("./logger.js");
 const assert = require("./asserter.js");
 const rw = require("./reader_writer.js");
@@ -33,8 +34,11 @@ function SpawnedProcessWrapper(gameName, args, onSpawned)
 	const _args = args;
 	const _recentDataEmitted = [];
 	const _onSpawned = onSpawned;
-	const _stdoutLogPath = path.resolve(BASE_LOG_PATH, _name);
-	const _stderrLogPath = path.resolve(BASE_LOG_PATH, _name);
+	const _logDirPath = path.resolve(BASE_LOG_PATH, _name);
+
+	var dayOfMonth = new Date().getDate();
+	var _stdoutWriteStream;
+	var _stderrWriteStream;
 
 	var _spawnedSuccessfully = false;
 	var _onError;
@@ -64,8 +68,8 @@ function SpawnedProcessWrapper(gameName, args, onSpawned)
 	_instance.on("spawn", async () =>
 	{
 		_spawnedSuccessfully = true;
-		await _pipeToLog(_instance.stdout, _stdoutLogPath, "stdout.txt");
-		await _pipeToLog(_instance.stderr, _stderrLogPath, "stderr.txt");
+		await rw.checkAndCreateDirPath(_logDirPath);
+		_updateStreamPaths();
 		onSpawned();
 	});
 
@@ -93,6 +97,8 @@ function SpawnedProcessWrapper(gameName, args, onSpawned)
 	_instance.stderr.setEncoding("utf8");
 	_instance.stderr.on("data", (data) => 
 	{
+		_updateStreamPaths();
+
 		if (assert.isFunction(_onStderr) === true)
 			if (_isRelevantData(_recentDataEmitted, data) === true)
 				_onStderr(data)
@@ -101,10 +107,36 @@ function SpawnedProcessWrapper(gameName, args, onSpawned)
 	_instance.stdout.setEncoding("utf8");
 	_instance.stdout.on("data", (data) => 
 	{
+		_updateStreamPaths();
+
 		if (assert.isFunction(_onStdout) === true)
 			if (_isRelevantData(_recentDataEmitted, data) === true)
 				_onStdout(data)
 	});
+
+	function _updateStreamPaths()
+	{
+		const date = new Date();
+		const day = date.getDate();
+
+		if (dayOfMonth === day && 
+			assert.isInstanceOfPrototype(_stdoutWriteStream, stream.Writable) === true && 
+			assert.isInstanceOfPrototype(_stderrWriteStream, stream.Writable) === true)
+			return;
+
+		dayOfMonth = day;
+
+		if (_stdoutWriteStream != null && _stdoutWriteStream.destroyed === false)
+			_stdoutWriteStream.destroy();
+
+		if (_stderrWriteStream != null && _stderrWriteStream.destroyed === false)
+			_stderrWriteStream.destroy();
+
+		_stdoutWriteStream = fs.createWriteStream(path.resolve(_logDirPath, `${date.getDate()}-${date.getMonth() + 1}-${date.getFullYear()}-stdout.txt`), { flags: "a", autoClose: true });
+		_stderrWriteStream = fs.createWriteStream(path.resolve(_logDirPath, `${date.getDate()}-${date.getMonth() + 1}-${date.getFullYear()}-stderr.txt`), { flags: "a", autoClose: true });
+		_instance.stdout.pipe(_stdoutWriteStream);
+		_instance.stderr.pipe(_stderrWriteStream);
+	}
 
 	return _instance;
 }
