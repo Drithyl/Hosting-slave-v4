@@ -198,6 +198,34 @@ module.exports.atomicRmDir = async function(targetDir, filter = null)
 };
 
 //If a directory does not exist, this will create it
+module.exports.checkAndCreateDirPath = function(dirPath)
+{
+    var directories = [];
+    var currentPath = dirPath;
+
+	if (fs.existsSync(dirPath) === true)
+		return Promise.resolve();
+
+    while (currentPath !== path.dirname(currentPath))
+    {
+        directories.unshift(currentPath);
+        currentPath = path.dirname(currentPath);
+    }
+
+    return directories.forEachPromise((dir, index, nextPromise) =>
+    {
+        if (fs.existsSync(dir) === false)
+        {
+            return fsp.mkdir(dir)
+            .then(() => nextPromise());
+        }
+            
+        else return nextPromise();
+    })
+    .catch((err) => Promise.reject(err));
+};
+
+//If the dir path up to a filename does not exist, this will create it
 module.exports.checkAndCreateFilePath = function(filePath)
 {
     var directories = [];
