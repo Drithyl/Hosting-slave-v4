@@ -97,7 +97,6 @@ function SpawnedProcessWrapper(gameName, args, onSpawned)
 	_instance.stderr.setEncoding("utf8");
 	_instance.stderr.on("data", (data) => 
 	{
-		console.log(data);
 		// Excute the logging and emitting of the game's data asynchronously,
 		// so that it won't clog the pipe. Otherwise, the pipe will end up
 		// filling up because it doesn't get processed fast enough, and will
