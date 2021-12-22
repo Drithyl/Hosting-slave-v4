@@ -101,7 +101,7 @@ function SpawnedProcessWrapper(gameName, args, onSpawned)
 
 		if (assert.isFunction(_onStderr) === true)
 			if (_isRelevantData(_recentDataEmitted, data) === true)
-				_onStderr(data)
+				_onStderr(data);
 	});
 
 	_instance.stdout.setEncoding("utf8");
@@ -111,7 +111,7 @@ function SpawnedProcessWrapper(gameName, args, onSpawned)
 
 		if (assert.isFunction(_onStdout) === true)
 			if (_isRelevantData(_recentDataEmitted, data) === true)
-				_onStdout(data)
+				_onStdout(data);
 	});
 
 	function _updateStreamPaths()
@@ -139,16 +139,6 @@ function SpawnedProcessWrapper(gameName, args, onSpawned)
 	}
 
 	return _instance;
-}
-
-// Pipes one of the child's streams to a given file with the current date attached;
-// This will create new files every day so they are easy to go and read from
-async function _pipeToLog(readable, dirPath, filename)
-{
-	const date = new Date();
-	const finalPath = path.resolve(dirPath, `${date.getDate()}-${date.getMonth() + 1}-${date.getFullYear()}-${filename}`);
-	await rw.checkAndCreateFilePath(finalPath);
-	readable.pipe(fs.createWriteStream(finalPath, { flags: "a" }));
 }
 
 function _isRelevantData(recentDataEmitted, stdioData)
