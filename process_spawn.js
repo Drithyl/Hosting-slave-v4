@@ -1,6 +1,7 @@
 
 const fs = require("fs");
 const path = require("path");
+const stream = require("stream");
 const log = require("./logger.js");
 const assert = require("./asserter.js");
 const rw = require("./reader_writer.js");
@@ -33,8 +34,11 @@ function SpawnedProcessWrapper(gameName, args, onSpawned)
 	const _args = args;
 	const _recentDataEmitted = [];
 	const _onSpawned = onSpawned;
-	const _stdoutLogPath = path.resolve(BASE_LOG_PATH, _name);
-	const _stderrLogPath = path.resolve(BASE_LOG_PATH, _name);
+	const _logDirPath = path.resolve(BASE_LOG_PATH, _name);
+
+	var dayOfMonth = new Date().getDate();
+	var _stdoutWriteStream;
+	var _stderrWriteStream;
 
 	var _spawnedSuccessfully = false;
 	var _onError;
@@ -51,7 +55,7 @@ function SpawnedProcessWrapper(gameName, args, onSpawned)
 	// https://nodejs.org/api/stream.html#stream_class_stream_readable
 	// stdio array is [stdin, stdout, stderr]
 	const _instance = spawn(DOM5_EXE_PATH, _args, { 
-		stdio: ["pipe", "pipe", "pipe"]
+		stdio: ["ignore", "pipe", "pipe"]
 	});
 
 	_instance.onProcessError = (handler) => _onError = handler;
@@ -64,8 +68,8 @@ function SpawnedProcessWrapper(gameName, args, onSpawned)
 	_instance.on("spawn", async () =>
 	{
 		_spawnedSuccessfully = true;
-		await _pipeToLog(_instance.stdout, _stdoutLogPath, "stdout.txt");
-		await _pipeToLog(_instance.stderr, _stderrLogPath, "stderr.txt");
+		await rw.checkAndCreateDirPath(_logDirPath);
+		_updateStreamPaths();
 		onSpawned();
 	});
 
@@ -93,64 +97,81 @@ function SpawnedProcessWrapper(gameName, args, onSpawned)
 	_instance.stderr.setEncoding("utf8");
 	_instance.stderr.on("data", (data) => 
 	{
-		if (assert.isFunction(_onStderr) === true)
-			if (_isRelevantData(_recentDataEmitted, data) === true)
-				_onStderr(data)
+		console.log(data);
+		// Excute the logging and emitting of the game's data asynchronously,
+		// so that it won't clog the pipe. Otherwise, the pipe will end up
+		// filling up because it doesn't get processed fast enough, and will
+		// make the NodeJS process freeze
+		setImmediate(() =>
+		{
+			_updateStreamPaths();
+	
+			if (assert.isFunction(_onStderr) === true)
+				if (_isRelevantData(_recentDataEmitted, data) === true)
+					_onStderr(data);
+		});
 	});
 
 	_instance.stdout.setEncoding("utf8");
-	_instance.stdout.on("data", (data) => 
+	_instance.stdout.on("data", _updateStreamPaths);
+
+	function _updateStreamPaths()
 	{
-		if (assert.isFunction(_onStdout) === true)
-			if (_isRelevantData(_recentDataEmitted, data) === true)
-				_onStdout(data)
-	});
+		const date = new Date();
+		const day = date.getDate();
+
+		if (dayOfMonth === day && 
+			assert.isInstanceOfPrototype(_stdoutWriteStream, stream.Writable) === true && 
+			assert.isInstanceOfPrototype(_stderrWriteStream, stream.Writable) === true)
+			return;
+
+		dayOfMonth = day;
+
+		if (_stdoutWriteStream != null && _stdoutWriteStream.destroyed === false)
+			_stdoutWriteStream.destroy();
+
+		if (_stderrWriteStream != null && _stderrWriteStream.destroyed === false)
+			_stderrWriteStream.destroy();
+
+		_stdoutWriteStream = fs.createWriteStream(path.resolve(_logDirPath, `${date.getDate()}-${date.getMonth() + 1}-${date.getFullYear()}-stdout.txt`), { flags: "a", autoClose: true });
+		_stderrWriteStream = fs.createWriteStream(path.resolve(_logDirPath, `${date.getDate()}-${date.getMonth() + 1}-${date.getFullYear()}-stderr.txt`), { flags: "a", autoClose: true });
+		_instance.stdout.pipe(_stdoutWriteStream);
+		_instance.stderr.pipe(_stderrWriteStream);
+	}
 
 	return _instance;
 }
 
-// Pipes one of the child's streams to a given file with the current date attached;
-// This will create new files every day so they are easy to go and read from
-async function _pipeToLog(readable, dirPath, filename)
-{
-	const date = new Date();
-	const finalPath = path.resolve(dirPath, `${date.getDate()}-${date.getMonth() + 1}-${date.getFullYear()}-${filename}`);
-	await rw.checkAndCreateFilePath(finalPath);
-	readable.pipe(fs.createWriteStream(finalPath, { flags: "a" }));
-}
-
-function _isRelevantData(recentDataEmitted, stdioData)
+function _isRelevantData(recentDataEmitted, data)
 {
 	const nationsTurnStatusMessageRegExp = new RegExp("^(\\(?\\*?(\\w*|\\?)(\\)|\\?|\\-|\\+)?\\s*)+$", "i");
 	const serverStatusMessageRegExp = /^Setup port \d+\,/i;
 	const brokenPipe = /^send\: Broken pipe/i;
 
 	// Ignore data buffers that the game puts out
-	if (stdioData.type === "Buffer")
+	if (data.type === "Buffer")
 		return false;
 	
-	// Nation turn status data is ignorable
-	if (_wasDataEmittedRecently(recentDataEmitted, stdioData) === true)
-		return false;
-	
-	_debounceData(recentDataEmitted, stdioData);
-
-	if (nationsTurnStatusMessageRegExp.test(stdioData) === true ||
-		serverStatusMessageRegExp.test(stdioData) === true ||
-		brokenPipe.test(stdioData) === true)
+	if (nationsTurnStatusMessageRegExp.test(data) === true ||
+		serverStatusMessageRegExp.test(data) === true ||
+		brokenPipe.test(data) === true)
 		return false;
 
 	// A timestamp used by the logger.js, this will happen
 	// when the backup script executes and logs things to
 	// console. Instead of sending the data to master; log it
-	if (/\d\d:\d\d:\d\d\.\d\d\dZ/.test(stdioData) === true)
+	if (/\d\d:\d\d:\d\d\.\d\d\dZ/.test(data) === true)
 	{
-		log.backup(log.getVerboseLevel(), stdioData);
+		log.backup(log.getVerboseLevel(), data);
 		return false;
 	}
 
 	// Heartbeat data showing number of connections to game
-	if (/^\w+,\s*Connections\s*\d+/.test(stdioData) === true)
+	if (/^\w+,\s*Connections\s*\d+/.test(data) === true)
+		return false;
+
+	// If data is not fully ignorable, check if it was emitted recently
+	if (_wasDataEmittedRecently(recentDataEmitted, data) === true)
 		return false;
 
 	return true;
@@ -158,18 +179,23 @@ function _isRelevantData(recentDataEmitted, stdioData)
 
 function _wasDataEmittedRecently(recentDataEmitted, data)
 {
-	// If data was emitted recently, don't send it again
-	if (data != null && recentDataEmitted.includes(data) === true)
+	const now = Date.now();
+	const emittedData = recentDataEmitted.find((storedData) => storedData.content === data);
+
+	// Data was never emitted, return false to send it
+	if (emittedData == null)
+	{
+		// Store sent data to make sure we don't keep sending it later in short intervals
+		recentDataEmitted.push({ content: data, timestamp: now });
+		return false;
+	}
+
+	// Data was indeed emitted recently; less than REPETITIVE_DATA_DEBOUNCER_INTERVAL ms ago
+	if (now - emittedData.timestamp < REPETITIVE_DATA_DEBOUNCER_INTERVAL)
 		return true;
 
-	else return false;
-}
-
-function _debounceData(recentDataEmitted, data)
-{
-	// Store sent data to make sure we don't keep sending it later in short intervals
-	recentDataEmitted.push(data);
-
-	// After a while, release the record of the previously sent data so it can be sent again if needed
-	setTimeout(recentDataEmitted.shift, REPETITIVE_DATA_DEBOUNCER_INTERVAL);
+	// Data was emitted longer than REPETITIVE_DATA_DEBOUNCER_INTERVAL ms ago, so
+	// update the timestamp to the current date and return false so it's emitted again
+	emittedData.timestamp = now;
+	return false;
 }
