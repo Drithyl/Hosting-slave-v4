@@ -55,7 +55,7 @@ function SpawnedProcessWrapper(gameName, args, onSpawned)
 	// https://nodejs.org/api/stream.html#stream_class_stream_readable
 	// stdio array is [stdin, stdout, stderr]
 	const _instance = spawn(DOM5_EXE_PATH, _args, { 
-		stdio: ["pipe", "pipe", "pipe"]
+		stdio: ["ignore", "pipe", "pipe"]
 	});
 
 	_instance.onProcessError = (handler) => _onError = handler;
@@ -97,6 +97,7 @@ function SpawnedProcessWrapper(gameName, args, onSpawned)
 	_instance.stderr.setEncoding("utf8");
 	_instance.stderr.on("data", (data) => 
 	{
+		console.log(data);
 		// Excute the logging and emitting of the game's data asynchronously,
 		// so that it won't clog the pipe. Otherwise, the pipe will end up
 		// filling up because it doesn't get processed fast enough, and will
@@ -112,21 +113,7 @@ function SpawnedProcessWrapper(gameName, args, onSpawned)
 	});
 
 	_instance.stdout.setEncoding("utf8");
-	_instance.stdout.on("data", (data) => 
-	{
-		// Excute the logging and emitting of the game's data asynchronously,
-		// so that it won't clog the pipe. Otherwise, the pipe will end up
-		// filling up because it doesn't get processed fast enough, and will
-		// make the NodeJS process freeze
-		setImmediate(() =>
-		{
-			_updateStreamPaths();
-
-			if (assert.isFunction(_onStdout) === true)
-				if (_isRelevantData(_recentDataEmitted, data) === true)
-					_onStdout(data);
-		});
-	});
+	_instance.stdout.on("data", _updateStreamPaths);
 
 	function _updateStreamPaths()
 	{
