@@ -313,36 +313,35 @@ module.exports.getLastHostedTime = function(gameName)
 
 module.exports.validateMapfile = function(mapfile)
 {
-	var dataPath = configStore.dom5DataPath;
-	var rootPath = configStore.dom5RootPath;
-	var mapfileRelPath = (/\.map$/i.test(mapfile) === false) ? `/maps/${mapfile}.map` : `/maps/${mapfile}`;
+    const mapfileWithExtension = (/\.map$/i.test(mapfile) === false) ? `${mapfile}.map` : mapfile;
+	const dataMapPath = path.resolve(configStore.dom5MapsPath, mapfileWithExtension);
+	const rootMapPath = path.resolve(configStore.dom5RootPath, "maps", mapfileWithExtension);
 
 	if (typeof mapfile !== "string")
 		return Promise.reject(new Error(`Invalid argument type provided; expected string path, got ${mapfile}`));
 
-	if (fs.existsSync(`${dataPath}${mapfileRelPath}`) === true || fs.existsSync(`${rootPath}${mapfileRelPath}`) === true)
+	if (fs.existsSync(dataMapPath) === true || fs.existsSync(rootMapPath) === true)
 		return Promise.resolve();
 
-	else return Promise.reject(new Error(`The map file '${mapfile}' could not be found.`));
+	else return Promise.reject(new Error(`The map file '${mapfileWithExtension}' could not be found.`));
 };
 
 module.exports.validateMods = function(modfiles)
 {
-	var dataPath = configStore.dom5DataPath;
-
 	if (Array.isArray(modfiles) === false)
 		return Promise.reject(new Error(`Invalid argument type provided; expected array of string paths, got ${modfiles}`));
 
 	for (var i = 0; i < modfiles.length; i++)
 	{
-		var modfile = modfiles[i];
-        var modfileRelPath = (/\.dm$/i.test(modfile) === false) ? `/mods/${modfile}.dm` : `/mods/${modfile}`;
+		const modfile = modfiles[i];
+        const modfileWithExtension = (/\.dm$/i.test(modfile) === false) ? `${modfile}.dm` : modfile;
+        const modPath = path.resolve(configStore.dom5ModsPath, modfileWithExtension);
 
 		if (typeof modfile !== "string")
 			return Promise.reject(new Error(`Invalid modfiles element; expected path string, got ${modfile}`));
 
-		if (fs.existsSync(`${dataPath}${modfileRelPath}`) === false)
-			return Promise.reject(new Error(`The mod file ${modfile} could not be found.`));
+		if (fs.existsSync(modPath) === false)
+			return Promise.reject(new Error(`The mod file ${modfileWithExtension} could not be found.`));
 	}
 
 	return Promise.resolve();
