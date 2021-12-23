@@ -15,6 +15,20 @@ if (fs.existsSync(_tmpDataPath) === false)
 	fs.mkdirSync(_tmpDataPath);
 
 
+module.exports.readStreamToString = (path) =>
+{
+	const readStream = fs.createReadStream(path);
+	const chunks = [];
+	
+	return new Promise((resolve, reject) =>
+	{
+		readStream.on("data", (chunk) => chunks.push(chunk));
+		readStream.on("error", (err) => reject(err));
+		readStream.on("end", () => resolve(Buffer.concat(chunks).toString("utf-8")));
+	});
+};
+
+
 module.exports.copyFile = function(source, target)
 {
 	log.general(log.getVerboseLevel(), `Copying file ${source} to ${target}...`);
