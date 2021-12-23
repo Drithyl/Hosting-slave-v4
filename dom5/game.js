@@ -38,7 +38,7 @@ function Game(name, port, args)
     };
 
     this.launchProcess = () => _spawn(_args);
-    this.launchProcessWithRollbackedTurn = () => _spawn([..._args, "--noquickhost"]);
+    this.launchProcessWithRollbackedTurn = () => _spawn(["--noquickhost", ..._args]);
 
     function _spawn(args)
     {
@@ -101,15 +101,15 @@ Game.areSameSettings = (gameA, gameB) =>
 
 function _areArgsEqual(argsA, argsB)
 {
-    var sortedArgs;
-    var theseSortedArgs;
+    var sortedArgs = [...argsA];
+    var theseSortedArgs = [...argsB];
 
     if (argsA === argsB) return true;
     if (argsA == null || argsB == null) return false;
     if (argsA.length !== argsB.length) return false;
 
-    sortedArgs = argsA.sort((a, b) => a - b);
-    theseSortedArgs = argsB.sort((a, b) => a - b);
+    sortedArgs = sortedArgs.sort((a, b) => a - b);
+    theseSortedArgs = theseSortedArgs.sort((a, b) => a - b);
 
     for (var i = 0; i < sortedArgs.length; ++i)
         if (sortedArgs[i] !== theseSortedArgs[i])

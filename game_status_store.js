@@ -97,36 +97,38 @@ async function _statusUpdateCycle()
     const startTime = Date.now();
     log.general(log.getNormalLevel(), "Starting game update cycle...");
 
-    const gameNames = await fsp.readdir(SAVEDGAMES_PATH);
-    return gameNames.forAllPromises(async (gameName) =>
+    try
     {
-        const statusWrapper = STATUS_WRAPPERS_BY_NAME[gameName];
-        log.general(log.getVerboseLevel(), `Updating ${gameName}'s status...`);
-
-        if (statusWrapper == null)
-        {
-            log.general(log.getVerboseLevel(), `${gameName}'s status not found, fetching...`);
-            await _fetchStatus(gameName);
-        }
-
-        else
-        {
-            await statusWrapper.update();
-            log.general(log.getVerboseLevel(), `${gameName}'s status updated!`);
-        }
-
-    }, false)
-    .then(() =>
-    {
+        const gameNames = await fsp.readdir(SAVEDGAMES_PATH);
+        await Promise.allSettled(gameNames.map(_updateStatus));
         log.general(log.getNormalLevel(), `Finished game update cycle in ${Date.now() - startTime}ms`);
         setTimeout(_statusUpdateCycle, configStore.updateInterval);
-    })
-    .catch((err) =>
+    }
+    
+    catch(err)
     {
         log.error(log.getNormalLevel(), `Error during game update cycle`, err);
         setTimeout(_statusUpdateCycle, configStore.updateInterval);
-    });
+    }
 };
+
+async function _updateStatus(gameName)
+{
+    const statusWrapper = STATUS_WRAPPERS_BY_NAME[gameName];
+    log.general(log.getVerboseLevel(), `Updating ${gameName}'s status...`);
+
+    if (statusWrapper == null)
+    {
+        log.general(log.getVerboseLevel(), `${gameName}'s status not found, fetching...`);
+        await _fetchStatus(gameName);
+    }
+
+    else
+    {
+        await statusWrapper.update();
+        log.general(log.getVerboseLevel(), `${gameName}'s status updated!`);
+    }
+}
 
 async function _fetchStatus(gameName)
 {

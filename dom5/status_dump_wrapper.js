@@ -73,7 +73,7 @@ function StatusDump(gameName, originalPath)
             return log.general(log.getVerboseLevel(), `${_gameName}'s status has not changed; no need to update`);
 
         // Otherwise get the most recent statusdump metadata and update this wrapper
-        const rawData = await fsp.readFile(_originalPath, "utf8");
+        const rawData = await rw.readStreamToString(_originalPath);
         const _parsedData = _parseDumpData(rawData);
 
         this.lastUpdateTimestamp = statusdumpMTime;
