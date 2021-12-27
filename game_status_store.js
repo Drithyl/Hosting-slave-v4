@@ -75,7 +75,7 @@ module.exports.fetchStatus = async (gameName) =>
     const statusdumpPath = path.resolve(SAVEDGAMES_PATH, gameName);
 
     if (assert.isInstanceOfPrototype(STATUS_WRAPPERS_BY_NAME[gameName], statusdumpFactory.StatusDump) === true)
-        await statusWrapper.update();
+        await STATUS_WRAPPERS_BY_NAME[gameName].update();
 
     else if (STATUS_WRAPPERS_BY_NAME[gameName] == null && fs.existsSync(statusdumpPath) === true)
         STATUS_WRAPPERS_BY_NAME[gameName] = await _fetchStatus(gameName);
