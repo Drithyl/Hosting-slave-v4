@@ -3,6 +3,7 @@ const fs = require("fs");
 const path = require("path");
 const fsp = require("fs").promises;
 const log = require("./logger.js");
+const assert = require("./asserter.js");
 const Counter = require("./counter.js");
 const configStore = require("./config_store.js");
 const statusdumpFactory = require("./dom5/status_dump_wrapper.js");
@@ -25,14 +26,14 @@ module.exports.populate = async () =>
 
         try
         {
-            await _fetchStatus(gameName);
+            await module.exports.fetchStatus(gameName);
             log.general(log.getVerboseLevel(), `${gameName}'s status fetched!`);
             return nextPromise();
         }
 
         catch(err)
         {
-            log.general(log.getVerboseLevel(), `${gameName}'s status could NOT be fetched!`);
+            log.general(log.getVerboseLevel(), `${gameName}'s status could NOT be fetched!`, err);
             return nextPromise();
         }
     });
@@ -72,17 +73,19 @@ module.exports.setOnline = (gameName) =>
 module.exports.fetchStatus = async (gameName) =>
 {
     const statusdumpPath = path.resolve(SAVEDGAMES_PATH, gameName);
-    var status = STATUS_WRAPPERS_BY_NAME[gameName];
 
-    if (status == null && fs.existsSync(statusdumpPath) === true)
-        status = await _fetchStatus(gameName);
+    if (assert.isInstanceOfPrototype(STATUS_WRAPPERS_BY_NAME[gameName], statusdumpFactory.StatusDump) === true)
+        await statusWrapper.update();
 
-    if (status == null)
+    else if (STATUS_WRAPPERS_BY_NAME[gameName] == null && fs.existsSync(statusdumpPath) === true)
+        STATUS_WRAPPERS_BY_NAME[gameName] = await _fetchStatus(gameName);
+
+    if (STATUS_WRAPPERS_BY_NAME[gameName] == null)
         return Promise.reject(`No game status available for ${gameName}`);
 
     // Calculates uptime since last check and adds it to status wrapper sent back
-    status.uptime = status.counter.getUptime();
-    return Promise.resolve(status);
+    STATUS_WRAPPERS_BY_NAME[gameName].uptime = STATUS_WRAPPERS_BY_NAME[gameName].counter.getUptime();
+    return Promise.resolve(STATUS_WRAPPERS_BY_NAME[gameName]);
 };
 
 module.exports.fetchPreviousTurnStatus = async (gameName) =>
@@ -114,27 +117,15 @@ async function _statusUpdateCycle()
 
 async function _updateStatus(gameName)
 {
-    const statusWrapper = STATUS_WRAPPERS_BY_NAME[gameName];
     log.general(log.getVerboseLevel(), `Updating ${gameName}'s status...`);
-
-    if (statusWrapper == null)
-    {
-        log.general(log.getVerboseLevel(), `${gameName}'s status not found, fetching...`);
-        await _fetchStatus(gameName);
-    }
-
-    else
-    {
-        await statusWrapper.update();
-        log.general(log.getVerboseLevel(), `${gameName}'s status updated!`);
-    }
+    await exports.fetchStatus(gameName);
+    log.general(log.getVerboseLevel(), `${gameName}'s status updated!`);
 }
 
 async function _fetchStatus(gameName)
 {
     const statusdumpPath = path.resolve(SAVEDGAMES_PATH, gameName);
     const wrapper = await statusdumpFactory.fetchStatusDump(gameName, statusdumpPath);
-    STATUS_WRAPPERS_BY_NAME[gameName] = wrapper;
 
     // Attach a counter to the status if there isn't one already
     if (wrapper.counter == null)
