@@ -53,7 +53,7 @@ function _kill(process)
 		process.stderr.destroy();
 
 	if (process.stdin != null)
-		process.stdin.destroy();
+		process.stdin.end();
 
 	if (process.stdout != null)
 		process.stdout.destroy();
