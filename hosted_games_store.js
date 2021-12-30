@@ -1,5 +1,6 @@
 
 const fs = require("fs");
+const path = require("path");
 const fsp = require("fs").promises;
 const log = require("./logger.js");
 const Game = require("./dom5/game.js");
@@ -28,6 +29,7 @@ module.exports.populate = function(gameDataArray)
         gameDataArray.forEach((gameData) => 
         {
             hostedGames[gameData.port] = new Game(gameData.name, gameData.port, gameData.args);
+            statusStore.addGame(hostedGames[gameData.port]);
             log.general(log.getLeanLevel(), `Added game ${gameData.name} at port ${gameData.port}.`);
         });
 
@@ -44,6 +46,7 @@ module.exports.populate = function(gameDataArray)
         if (hostedGames[gameData.port] == null)
         {
             hostedGames[gameData.port] = new Game(gameData.name, gameData.port, gameData.args);
+            statusStore.addGame(hostedGames[gameData.port]);
             log.general(log.getVerboseLevel(), `Game ${gameData.name} at port ${gameData.port} is new; added to store.`);
         }
 
@@ -61,6 +64,7 @@ module.exports.populate = function(gameDataArray)
                 .then(() => 
                 {
                     hostedGames[newGame.getPort()] = newGame;
+                    statusStore.addGame(newGame);
                     log.general(log.getVerboseLevel(), `New data for game ${newGame.getName()} added`);
                 });
             }
@@ -155,7 +159,7 @@ module.exports.resetPort = function(gameData)
 
 module.exports.isGameNameUsed = function(name)
 {
-	var savePath = `${configStore.dom5DataPath}/savedgames/${name}`;
+	var savePath = path.resolve(configStore.dom5DataPath, "savedgames", name);
 
 	if (fs.existsSync(savePath) === true)
 		return Promise.resolve(true);
@@ -196,6 +200,16 @@ module.exports.killAllGames = function()
 module.exports.isGameOnline = function(port)
 {
 	return hostedGames[port] != null && hostedGames[port].isOnline();
+};
+
+module.exports.deleteFtherlndFile = function(data)
+{
+    const ftherlndPath = path.resolve(configStore.dom5DataPath, "savedgames", data.name, "ftherlnd");
+
+    if (fs.existsSync(ftherlndPath) === false)
+        return Promise.resolve();
+
+    return fsp.unlink(ftherlndPath);
 };
 
 module.exports.deleteGame = function(data)
