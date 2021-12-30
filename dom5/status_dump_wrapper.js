@@ -17,7 +17,10 @@ exports.fetchStatusDump = async (gameName, filePath = null) =>
     const statusDumpPath = (assert.isString(filePath) === false) ? path.resolve(gameDataPath, STATUSDUMP_FILENAME) : path.resolve(filePath, STATUSDUMP_FILENAME);
 
     if (fs.existsSync(statusDumpPath) === false)
-        throw new Error(`Could not find ${gameName}'s statusdump at path ${statusDumpPath}`);
+    {
+        log.general(log.getNormalLevel(), `${gameName}'s statusdump does not exist at ${statusDumpPath}`);
+        return null;
+    }
 
     // Create wrapper object then update it to parse the latest statusdump data
     const wrapper = new StatusDump(gameName, statusDumpPath);
@@ -51,10 +54,10 @@ function StatusDump(gameName, originalPath)
     const _originalPath = originalPath;
     
     this.lastUpdateTimestamp = 0;
-    this.turnNbr = -1;
-    this.eraNbr = -1;
-    this.nbrOfMods = -1;
-    this.turnLimitNbr = -1;
+    this.turnNbr;
+    this.eraNbr;
+    this.nbrOfMods;
+    this.turnLimitNbr;
     this.nationStatusArray = [];
 
     this.getlastUpdateTimestamp = () => this.lastUpdateTimestamp;
