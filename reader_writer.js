@@ -95,30 +95,24 @@ module.exports.copyDir = function(source, target, deepCopy, extensionFilter = nu
     .catch((err) => Promise.reject(err));
 };
 
-module.exports.deleteDir = function(dirPath)
+module.exports.deleteDir = async function(dirPath)
 {
     if (fs.existsSync(dirPath) === false)
         return Promise.resolve();
         
-    return fsp.readdir(dirPath)
-    .then((filenames) =>
-    {
-        return filenames.forAllPromises((filename) =>
-        {
-            const filePath = path.resolve(dirPath, filename);
+    var filenames = await fsp.readdir(dirPath);
+	const results = await Promise.allSettled(filenames.map(async (filename) =>
+	{
+		const filePath = path.resolve(dirPath, filename);
+		const stats = await fsp.lstat(filePath);
+		
+		if (stats.isDirectory() === true)
+			return await exports.deleteDir(filePath);
 
-            return fsp.lstat(filePath)
-            .then((stats) =>
-            {
-                if (stats.isDirectory() === true)
-                    return exports.deleteDir(filePath);
+		return await fsp.unlink(filePath);
+	}));
 
-                return fsp.unlink(filePath);
-            });
-        })
-    })
-    .then(() => fsp.rmdir(dirPath))
-    .catch((err) => Promise.reject(err));
+	return fsp.rmdir(dirPath);
 };
 
 //Guarantees that the targeted path will be left either completely deleted,
