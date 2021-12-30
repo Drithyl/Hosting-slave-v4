@@ -27,6 +27,7 @@ module.exports.listen = function(socketWrapper)
 
     socketWrapper.on("IS_GAME_NAME_FREE", (data) => hostedGamesStore.isGameNameUsed(data.name));
     socketWrapper.on("CREATE_GAME", (data) => hostedGamesStore.create(data.name, data.port, data.gameType, data.args));
+    socketWrapper.on("DELETE_FTHERLND", (data) => hostedGamesStore.deleteFtherlndFile(data));
     socketWrapper.on("DELETE_GAME", (data) => hostedGamesStore.deleteGame(data));
     socketWrapper.on("LAUNCH_GAME", (gameData) => hostedGamesStore.requestHosting(gameData));
     socketWrapper.on("KILL_GAME", (gameData) => hostedGamesStore.killGame(gameData.port));
@@ -43,6 +44,7 @@ module.exports.listen = function(socketWrapper)
     socketWrapper.on("GET_SUBMITTED_PRETENDER", (data) => dom5Interface.getSubmittedPretender(data));
     socketWrapper.on("GET_SUBMITTED_PRETENDERS", (data) => dom5Interface.getSubmittedPretenders(data));
     socketWrapper.on("GET_STATUS_DUMP", (data) => gameStatusStore.fetchStatus(data.name));
+    socketWrapper.on("CONSUME_STATUS_DUMP", (data) => gameStatusStore.consumeStatus(data.name));
     socketWrapper.on("OVERWRITE_SETTINGS", (data) => hostedGamesStore.overwriteSettings(data));
     socketWrapper.on("START_GAME", (data) => dom5Interface.start(data));
     socketWrapper.on("RESTART_GAME", (data) => dom5Interface.restart(data));
