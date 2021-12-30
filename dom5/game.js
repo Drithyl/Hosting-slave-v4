@@ -50,7 +50,7 @@ function Game(name, port, args)
                     return reject(err);
 
                 _isOnline = true;
-                statusStore.setOnline(_name);
+                statusStore.updateGameCounterStatus(_name);
                 return resolve();
             });
     
@@ -62,15 +62,13 @@ function Game(name, port, args)
     {
         _process.onProcessClose((code, signal) => {
             _isOnline = false;
-            statusStore.setOffline(_name);
-
+            statusStore.updateGameCounterStatus(_name);
             log.general(log.getNormalLevel(), `${_name} at ${_port}: Closed with code ${code} and signal ${signal}`);
         });
 
         _process.onProcessExit((code, signal) => {
             _isOnline = false;
-            statusStore.setOffline(_name);
-
+            statusStore.updateGameCounterStatus(_name);
             log.general(log.getNormalLevel(), `${_name} at ${_port}: Exited with code ${code} and signal ${signal}`);
         });
 
