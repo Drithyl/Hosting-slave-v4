@@ -240,18 +240,13 @@ module.exports.deleteGameData = function(data)
 module.exports.overwriteSettings = function(data)
 {
 	const game = hostedGames[data.port];
-    const ftherlndPath = `${configStore.dom5DataPath}/savedgames/${game.getName()}/ftherlnd`;
-
 	game.setArgs(data.args);
 
     // If ftherlnd exists, it must be deleted, as some settings
     // are hardcoded inside it once the savedgames folder of
     // the game is created, like master password or maps
-    if (fs.existsSync(ftherlndPath) === true)
-        return fsp.unlink(ftherlndPath);
-	
-    else return Promise.resolve();
-}
+    return exports.deleteFtherlndFile(data);
+};
 
 function _setTimeoutPromise(delay, fnToCall)
 {
