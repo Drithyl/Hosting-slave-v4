@@ -293,10 +293,12 @@ module.exports.deleteGameSavefiles = function(data)
 
 	return rw.deleteDir(dirPath)
     .then(() => rw.deleteDir(backupPath))
-    .then(() => rw.deleteDir(logPath))
     .then(() => 
     {
         log.general(log.getNormalLevel(), `${gameName}: deleted the savedgames files and their backups.`);
+
+        // Delete log files, but don't block the resolution of the promise
+        rw.deleteDir(logPath);
         return Promise.resolve();
     })
 	.catch((err) => Promise.reject(err));
