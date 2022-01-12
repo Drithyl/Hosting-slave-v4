@@ -225,8 +225,14 @@ module.exports.getStales = function(data)
 {
     const clonedStatusdumpPath = path.resolve(configStore.dom5DataPath, configStore.tmpFilesDirName, data.name);
 
-	return gameStore.fetchPreviousTurnGameStatus(data.name, clonedStatusdumpPath)
-    .then((statusDumpWrapper) => statusDumpWrapper.fetchStales());
+	return gameStatusStore.fetchPreviousTurnStatus(data.name, clonedStatusdumpPath)
+    .then((statusdumpWrapper) => 
+    {
+        if (statusdumpWrapper == null)
+            return Promise.resolve(null);
+        
+        return statusdumpWrapper.fetchStales();
+    });
 };
 
 module.exports.getUndoneTurns = async function(data)
