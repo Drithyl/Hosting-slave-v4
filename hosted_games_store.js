@@ -128,11 +128,6 @@ module.exports.requestHosting = async function(gameData)
     return Promise.resolve();
 };
 
-module.exports.fetchPreviousTurnGameStatus = async function(name)
-{
-    return statusStore.fetchPreviousTurnStatus(name);
-};
-
 module.exports.getUsedPorts = function()
 {
 	return Object.keys(hostedGames).map((portStr) => +portStr);
