@@ -57,28 +57,28 @@ module.exports.setLogToFile = (shouldLogToFile) =>
 module.exports.backup = (logLevel, header, ...data) =>
 {
     var logStr = _formatEntry(header, ...data);
-    _log(logStr);
+    _log(logLevel, logStr);
     _logToFile(logStr, backupWriteStream);
 };
 
 module.exports.general = (logLevel, header, ...data) =>
 {
     var logStr = _formatEntry(header, ...data);
-    _log(logStr);
+    _log(logLevel, logStr);
     _logToFile(logStr, generalWriteStream);
 };
 
 module.exports.error = (logLevel, header, ...data) =>
 {
     var logStr = _formatEntry(header, ...data);
-    _log(logStr);
+    _log(logLevel, logStr);
     _logToFile(logStr, errorWriteStream);
 };
 
 module.exports.upload = (logLevel, header, ...data) =>
 {
     var logStr = _formatEntry(header, ...data);
-    _log(logStr);
+    _log(logLevel, logStr);
     _logToFile(logStr, uploadWriteStream);
 };
 
@@ -106,9 +106,9 @@ function _formatEntry(header, ...data)
     return logStr;
 }
 
-function _log(logStr)
+function _log(logLevel, logStr)
 {
-    if (currentLogLevel <= currentLogLevel && isLoggingToConsole === true)
+    if (logLevel <= currentLogLevel && isLoggingToConsole === true)
         console.log(logStr);
 }
 
