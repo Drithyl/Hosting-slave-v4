@@ -53,7 +53,10 @@ function SpawnedProcessWrapper(gameName, args, onSpawned)
 	// https://nodejs.org/api/stream.html#stream_class_stream_readable
 	// stdio array is [stdin, stdout, stderr]
 	const _instance = spawn(DOM5_EXE_PATH, _args, { 
-		stdio: ["ignore", "pipe", "pipe"]
+		//stdio: ["ignore", "pipe", "pipe"]
+		// TODO: temporary while I think of a solution to games freezing up
+		// (or the bot when all data is sent to it)
+		stdio: ["ignore", "ignore", "ignore"]
 	});
 
 	_instance.onProcessError = (handler) => _onError = handler;
@@ -141,8 +144,12 @@ function SpawnedProcessWrapper(gameName, args, onSpawned)
 
 		_stdoutWriteStream = fs.createWriteStream(path.resolve(_logDirPath, `${date.getDate()}-${date.getMonth() + 1}-${date.getFullYear()}-stdout.txt`), { flags: "a", autoClose: true });
 		_stderrWriteStream = fs.createWriteStream(path.resolve(_logDirPath, `${date.getDate()}-${date.getMonth() + 1}-${date.getFullYear()}-stderr.txt`), { flags: "a", autoClose: true });
-		_instance.stdout.pipe(_stdoutWriteStream);
-		_instance.stderr.pipe(_stderrWriteStream);
+
+		if (_instance.stdout != null)
+			_instance.stdout.pipe(_stdoutWriteStream);
+
+		if (_instance.stderr != null)
+			_instance.stderr.pipe(_stderrWriteStream);
 	}
 
 	return _instance;
