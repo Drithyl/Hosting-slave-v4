@@ -31,23 +31,9 @@ module.exports.readStreamToString = (path) =>
 
 module.exports.copyFile = function(source, target)
 {
-	log.general(log.getVerboseLevel(), `Copying file ${source} to ${target}...`);
 	return exports.checkAndCreateFilePath(target)
-	.then(() => 
-	{
-		log.general(log.getVerboseLevel(), `Dirs created, reading file ${source}`);
-		return fsp.readFile(source);
-	})
-    .then((buffer) => 
-	{
-		log.general(log.getVerboseLevel(), `File read, writing to ${target}`);
-		return fsp.writeFile(target, buffer);
-	})
-    .then(() => 
-	{
-		log.general(log.getVerboseLevel(), `File copied`);
-		return Promise.resolve();
-	})
+	.then(() => fsp.readFile(source))
+    .then((buffer) => fsp.writeFile(target, buffer))
     .catch((err) => Promise.reject(err));
 };
 
