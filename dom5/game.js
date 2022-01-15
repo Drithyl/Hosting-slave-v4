@@ -78,12 +78,10 @@ function Game(name, port, args)
         });
 
         _process.onProcessStderr((data) => {
-            log.general(log.getNormalLevel(), `${_name} at ${_port}: emitted STDERR data`, data);
             socket.emit("STDIO_DATA", { name: _name, data, type: "stderr" });
         });
 
         _process.onProcessStdout((data) => {
-            log.general(log.getNormalLevel(), `${_name} at ${_port}: emitted STDIO data`, data);
             socket.emit("STDIO_DATA", { name: _name, data, type: "stdout" });
         });
     }
