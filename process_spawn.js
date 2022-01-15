@@ -8,7 +8,6 @@ const rw = require("./reader_writer.js");
 const configStore = require("./config_store.js");
 const spawn = require('child_process').spawn;
 
-const REPETITIVE_DATA_DEBOUNCER_INTERVAL = 600000;
 const DOM5_EXE_PATH = configStore.dom5ExePath;
 const BASE_LOG_PATH = path.resolve(configStore.dataFolderPath, "logs", "games");
 const MISSING_EXE_MESSAGE = `The dom5 executable path ${DOM5_EXE_PATH} does not exist!`;
@@ -32,7 +31,6 @@ function SpawnedProcessWrapper(gameName, args, onSpawned)
 
 	const _name = gameName;
 	const _args = args;
-	const _recentDataEmitted = [];
 	const _onSpawned = onSpawned;
 	const _logDirPath = path.resolve(BASE_LOG_PATH, _name);
 
@@ -94,26 +92,29 @@ function SpawnedProcessWrapper(gameName, args, onSpawned)
 			_onClose(code, signal)
 	});
 
+	// Stderr pipe (usually errors are received here)
 	_instance.stderr.setEncoding("utf8");
-	_instance.stderr.on("data", (data) => 
-	{
-		// Excute the logging and emitting of the game's data asynchronously,
-		// so that it won't clog the pipe. Otherwise, the pipe will end up
-		// filling up because it doesn't get processed fast enough, and will
-		// make the NodeJS process freeze
-		setImmediate(() =>
-		{
-			_updateStreamPaths();
-	
-			if (assert.isFunction(_onStderr) === true)
-				if (_isRelevantData(_recentDataEmitted, data) === true)
-					_onStderr(data);
-		});
-	});
+	_instance.stderr.on("error", (err) => _handleData(_onStderr, err));
+	_instance.stderr.on("data", (data) => _handleData(_onStderr, data));
 
+	// Stdout pipe (usually more ignorable data is received here, like heartbeats)
 	_instance.stdout.setEncoding("utf8");
-	_instance.stdout.on("data", _updateStreamPaths);
+	_instance.stdout.on("error", (err) => _handleData(_onStdout, err));
+	_instance.stdout.on("data", (data) => _handleData(_onStdout, data));
 
+	
+	// Update pipe streams if needed, and pass data onto the game's handler
+	function _handleData(handler, data)
+	{
+		_updateStreamPaths();
+
+		if (assert.isFunction(handler) === true)
+			handler(data);
+	}
+
+
+	// Checks the current date and compares it to the last stored day. If it's a new day,
+	// will destroy the old pipes and create new ones with a new path for a new date.
 	function _updateStreamPaths()
 	{
 		const date = new Date();
@@ -139,62 +140,4 @@ function SpawnedProcessWrapper(gameName, args, onSpawned)
 	}
 
 	return _instance;
-}
-
-function _isRelevantData(recentDataEmitted, data)
-{
-	const nationsTurnStatusMessageRegExp = new RegExp("^(\\(?\\*?(\\w*|\\?)(\\)|\\?|\\-|\\+)?\\s*)+$", "i");
-	const serverStatusMessageRegExp = /^Setup port \d+\,/i;
-	const brokenPipe = /^send\: Broken pipe/i;
-
-	// Ignore data buffers that the game puts out
-	if (data.type === "Buffer")
-		return false;
-	
-	if (nationsTurnStatusMessageRegExp.test(data) === true ||
-		serverStatusMessageRegExp.test(data) === true ||
-		brokenPipe.test(data) === true)
-		return false;
-
-	// A timestamp used by the logger.js, this will happen
-	// when the backup script executes and logs things to
-	// console. Instead of sending the data to master; log it
-	if (/\d\d:\d\d:\d\d\.\d\d\dZ/.test(data) === true)
-	{
-		log.backup(log.getVerboseLevel(), data);
-		return false;
-	}
-
-	// Heartbeat data showing number of connections to game
-	if (/^\w+,\s*Connections\s*\d+/.test(data) === true)
-		return false;
-
-	// If data is not fully ignorable, check if it was emitted recently
-	if (_wasDataEmittedRecently(recentDataEmitted, data) === true)
-		return false;
-
-	return true;
-}
-
-function _wasDataEmittedRecently(recentDataEmitted, data)
-{
-	const now = Date.now();
-	const emittedData = recentDataEmitted.find((storedData) => storedData.content === data);
-
-	// Data was never emitted, return false to send it
-	if (emittedData == null)
-	{
-		// Store sent data to make sure we don't keep sending it later in short intervals
-		recentDataEmitted.push({ content: data, timestamp: now });
-		return false;
-	}
-
-	// Data was indeed emitted recently; less than REPETITIVE_DATA_DEBOUNCER_INTERVAL ms ago
-	if (now - emittedData.timestamp < REPETITIVE_DATA_DEBOUNCER_INTERVAL)
-		return true;
-
-	// Data was emitted longer than REPETITIVE_DATA_DEBOUNCER_INTERVAL ms ago, so
-	// update the timestamp to the current date and return false so it's emitted again
-	emittedData.timestamp = now;
-	return false;
 }
