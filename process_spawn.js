@@ -92,15 +92,21 @@ function SpawnedProcessWrapper(gameName, args, onSpawned)
 			_onClose(code, signal)
 	});
 
-	// Stderr pipe (usually errors are received here)
-	_instance.stderr.setEncoding("utf8");
-	_instance.stderr.on("error", (err) => _handleData(_onStderr, err));
-	_instance.stderr.on("data", (data) => _handleData(_onStderr, data));
+	if (_instance.stderr != null)
+	{
+		// Stderr pipe (usually errors are received here)
+		_instance.stderr.setEncoding("utf8");
+		_instance.stderr.on("error", (err) => _handleData(_onStderr, err));
+		_instance.stderr.on("data", (data) => _handleData(_onStderr, data));
+	}
 
-	// Stdout pipe (usually more ignorable data is received here, like heartbeats)
-	_instance.stdout.setEncoding("utf8");
-	_instance.stdout.on("error", (err) => _handleData(_onStdout, err));
-	_instance.stdout.on("data", (data) => _handleData(_onStdout, data));
+	if (_instance.stdout != null)
+	{
+		// Stdout pipe (usually more ignorable data is received here, like heartbeats)
+		_instance.stdout.setEncoding("utf8");
+		_instance.stdout.on("error", (err) => _handleData(_onStdout, err));
+		_instance.stdout.on("data", (data) => _handleData(_onStdout, data));
+	}
 
 	
 	// Update pipe streams if needed, and pass data onto the game's handler
