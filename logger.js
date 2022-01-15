@@ -12,6 +12,7 @@ const NORMAL_LEVEL = 1;
 const VERBOSE_LEVEL = 2;
 
 var currentLogLevel = configStore.defaultLogLevel;
+var isLoggingToConsole = process.env.LOG_TO_CONSOLE ?? true;
 var isLoggingToFile = true;
 
 var dayOfMonth = new Date().getDate();
@@ -55,30 +56,41 @@ module.exports.setLogToFile = (shouldLogToFile) =>
 // by the stdio pipes and emitted to the master server
 module.exports.backup = (logLevel, header, ...data) =>
 {
-    var logStr = _log(logLevel, header, ...data);
+    var logStr = _formatEntry(header, ...data);
+    _log(logStr);
     _logToFile(logStr, backupWriteStream);
 };
 
 module.exports.general = (logLevel, header, ...data) =>
 {
-    var logStr = _log(logLevel, header, ...data);
+    var logStr = _formatEntry(header, ...data);
+    _log(logStr);
     _logToFile(logStr, generalWriteStream);
 };
 
 module.exports.error = (logLevel, header, ...data) =>
 {
-    var logStr = _log(logLevel, header, ...data);
+    var logStr = _formatEntry(header, ...data);
+    _log(logStr);
     _logToFile(logStr, errorWriteStream);
 };
 
 module.exports.upload = (logLevel, header, ...data) =>
 {
-    var logStr = _log(logLevel, header, ...data);
+    var logStr = _formatEntry(header, ...data);
+    _log(logStr);
     _logToFile(logStr, uploadWriteStream);
 };
 
+module.exports.toFile = (filePath, header, ...data) =>
+{
+    var logStr = _formatEntry(header, ...data);
+    var writeStream = fs.createWriteStream(filePath, { flags: "a", autoClose: true });
+    _logToFile(logStr, writeStream);
+    writeStream.end();
+};
 
-function _log(logLevel, header, ...data)
+function _formatEntry(header, ...data)
 {
     var logStr = `${_getTimestamp()}\t${header}\n`;
 
@@ -91,11 +103,13 @@ function _log(logLevel, header, ...data)
     });
 
     logStr += "\n";
-
-    if (logLevel <= currentLogLevel)
-        console.log(logStr);
-
     return logStr;
+}
+
+function _log(logStr)
+{
+    if (currentLogLevel <= currentLogLevel && isLoggingToConsole === true)
+        console.log(logStr);
 }
 
 function _logToFile(logStr, writeStream)
