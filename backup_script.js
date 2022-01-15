@@ -1,10 +1,13 @@
 
+// Disable all console logging during backup, as it will otherwise be passed
+// to the parent node process as if it was stdout data from dom5
+process.env.LOG_TO_CONSOLE = false;
+
 const configStore = require("./config_store.js").loadConfig();
 
 const fs = require("fs");
 const path = require("path");
 const fsp = require("fs").promises;
-const log = require("./logger.js");
 const rw = require("./reader_writer.js");
 const cleaner = require("./unused_files_cleaner.js");
 const statusDump = require("./dom5/status_dump_wrapper.js");
@@ -14,6 +17,7 @@ const preexecRegex = new RegExp("^preexec$", "i");
 const postexecRegex = new RegExp("^postexec$", "i");
 const extensionsToBackupRegex = new RegExp("(\.2h)|(\.trn)|(ftherlnd)$", "i");
 
+
 const gameName = process.argv[2];
 const type = process.argv[3];
 const savedgamesPath = path.resolve(configStore.dom5DataPath, "savedgames", gameName);
@@ -22,7 +26,6 @@ const logDirPath = path.resolve(configStore.dataFolderPath, "logs", "games", gam
 
 var targetBackupDir = path.resolve(configStore.dataFolderPath, "backups", gameName);
 var writeStream;
-
 
 _createLoggingStream()
 .then(_checkBackupArgs)
