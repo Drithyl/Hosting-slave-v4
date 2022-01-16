@@ -15,6 +15,9 @@ const _masterServerAddress = `http://${configStore.masterIP}:${configStore.maste
 //By default, io will try to reconnect forever with a small delay between each attempt
 var _socket;
 var _timeoutProcess;
+var _connectionCheckIntervalId;
+var _lastPingTimestamp = Date.now();
+const MAX_PING_TIMEOUT = 120000;
 
 exports.connect = () =>
 {
@@ -101,9 +104,29 @@ function _createConnection()
     _socket.io.on("reconnect", _reconnectHandler);
     _socket.io.on("reconnect_attempt", _reconnectAttemptHandler);
     _socket.io.on("reconnect_failed", _reconnectFailed);
-    _socket.io.on("ping", () => log.general(log.getLeanLevel(), `Ping received from master server`));
+    _socket.io.on("ping", () => 
+    {
+        _lastPingTimestamp = Date.now();
+        log.general(log.getLeanLevel(), `Ping received from master server`);
+    });
+
+    // Start an interval to check at regular times whether we're still receiving
+    // pings from the master server or not. If we're not, force a reconnection
+    _connectionCheckIntervalId = setInterval(_connectionCheck, MAX_PING_TIMEOUT);
 
     masterCommands.listen(module.exports);
+}
+
+function _connectionCheck()
+{
+    const now = Date.now();
+
+    if (now - _lastPingTimestamp >= MAX_PING_TIMEOUT)
+    {
+        log.general(log.getLeanLevel(), `${MAX_PING_TIMEOUT}ms elapsed without receiving pings from master server; forcing a manual reconnection...`);
+        _socket.disconnect();
+        _socket.connect();
+    }
 }
 
 function _connectedHandler()
