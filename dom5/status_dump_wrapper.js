@@ -73,7 +73,7 @@ function StatusDump(gameName, originalPath)
 
         // If it hasn't changed, no need to update it
         if (this.lastUpdateTimestamp >= statusdumpMTime)
-            return log.general(log.getVerboseLevel(), `${_gameName}'s status has not changed; no need to update`);
+            return;
 
         // Otherwise get the most recent statusdump metadata and update this wrapper
         const rawData = await rw.readStreamToString(_originalPath);
@@ -127,6 +127,7 @@ function StatusDump(gameName, originalPath)
             });
         }
 
+        log.general(log.getVerboseLevel(), `${_gameName}'s status was updated!`);
         return this;
     };
 
