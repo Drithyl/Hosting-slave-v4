@@ -10,11 +10,6 @@ const dom5Interface = require("./dom5_interface.js");
 const statusStore = require("./game_status_store.js");
 const reservedPortsStore = require("./reserved_ports_store.js");
 
-/************************************************************
-*                         GAME LIST                         *
-*             {name, port, gameType, instance}              *
-*     Indexed by port numbers, received from master server  *
-************************************************************/
 var hostedGames = {};
 
 //queue of games pending hosting
