@@ -125,7 +125,5 @@ async function _updateStatus(gameName)
     if (_hasStatus(gameName) === false)
         STATUS_WRAPPERS_BY_NAME[gameName] = new GameStatus(gameName);
 
-    log.general(log.getVerboseLevel(), `Updating ${gameName}'s status...`);
     await STATUS_WRAPPERS_BY_NAME[gameName].updateStatus();
-    log.general(log.getVerboseLevel(), `${gameName}'s status updated!`);
 }
