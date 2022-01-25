@@ -83,20 +83,7 @@ function StatusDump(gameName, originalPath)
 
         if (assert.isInteger(_parsedData.turnNbr) === true)
         {
-            if (_parsedData.turnNbr > 0)
-                this.turnNbr = _parsedData.turnNbr;
-
-            // Statusdumps seem to revert to a default turn -1 while turns roll
-            // for a while, so avoid setting the turn nbr to -1 unless it's
-            // the very first time this status dump was created. This is still
-            // a hack, because this object is not stored in permanent memory,
-            // and whenever the node process starts up again, it will have
-            // this.turnNbr as null. If this happens while a turn had been rolling
-            // and had set its statusdump to -1, this will still go through and
-            // we will have the bot potentially thinking that the game restarted.
-            // Need a better solution.
-            else if (_parsedData.turnNbr === -1 && this.turnNbr == null)
-                this.turnNbr = _parsedData.turnNbr;
+            this.turnNbr = _parsedData.turnNbr;
 
             if (this.turnNbr > 0)
                 this.hasStarted = true;
