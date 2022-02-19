@@ -15,11 +15,11 @@
 	"id": "1a2b3c4d-1a2b-1a2b-1234-1a2b3c4d1a2b",
 	"capacity": 20,
 
-	"dataFolderPath": "C:/Bot/v4-slave",
+	"dataFolderPath": "./data/",
 	"tmpFilesDirName": "tmp",
 	"dom5RootPath": "C:/SteamLibrary/steamapps/common/Dominions5",
 	"dom5ExePath": "C:/SteamLibrary/steamapps/common/Dominions5/Dominions5.exe",
-	"dom5DataPath": "C:/Users/MistZ/AppData/Roaming/Dominions5",
+	"dom5DataPath": "C:/Users/MistZ/AppData/Roaming/Dominions5/",
 	"dom5MapsPath": "C:/Users/MistZ/AppData/Roaming/Dominions5/maps",
 	"dom5ModsPath": "C:/Users/MistZ/AppData/Roaming/Dominions5/mods",
 
@@ -27,5 +27,13 @@
 	"preHostTurnBackupDirName": "Pre-host Turns",
 	"gameHostMsDelay": 250,
 	"updateInterval": 10000,
-	"loggingInterval": 60000
+	"loggingInterval": 60000,
+
+	"backupsMaxDaysOld": 15,
+	"backupsCleaningInterval": 86400000,
+
+	"logsMaxDaysOld": 3,
+	"logsCleaningInterval": 86400000, 
+
+	"useWs": true
 }
