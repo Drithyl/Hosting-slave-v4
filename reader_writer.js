@@ -87,7 +87,7 @@ module.exports.deleteDir = async function(dirPath)
         return Promise.resolve();
         
     var filenames = await fsp.readdir(dirPath);
-	const results = await Promise.allSettled(filenames.map(async (filename) =>
+	const promises = filenames.map(async (filename) =>
 	{
 		const filePath = path.resolve(dirPath, filename);
 		const stats = await fsp.lstat(filePath);
@@ -96,8 +96,9 @@ module.exports.deleteDir = async function(dirPath)
 			return await exports.deleteDir(filePath);
 
 		return await fsp.unlink(filePath);
-	}));
+	});
 
+	await Promise.allSettled(promises);
 	return fsp.rmdir(dirPath);
 };
 
@@ -267,59 +268,98 @@ module.exports.getDirFilenames = function(dirPath, extensionFilter = "")
 	});
 };
 
-module.exports.walkDir = function(dir)
+module.exports.isDirEmpty = async function(dirPath)
+{
+	if (fs.existsSync(dirPath) === false)
+		throw new Error(`Path does not exist: ${dirPath}`);
+
+	// Open dir to create an iterator object
+	const dirIter = await fsp.opendir(dirPath);
+
+	// Get next value of iterator in dir (next file)
+    const { value, done } = await dirIter[Symbol.asyncIterator]().next();
+
+	// If still not done, close dir
+    if (!done)
+        await dirIter.close()
+
+	// If done is true, dir is empty
+    return done;
+};
+
+// Get all filepaths inside a directory, even within
+// directories inside it. Also applies an action to
+// each file and subdirectory, if action is a function
+module.exports.walkDir = async function(dir, action)
 {
 	const results = [];
 
+	// Ensure action is a function to
+	// avoid errors, even if empty
+	if (typeof action !== "function")
+		action = () => {};
+
+	// Start the walk recursive algorithm below
 	return _walk(dir);
 
-	function _walk(dir)
+	async function _walk(dir)
 	{
-		return new Promise((resolve, reject) =>
+		// Get filenames of this dir
+		const filenames = await fsp.readdir(dir);
+
+		// If no filenames, return
+		if (filenames.length <= 0)
+			return results;
+
+		// Iterate through all filenames
+		for await (var file of filenames)
 		{
-			fsp.readdir(dir)
-			.then((list) =>
+			// Get the filename path
+			file = path.resolve(dir, file);
+			const stat = await fsp.stat(file);
+
+			// If it's a subdirectory, walk it too,
+			// add its results to current ones, and
+			// apply the action function if any
+			if (stat.isDirectory() === true)
 			{
-				var pending = list.length;
+				const localResult = await _walk(file);
+				results.concat(localResult);
+				results.push(file);
+				await action(file, stat);
+			}
 
-				if (pending <= 0)
-					return resolve(results);
+			// If it's a file, just push it to our
+			// list and apply the action function
+			else
+			{
+				results.push(file);
+				await action(file, stat);
+			}
+		}
 
-				list.forEach((file) =>
-				{
-					file = path.resolve(dir, file);
-
-					fsp.stat(file)
-					.then((stat) =>
-					{
-						if (stat.isDirectory() === true)
-						{
-							_walk(file)
-							.then((res) => 
-							{
-								results.concat(res);
-								pending--;
-
-								if (pending <= 0)
-									return resolve(results);
-							});
-						}
-
-						else
-						{
-							results.push(file);
-							pending--;
-
-							if (pending <= 0)
-								return resolve(results);
-						}
-					});
-				})
-			})
-			.catch((err) => reject(err));
-		});
+		return results;
 	}
 };
+
+module.exports.keepOnlyFilesWithExt = async function(dirPath, extensionFilter)
+{
+	extensionFilter = (Array.isArray(extensionFilter) === true) ? extensionFilter : [ extensionFilter ];
+
+	await exports.walkDir(dirPath, async (filePath, fileStat) =>
+    {
+        const ext = path.extname(filePath);
+
+        if (fileStat.isDirectory() === true && extensionFilter.includes(ext) === false)
+        {
+            const isDirEmpty = await exports.isDirEmpty(filePath);
+            if (isDirEmpty === true) await fsp.rmdir(filePath);
+        }
+
+        else if (extensionFilter.includes(ext) === false)
+        	await fsp.unlink(filePath);
+    });
+}
 
 module.exports.readDirContents = function(dirPath, extensionFilter)
 {
