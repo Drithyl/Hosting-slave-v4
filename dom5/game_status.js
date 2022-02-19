@@ -15,7 +15,7 @@ function GameStatus(gameName)
     this.counter = new Counter();
     this.uptime = 0;
 
-
+    this.getName = () => _gameName;
     this.hasGameObject = () => this.game != null;
     this.setGameObject = (gameObject) =>
     {
@@ -28,6 +28,12 @@ function GameStatus(gameName)
 
     this.hasStatusDump = () => this.statusWrapper != null;
     this.getStatusDump = () => this.statusWrapper;
+    this.isOnline = () => (this.game != null) ? this.game.isOnline() : null;
+
+    this.consumeUptime = () =>
+    {
+        return (this.counter != null) ? this.counter.getUptime() : null;
+    };
 
     // Only call this method when this data will be used to
     // update the uptime on the master side. If it is used
@@ -38,7 +44,8 @@ function GameStatus(gameName)
         if (this.hasStatusDump() === false)
             return null;
 
-        const consumedData = Object.assign(this.statusWrapper, { 
+        const consumedData = Object.assign(this.statusWrapper, {
+            gameName: _gameName, 
             uptime: (this.counter != null) ? this.counter.getUptime() : null,
             isOnline: (this.game != null) ? this.game.isOnline() : null
         });
@@ -48,13 +55,18 @@ function GameStatus(gameName)
 
     this.updateStatus = async () =>
     {
+        var updatedWrapper;
+
         // If there is a StatusDump object available, use its update() method
         if (this.hasStatusDump() === true)
-            await this.statusWrapper.update();
+            updatedWrapper = await this.statusWrapper.update();
 
         // Ootherwise, try to fetch a new one parsing the savedgames data
         else if (this.statusWrapper == null)
-            this.statusWrapper = await statusdumpFactory.fetchStatusDump(_gameName);
+            updatedWrapper = await statusdumpFactory.fetchStatusDump(_gameName);
+
+        if (updatedWrapper != null)
+            this.statusWrapper = updatedWrapper;
 
         // If there is still no status available, then return null
         if (this.statusWrapper == null)
@@ -70,7 +82,9 @@ function GameStatus(gameName)
         // Update our counter status according to the state of the process
         _updateCounterStatus(this);
 
-        return this.statusWrapper;
+        // If updatedWrapper is null, the calling function will know that
+        // there were no changes in the update, or there was no statusdump
+        return updatedWrapper;
     };
 
     this.hasCounter = () => assert.isInstanceOfPrototype(this.counter, Counter);
