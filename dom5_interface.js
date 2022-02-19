@@ -161,20 +161,26 @@ module.exports.hasStarted = function(gameName)
     else return false;
 };
 
-module.exports.restart = function(data)
+module.exports.restart = async function(data)
 {
     const gameName = data.name;
+    const deletePretenders = data.deletePretenders;
     const gameDirPath = path.resolve(_savedGamesPath, gameName);
 
-	log.general(log.getNormalLevel(), `Killing ${gameName}'s process...`);
 
-	//kill game first so it doesn't automatically regenerate the statuspage file
-	//as soon as it gets deleted
-	return gameStore.killGame(data.port)
-	.then(() => rw.deleteDir(gameDirPath))
-	.then(() => gameStore.requestHosting(data))
-	.then(() => Promise.resolve())
-	.catch((err) => Promise.reject(err));
+	// kill game first so it doesn't automatically regenerate
+	// the statuspage file as soon as it gets deleted
+	log.general(log.getNormalLevel(), `Killing ${gameName}'s process...`);
+    await gameStore.killGame(data.port);
+    
+
+    if (deletePretenders !== true)
+        await rw.keepOnlyFilesWithExt(gameDirPath, [".2h"]);
+
+    else await rw.keepOnlyFilesWithExt(gameDirPath);
+
+
+	await gameStore.requestHosting(data);
 };
 
 module.exports.getSubmittedPretender = async function(data)
@@ -205,7 +211,7 @@ module.exports.getSubmittedPretenders = async function(data)
     return status.getSubmittedPretenders();
 };
 
-module.exports.removePretender = function(data)
+module.exports.removePretender = async function(data)
 {
 	const gameName = data.name;
     var filePath = path.resolve(_savedGamesPath, gameName, data.nationFilename);
@@ -214,11 +220,11 @@ module.exports.removePretender = function(data)
         filePath += ".2h";
 
 	if (fs.existsSync(filePath) === false)
-        return Promise.reject(new Error("Could not find the pretender file. Has it already been deleted? You can double-check in the lobby. If not, you can try rebooting the game."));
+        throw new Error("Could not find the pretender file. Has it already been deleted? You can double-check in the lobby. If not, you can try rebooting the game.");
 
-    return fsp.unlink(filePath)
-	.then(() => Promise.resolve())
-	.catch((err) => Promise.reject(err));
+
+    await fsp.unlink(filePath);
+    await gameStatusStore.forceUpdate(gameName);
 };
 
 module.exports.getStales = function(data)
