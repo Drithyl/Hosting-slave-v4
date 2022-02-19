@@ -2,7 +2,6 @@
 const fs = require("fs");
 const path = require("path");
 const stream = require("stream");
-const log = require("./logger.js");
 const assert = require("./asserter.js");
 const rw = require("./reader_writer.js");
 const configStore = require("./config_store.js");
@@ -56,7 +55,7 @@ function SpawnedProcessWrapper(gameName, args, onSpawned)
 		//stdio: ["ignore", "pipe", "pipe"]
 		// TODO: temporary while I think of a solution to games freezing up
 		// (or the bot when all data is sent to it)
-		stdio: ["ignore", "ignore", "ignore"]
+		stdio: ["ignore", "ignore", "pipe"]
 	});
 
 	_instance.onProcessError = (handler) => _onError = handler;
@@ -70,7 +69,7 @@ function SpawnedProcessWrapper(gameName, args, onSpawned)
 	{
 		_spawnedSuccessfully = true;
 		await rw.checkAndCreateDirPath(_logDirPath);
-		_updateStreamPaths();
+		//_updateStreamPaths();
 		onSpawned();
 	});
 
@@ -115,7 +114,7 @@ function SpawnedProcessWrapper(gameName, args, onSpawned)
 	// Update pipe streams if needed, and pass data onto the game's handler
 	function _handleData(handler, data)
 	{
-		_updateStreamPaths();
+		//_updateStreamPaths();
 
 		if (assert.isFunction(handler) === true)
 			handler(data);
