@@ -9,7 +9,8 @@ const fs = require("fs");
 const path = require("path");
 const fsp = require("fs").promises;
 const rw = require("./reader_writer.js");
-const cleaner = require("./unused_files_cleaner.js");
+const safePath = require("./safe_path.js");
+const cleaner = require("./cleaners/backups_cleaner.js");
 const statusDump = require("./dom5/status_dump_wrapper.js");
 
 
@@ -20,11 +21,11 @@ const extensionsToBackupRegex = new RegExp("(\.2h)|(\.trn)|(ftherlnd)$", "i");
 
 const gameName = process.argv[2];
 const type = process.argv[3];
-const savedgamesPath = path.resolve(configStore.dom5DataPath, "savedgames", gameName);
-const clonedStatusdumpDir = path.resolve(configStore.dom5DataPath, configStore.tmpFilesDirName, gameName);
-const logDirPath = path.resolve(configStore.dataFolderPath, "logs", "games", gameName);
+const savedgamesPath = safePath(configStore.dom5DataPath, "savedgames", gameName);
+const clonedStatusdumpDir = safePath(configStore.dom5DataPath, configStore.tmpFilesDirName, gameName);
+const logDirPath = safePath(configStore.dataFolderPath, "logs", "games", gameName);
 
-var targetBackupDir = path.resolve(configStore.dataFolderPath, "backups", gameName);
+var targetBackupDir = safePath(configStore.dataFolderPath, "backups", gameName);
 var writeStream;
 
 _createLoggingStream()
@@ -33,7 +34,7 @@ _createLoggingStream()
 .catch((err) =>
 {
     if (writeStream != null)
-    _logToFile(err.stack);
+        _logToFile(err.stack);
 
     process.exit();
 });
