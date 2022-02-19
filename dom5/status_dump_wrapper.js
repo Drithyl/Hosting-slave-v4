@@ -110,7 +110,7 @@ function StatusDump(gameName, originalPath)
             {
                 //avoid bad types and empty strings from splitting
                 if (assert.isString(nationData) === true && /\S+/.test(nationData) === true)
-                    this.nationStatusArray.push(new NationStatusWrapper(nationData));
+                    this.nationStatusArray.push(new NationStatusWrapper(nationData, _gameName));
             });
         }
 
@@ -120,16 +120,7 @@ function StatusDump(gameName, originalPath)
 
     this.getSubmittedPretenders = () =>
     {
-        const submittedNationStatuses = [];
-        const savedgamesDir = path.resolve(configStore.dom5DataPath, `savedgames/${_gameName}`);
-
-        this.nationStatusArray.forEach((nationStatus) =>
-        {
-            if (fs.existsSync(path.resolve(savedgamesDir, `${nationStatus.filename}.2h`)) === true)
-                submittedNationStatuses.push(nationStatus);
-        });
-
-        return submittedNationStatuses;
+        return this.nationStatusArray.filter((nationStatus) => nationStatus.isSubmitted === true);
     };
 
     this.hasSelectedNations = () =>
