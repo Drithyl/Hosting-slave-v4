@@ -1,7 +1,7 @@
 
 const log = require("../logger.js");
 const assert = require("../asserter.js");
-const socket = require("../socket_wrapper.js");
+const socketWrapper = require("../socket_wrapper.js");
 const statusStore = require("../game_status_store.js");
 const { SpawnedProcessWrapper } = require("../process_spawn.js");
 
@@ -74,15 +74,15 @@ function Game(name, port, args)
 
         _process.onProcessError((err) => {
             log.general(log.getNormalLevel(), `${_name} at ${_port}: Process error occurred`, err);
-            socket.emit("GAME_ERROR", { name: _name, error: err.message });
+            socketWrapper.emit("GAME_ERROR", { name: _name, error: err.message });
         });
 
         _process.onProcessStderr((data) => {
-            socket.emit("STDIO_DATA", { name: _name, data, type: "stderr" });
+            socketWrapper.emit("STDIO_DATA", { name: _name, data, type: "stderr" });
         });
 
         _process.onProcessStdout((data) => {
-            socket.emit("STDIO_DATA", { name: _name, data, type: "stdout" });
+            socketWrapper.emit("STDIO_DATA", { name: _name, data, type: "stdout" });
         });
     }
 }
