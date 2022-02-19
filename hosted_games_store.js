@@ -15,85 +15,42 @@ var hostedGames = {};
 //queue of games pending hosting
 var gameHostRequests = [];
 
+
 module.exports.populate = function(gameDataArray)
 {
-	//first connection to master server
-	if (Object.keys(hostedGames).length <= 0)
-	{
-        log.general(log.getLeanLevel(), `First connection to the master server since node started; populating the store...`);
-        gameDataArray.forEach((gameData) => 
-        {
-            hostedGames[gameData.port] = new Game(gameData.name, gameData.port, gameData.args);
-            statusStore.addGame(hostedGames[gameData.port]);
-            log.general(log.getLeanLevel(), `Added game ${gameData.name} at port ${gameData.port}.`);
-        });
-
-        log.general(log.getLeanLevel(), "Game store populated.");
-        return Promise.resolve();
-    }
-    
-    log.general(log.getVerboseLevel(), `Comparing existing games with the data received...`);
-
-	//not the first connection, some data from master server already exists
-	//check for doubles and override them
-	gameDataArray.forEach((gameData) =>
-	{
-        if (hostedGames[gameData.port] == null)
-        {
-            hostedGames[gameData.port] = new Game(gameData.name, gameData.port, gameData.args);
-            statusStore.addGame(hostedGames[gameData.port]);
-            log.general(log.getVerboseLevel(), `Game ${gameData.name} at port ${gameData.port} is new; added to store.`);
-        }
-
-		//if there's a game in the same port, check if it needs overwriting
-        else 
-        {
-            const oldGame = hostedGames[gameData.port];
-            const newGame = new Game(gameData.name, gameData.port, gameData.args);
-
-            // If not same settings, kill old game and overwrite with new game
-            if (Game.areSameSettings(oldGame, newGame) === false)
-            {
-                log.general(log.getVerboseLevel(), `Game ${gameData.name} already exists at port ${gameData.port} but with different settings; data is being overwritten...`);
-                module.exports.killGame(oldGame.getPort())
-                .then(() => 
-                {
-                    hostedGames[newGame.getPort()] = newGame;
-                    statusStore.addGame(newGame);
-                    log.general(log.getVerboseLevel(), `New data for game ${newGame.getName()} added`);
-                });
-            }
-
-            else log.general(log.getVerboseLevel(), `Game ${gameData.name} already exists at port with same settings`);
-        }
-    });
-
-	//check for hostedGames that exist in memory here but not on the master server and delete those
-    for (var port in hostedGames)
+    for (var gameData of gameDataArray)
     {
-        const existingGame = hostedGames[port];
+        if (_gameDataExists(gameData) === false)
+        {
+            _addNewGame(gameData);
+            statusStore.sendStatusUpdateToMaster(gameData.name);
+            log.general(log.getVerboseLevel(), `Game ${gameData.name} at port ${gameData.port} is new; added to store.`);
+            continue;
+        }
 
-        if (gameDataArray.find((gameData) => gameData.port === existingGame.getPort()) == null)
-		{
-            log.general(log.getVerboseLevel(), `${existingGame.getName()} at port ${existingGame.getPort()} was not found on master data; killing and removing it...`);
+        const oldGame = hostedGames[gameData.port];
+        const newGame = new Game(gameData.name, gameData.port, gameData.args);
 
-            exports.killGame(port)
-            .then(() =>
-            {
-                log.general(log.getVerboseLevel(), `${existingGame.getName()} at port ${existingGame.getPort()} was removed.`);
-                delete hostedGames[port];
-            })
-            .catch((err) => log.error(log.getLeanLevel(), `ERROR KILLING ABANDONED GAME`, err));
-		}
+        // If not same settings, kill old game and overwrite with new game
+        if (Game.areSameSettings(oldGame, newGame) === false)
+        {
+            log.general(log.getVerboseLevel(), `Game ${gameData.name} already exists at port ${gameData.port} but with different settings; data is being overwritten...`);
+            _overwriteGame(oldGame, newGame);
+            statusStore.sendStatusUpdateToMaster(gameData.name);
+        }
     }
 
     log.general(log.getLeanLevel(), "Game store populated.");
-    return Promise.resolve();
 };
 
 module.exports.getGame = function(port)
 {
     return hostedGames[port];
+};
+
+module.exports.getGameByName = function(gameName)
+{
+    return _getGameByName(gameName);
 };
 
 module.exports.requestHosting = async function(gameData)
@@ -238,6 +195,29 @@ module.exports.overwriteSettings = function(data)
     return exports.deleteFtherlndFile(data);
 };
 
+
+function _gameDataExists(gameData)
+{
+    return hostedGames[gameData.port] != null;   
+}
+
+function _addNewGame(gameData)
+{
+    hostedGames[gameData.port] = new Game(gameData.name, gameData.port, gameData.args);
+    statusStore.addGame(hostedGames[gameData.port]);
+}
+
+function _overwriteGame(existingGame, newGame)
+{
+    module.exports.killGame(existingGame.getPort())
+    .then(() => 
+    {
+        hostedGames[newGame.getPort()] = newGame;
+        statusStore.addGame(newGame);
+        log.general(log.getVerboseLevel(), `New data for game ${newGame.getName()} added`);
+    });
+}
+
 function _setTimeoutPromise(delay, fnToCall)
 {
     return new Promise((resolve, reject) =>
@@ -277,6 +257,6 @@ async function _host(game, timerData, isCurrentTurnRollback)
 function _getGameByName(gameName)
 {
     for (var port in hostedGames)
-        if (hostedGames[port].name == gameName)
+        if (hostedGames[port].getName() == gameName)
             return hostedGames[port];
 }
