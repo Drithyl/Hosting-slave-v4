@@ -5,6 +5,8 @@ const log = require("./logger.js");
 const assert = require("./asserter.js");
 const configStore = require("./config_store.js");
 const GameStatus = require("./dom5/game_status.js");
+const socketWrapper = require("./socket_wrapper.js");
+const gamesStore = require("./hosted_games_store.js");
 const statusdumpFactory = require("./dom5/status_dump_wrapper.js");
 
 const SAVEDGAMES_PATH = path.resolve(configStore.dom5DataPath, "savedgames");
@@ -64,6 +66,11 @@ module.exports.consumeStatus = (gameName) =>
     else return Promise.resolve();
 };
 
+module.exports.forceUpdate = async (gameName) =>
+{
+    await _updateStatus(gameName);
+};
+
 module.exports.startUpdateCycle = () =>
 {
     if (_isUpdating === true)
@@ -89,6 +96,12 @@ module.exports.fetchPreviousTurnStatus = async (gameName) =>
     return wrapper;
 };
 
+module.exports.sendStatusUpdateToMaster = (gameName) => 
+{
+    if (_hasStatus(gameName) === true)
+        _sendStatusUpdateToMaster(STATUS_WRAPPERS_BY_NAME[gameName]);
+};
+
 function _hasStatus(gameName)
 {
     return assert.isInstanceOfPrototype(STATUS_WRAPPERS_BY_NAME[gameName], GameStatus);
@@ -98,6 +111,7 @@ async function _addStatus(gameName)
 {
     STATUS_WRAPPERS_BY_NAME[gameName] = new GameStatus(gameName);
     await STATUS_WRAPPERS_BY_NAME[gameName].updateStatus();
+    return STATUS_WRAPPERS_BY_NAME[gameName];
 }
 
 async function _statusUpdateCycle()
@@ -122,8 +136,25 @@ async function _statusUpdateCycle()
 
 async function _updateStatus(gameName)
 {
+    if (gamesStore.getGameByName(gameName) == null)
+        return;
+
     if (_hasStatus(gameName) === false)
         STATUS_WRAPPERS_BY_NAME[gameName] = new GameStatus(gameName);
 
+    
     await STATUS_WRAPPERS_BY_NAME[gameName].updateStatus();
+    _sendStatusUpdateToMaster(STATUS_WRAPPERS_BY_NAME[gameName]);
+}
+
+function _sendStatusUpdateToMaster(gameStatus)
+{
+    socketWrapper.emit(
+        "GAME_UPDATE", {
+            gameName: gameStatus.getName(),
+            isOnline: gameStatus.isOnline(),
+            uptime: gameStatus.consumeUptime(),
+            statusdump: gameStatus.getStatusDump()
+        }
+    );
 }
