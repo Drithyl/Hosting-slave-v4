@@ -16,6 +16,7 @@ var _ws = new WebSocket(_masterServerAddress);
 const _sentMessages = [];
 const _eventHandlers = {};
 
+var _pingTimeout;
 var _reconnectionTimeout;
 var _shutdownGamesTimeout;
 
@@ -115,7 +116,7 @@ function _connectedHandler()
 ******************************/
 function _disconnectHandler(code, reason)
 {
-    clearTimeout(_ws.pingTimeout);
+    clearTimeout(_pingTimeout);
     log.general(log.getLeanLevel(), `Socket disconnected with code ${code} and reason: ${reason}`);
 
     // If code is 0, we forcibly disconnected the ws
@@ -196,13 +197,13 @@ function _heartbeat(ws)
 {
     log.timeEnd("heartbeat");
     //console.timeEnd("heartbeat");
-    clearTimeout(ws.pingTimeout);
+    clearTimeout(_pingTimeout);
 
     // Use `WebSocket#terminate()`, which immediately destroys the connection,
     // instead of `WebSocket#close()`, which waits for the close timer.
     // Delay should be equal to the interval at which your server
     // sends out pings plus a conservative assumption of the latency.
-    ws.pingTimeout = setTimeout(() => {
+    _pingTimeout = setTimeout(() => {
         log.error(log.getLeanLevel(), `Connection to master timed out`);
         ws.terminate();
     }, 30000 + 1000);
