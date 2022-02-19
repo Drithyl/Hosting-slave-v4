@@ -10,6 +10,7 @@ const BASE_LOG_PATH = `${configStore.dataFolderPath}/logs`;
 const LEAN_LEVEL = 0;
 const NORMAL_LEVEL = 1;
 const VERBOSE_LEVEL = 2;
+const WRITE_ONLY_LEVEL = 99;
 
 var currentLogLevel = configStore.defaultLogLevel;
 var isLoggingToConsole = process.env.LOG_TO_CONSOLE ?? true;
@@ -17,6 +18,7 @@ var isLoggingToFile = true;
 
 var dayOfMonth = new Date().getDate();
 var backupWriteStream;
+var cleanerWriteStream;
 var generalWriteStream;
 var errorWriteStream;
 var uploadWriteStream;
@@ -30,6 +32,7 @@ _updateStreamPaths();
 module.exports.getLeanLevel = () => LEAN_LEVEL;
 module.exports.getNormalLevel = () => NORMAL_LEVEL;
 module.exports.getVerboseLevel = () => VERBOSE_LEVEL;
+module.exports.getWriteOnlyLevel = () => WRITE_ONLY_LEVEL;
 
 
 module.exports.setLogLevel = (level) =>
@@ -61,6 +64,13 @@ module.exports.backup = (logLevel, header, ...data) =>
     _logToFile(logStr, backupWriteStream);
 };
 
+module.exports.cleaner = (logLevel, header, ...data) =>
+{
+    var logStr = _formatEntry(header, ...data);
+    _log(logLevel, logStr);
+    _logToFile(logStr, cleanerWriteStream);
+};
+
 module.exports.general = (logLevel, header, ...data) =>
 {
     var logStr = _formatEntry(header, ...data);
@@ -88,6 +98,29 @@ module.exports.toFile = (filePath, header, ...data) =>
     var writeStream = fs.createWriteStream(filePath, { flags: "a", autoClose: true });
     _logToFile(logStr, writeStream);
     writeStream.end();
+};
+
+const timers = {};
+
+module.exports.time = (tag, display) =>
+{
+    timers[tag] = {
+        start: Date.now(),
+        display: display ?? tag
+    };
+};
+
+module.exports.timeEnd = (tag, logLevel) =>
+{
+    logLevel = logLevel ?? NORMAL_LEVEL;
+    const data = timers[tag];
+    delete timers[tag];
+
+    if (data == null)
+        return;
+
+    const timeTaken = (Date.now() - data.start) * 0.001;
+    module.exports.general(logLevel, `${data.display}: ${timeTaken.toFixed(3)}s`);
 };
 
 function _formatEntry(header, ...data)
@@ -128,6 +161,7 @@ function _updateStreamPaths()
 
     if (dayOfMonth === day && 
         assert.isInstanceOfPrototype(backupWriteStream, stream.Writable) === true && 
+        assert.isInstanceOfPrototype(cleanerWriteStream, stream.Writable) === true && 
         assert.isInstanceOfPrototype(generalWriteStream, stream.Writable) === true && 
         assert.isInstanceOfPrototype(errorWriteStream, stream.Writable) === true && 
         assert.isInstanceOfPrototype(uploadWriteStream, stream.Writable) === true)
@@ -137,6 +171,9 @@ function _updateStreamPaths()
 
     if (backupWriteStream != null && backupWriteStream.destroyed === false)
         backupWriteStream.destroy();
+
+    if (cleanerWriteStream != null && cleanerWriteStream.destroyed === false)
+        cleanerWriteStream.destroy();
 
     if (generalWriteStream != null && generalWriteStream.destroyed === false)
         generalWriteStream.destroy();
@@ -148,6 +185,7 @@ function _updateStreamPaths()
         uploadWriteStream.destroy();
 
     backupWriteStream = fs.createWriteStream(_getLogPath(date, "backup.txt"), { flags: "a", autoClose: true });
+    cleanerWriteStream = fs.createWriteStream(_getLogPath(date, "backup.txt"), { flags: "a", autoClose: true });
     generalWriteStream = fs.createWriteStream(_getLogPath(date, "general.txt"), { flags: "a", autoClose: true });
     errorWriteStream = fs.createWriteStream(_getLogPath(date, "error.txt"), { flags: "a", autoClose: true });
     uploadWriteStream = fs.createWriteStream(_getLogPath(date, "upload.txt"), { flags: "a", autoClose: true });
