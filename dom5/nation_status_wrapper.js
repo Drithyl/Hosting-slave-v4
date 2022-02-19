@@ -1,9 +1,15 @@
 
+const fs = require("fs");
+const path = require("path");
+const configStore = require("../config_store.js");
+const SAVED_GAMES_PATH = path.resolve(configStore.dom5DataPath, `savedgames/`);
+
 module.exports = NationStatusWrapper;
 
-function NationStatusWrapper(nationRawData)
+function NationStatusWrapper(nationRawData, gameName)
 {
     const _parsedData = _parseNationRawData(nationRawData);
+    const _gameSaveDirPath = path.resolve(SAVED_GAMES_PATH, gameName);
 
     this.filename = _parsedData.filename;
     this.fullName = _parsedData.fullName;
@@ -19,6 +25,10 @@ function NationStatusWrapper(nationRawData)
     this.isDead = (_parsedData.controller === -1) ? true : false;
     this.isHuman = (_parsedData.controller === 1) ? true : false;
     this.isAi = (_parsedData.controller === 2) ? true : false;
+
+    // Used to check if this nation was submitted by players; e.g. it's a human nation
+    // even if the status above shows a value of -1, isDead, and not 1, isHuman
+    this.isSubmitted = fs.existsSync(path.resolve(_gameSaveDirPath, `${this.filename}.2h`));
 
     //from 0 to 5: easy, normal, difficult, mighty, master, impossible
     this.aiDifficultyNbr = _parsedData.aiDifficultyNbr;
