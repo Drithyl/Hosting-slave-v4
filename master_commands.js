@@ -6,7 +6,7 @@ const dom5Interface = require("./dom5_interface.js");
 const gameStatusStore = require("./game_status_store.js");
 const hostedGamesStore = require("./hosted_games_store.js");
 const reservedPortsStore = require("./reserved_ports_store.js");
-const unusedFilesCleaner = require("./unused_files_cleaner.js");
+const mapAndModsCleaner = require("./cleaners/unused_maps_and_mods_cleaner.js");
 
 module.exports.listen = function(socketWrapper)
 {
@@ -20,8 +20,8 @@ module.exports.listen = function(socketWrapper)
 
     socketWrapper.on("VERIFY_MAP", (mapFilename) => dom5Interface.validateMapfile(mapFilename));
     socketWrapper.on("VERIFY_MODS", (modFilenames) => dom5Interface.validateMods(modFilenames));
-    socketWrapper.on("DELETE_UNUSED_MAPS", (data) => unusedFilesCleaner.deleteUnusedMaps(data.mapsInUse, data.force));
-    socketWrapper.on("DELETE_UNUSED_MODS", (data) => unusedFilesCleaner.deleteUnusedMods(data.modsInUse, data.force));
+    socketWrapper.on("DELETE_UNUSED_MAPS", (data) => mapAndModsCleaner.deleteUnusedMaps(data.mapsInUse, data.force));
+    socketWrapper.on("DELETE_UNUSED_MODS", (data) => mapAndModsCleaner.deleteUnusedMods(data.modsInUse, data.force));
 
     socketWrapper.on("ONLINE_CHECK", (port) => Promise.resolve(hostedGamesStore.isGameOnline(port)));
 
