@@ -1,10 +1,13 @@
 
 const fs = require("fs");
+const path = require("path");
+const config = require("./config.json");
 const { TypeError, RangeError, LengthError, SemanticError, InstanceOfError, InvalidDiscordIdError, InvalidPathError, PermissionsError } = require("./custom_errors.js");
 
 
 exports.isArray = isArray;
 exports.isObject = isObject;
+exports.isSerializedBuffer = isSerializedBuffer;
 exports.isString = isString;
 exports.isNumber = isNumber;
 exports.isInteger = isInteger;
@@ -23,9 +26,11 @@ exports.doesStringEndIn = doesStringEndIn;
 exports.assertGameTypeIsValid = assertGameTypeIsValid;
 exports.isValidPath = isValidPath;
 exports.isValidDiscordId = isValidDiscordId;
+exports.isSafePathToDelete = isSafePathToDelete;
 
 exports.isArrayOrThrow = isArrayOrThrow;
 exports.isObjectOrThrow = isObjectOrThrow;
+exports.isSerializedBufferOrThrow = isSerializedBufferOrThrow;
 exports.isStringOrThrow = isStringOrThrow;
 exports.isNumberOrThrow = isNumberOrThrow;
 exports.isIntegerOrThrow = isIntegerOrThrow;
@@ -43,6 +48,7 @@ exports.doesStringEndInOrThrow = doesStringEndInOrThrow;
 exports.assertGameTypeIsValidOrThrow = assertGameTypeIsValidOrThrow;
 exports.isValidPathOrThrow = isValidPathOrThrow;
 exports.isValidDiscordIdOrThrow = isValidDiscordIdOrThrow;
+exports.isSafePathToDeleteOrThrow = isSafePathToDeleteOrThrow;
 
 
 function isArray(arr)
@@ -52,7 +58,12 @@ function isArray(arr)
 
 function isObject(obj)
 {
-	return Array.isArray(obj) === false && typeof obj === "object";
+	return Array.isArray(obj) === false && typeof obj === "object" && obj != null;
+}
+
+function isSerializedBuffer(obj)
+{
+  return isObject(obj) === true && obj.type === "Buffer" && isArray(obj.data) === true;
 }
 
 function isString(str)
@@ -152,6 +163,26 @@ function assertGameTypeIsValid(gameType)
   else return false;
 }
 
+// As per NodeJS' guidelines: 
+// https://nodejs.org/en/knowledge/file-system/security/introduction/#preventing-directory-traversal
+function isSafePathToDelete(filePath)
+{
+  const normDataRoot = path.resolve(config.dataFolderPath);
+  const normDomDataRoot = path.resolve(config.dom5DataPath);
+  const fullPath = path.join(filePath);
+
+  if (fullPath.indexOf(normDataRoot) === 0 ||
+      fullPath.indexOf(normDomDataRoot) === 0)
+  {
+    return true;
+  }
+
+	else return false;
+}
+
+
+
+
 function isArrayOrThrow(arr)
 {
   if (isArray(arr) === false)
@@ -162,6 +193,12 @@ function isObjectOrThrow(obj)
 {
   if (isObject(obj) === false)
     throw new TypeError(`Expected Object, got: <${obj}>`);
+}
+
+function isSerializedBufferOrThrow(obj)
+{
+  if (isSerializedBuffer(obj) === false)
+    throw new TypeError(`Expected Serialized Buffer, got: <${obj}> (${typeof obj})`);
 }
 
 function isStringOrThrow(str)
@@ -273,4 +310,10 @@ function isValidDiscordIdOrThrow(id)
 {
     if (isValidDiscordId(id) === false)
       throw new InvalidDiscordIdError(`Id is not a valid Discord Id: ${id}`);
+}
+
+function isSafePathToDeleteOrThrow(filePath)
+{
+    if (isSafePathToDelete(filePath) === false)
+      throw new InvalidPathError(`Invalid path to delete as it's not a data folder or would result in directory traversal: ${filePath}`);
 }
