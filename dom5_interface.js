@@ -39,37 +39,37 @@ module.exports.getMapList = async function()
     return mapsWithProvinceCount;
 }
 
-module.exports.getTurnFiles = function(data)
+module.exports.getTurnFiles = async function(data)
 {
     const gameName = data.name;
     const nationNames = data.nationNames;
     const gameFilesPath = path.resolve(_savedGamesPath, gameName);
     const scoresPath = path.resolve(gameFilesPath, "scores.html");
+    const gameStatus = await gameStatusStore.fetchStatus(gameName);
     const files = { turnFiles: {} };
 
-    return nationNames.forAllPromises((nationName) =>
+    const promises = nationNames.map(async (nationName) =>
     {
-        return readFileBuffer(path.resolve(gameFilesPath, `${nationName}.trn`))
-        .then((buffer) => files.turnFiles[nationName] = buffer)
-        .catch((err) => Promise.reject(err));
-    })
-    .then(() => 
-    {
-        if (fs.existsSync(scoresPath) === false)
-            return Promise.resolve();
+        const filepath = path.resolve(gameFilesPath, `${nationName}.trn`);
+        const status = gameStatus.getNationStatus(nationName);
 
-        return readFileBuffer(scoresPath)
-        .then((buffer) =>
-        {
-            files.scores = buffer;
-            return Promise.resolve(files);
-        });
-    })
-    .catch((err) => 
-    {
-        log.error(log.getLeanLevel(), `ERROR GETTING TURN FILES FOR ${gameName}`, err);
-        return Promise.reject(err);
+        // AI or dead nations won't have .trn files
+        if (status.isHuman === false)
+            return;
+
+        if (fs.existsSync(filepath) === false)
+            files.turnFiles[nationName] = "File does not exist?";
+
+        files.turnFiles[nationName] = await readFileBuffer(filepath);
     });
+
+    await Promise.allSettled(promises);
+
+
+    if (fs.existsSync(scoresPath) === true)
+        files.scores = await readFileBuffer(scoresPath);
+
+    return files;
 };
 
 module.exports.getTurnFile = function(data)
