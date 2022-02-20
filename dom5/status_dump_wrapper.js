@@ -118,6 +118,11 @@ function StatusDump(gameName, originalPath)
         return this;
     };
 
+    this.getNationStatus = (filename) =>
+    {
+        return this.nationStatusArray.find((nationStatus) => nationStatus.filename === filename);
+    };
+
     this.getSubmittedPretenders = () =>
     {
         return this.nationStatusArray.filter((nationStatus) => nationStatus.isSubmitted === true);
