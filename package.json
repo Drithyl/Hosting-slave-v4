@@ -30,7 +30,7 @@
 	"homepage": "https://github.com/Drithyl/Hosting-slave-v4#readme",
 	"dependencies": {
 		"googleapis": "^61.0.0",
-		"socket.io": "^2.4.1",
+		"socket.io": "^4.4.1",
 		"tcp-port-used": "^1.0.2",
 		"ws": "^8.4.2",
 		"yauzl": "^2.10.0"
