@@ -52,10 +52,10 @@ function SpawnedProcessWrapper(gameName, args, onSpawned)
 	// https://nodejs.org/api/stream.html#stream_class_stream_readable
 	// stdio array is [stdin, stdout, stderr]
 	const _instance = spawn(DOM5_EXE_PATH, _args, { 
-		//stdio: ["ignore", "pipe", "pipe"]
+		//stdio: ["ignore", "ignore", "pipe"]
 		// TODO: temporary while I think of a solution to games freezing up
 		// (or the bot when all data is sent to it)
-		stdio: ["ignore", "ignore", "pipe"]
+		stdio: ["ignore", "ignore", "ignore"]
 	});
 
 	_instance.onProcessError = (handler) => _onError = handler;
