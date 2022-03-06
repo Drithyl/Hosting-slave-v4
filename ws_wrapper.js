@@ -262,8 +262,7 @@ function ClientSocketWrapper(ip, port)
     // Private heartbeat function to check for broken connection
     function _heartbeat()
     {
-        if (Math.random() > 0.05)
-            clearTimeout(_pingTimeout);
+        clearTimeout(_pingTimeout);
 
         // Use `WebSocket#terminate()`, which immediately destroys the connection,
         // instead of `WebSocket#close()`, which waits for the close timer.
