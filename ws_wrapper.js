@@ -1,130 +1,61 @@
 
+
 const log = require("./logger.js");
 const { WebSocket } = require("ws");
-const assert = require("./asserter.js");
 const configStore = require("./config_store.js");
-const gameStore = require("./hosted_games_store.js");
 const masterCommands = require("./master_commands.js");
-const reservedPortsStore = require("./reserved_ports_store.js");
-const { TimeoutError, SocketResponseError } = require("./errors.js");
 
-/****************************************
-*   SOCKET CONNECTION TO MASTER SERVER  *
-****************************************/
-const _masterServerAddress = `ws://${configStore.masterIP}:${configStore.masterPort}/`;
-var _ws = new WebSocket(_masterServerAddress);
-const _sentMessages = [];
-const _eventHandlers = {};
-
-var _pingTimeout;
-var _reconnectionTimeout;
+var _wsWrapper;
 var _shutdownGamesTimeout;
+
 
 exports.connect = () =>
 {
     log.general(log.getNormalLevel(), "Attempting to connect to the master server...");
+    _wsWrapper = new ClientSocketWrapper(configStore.masterIP, configStore.masterPort);
     return Promise.resolve(_createConnection());
 };
 
-//No function below will be available until the socket connects successfully
-exports.on = (trigger, handler) =>
-{
-    if (assert.isFunction(handler) === false)
-        throw new Error(`Handler must be a function; received ${typeof handler} instead!`);
+module.exports.on = (...args) => _wsWrapper.onMessage(...args);
+module.exports.emit = (...args) => _wsWrapper.emit(...args);
+module.exports.emitPromise = (...args) => _wsWrapper.emitPromise(...args);
 
-    _eventHandlers[trigger] = (data, expectsResponse) =>
-    {
-        // Process data with the given handler
-        Promise.resolve(handler(data))
-        .then((result) =>
-        {
-            // Response to the received message
-            // with resulting data
-            if (expectsResponse === true)
-                module.exports.emit(trigger, result);
-        })
-        // Respond with an error if an exception was caught
-        .catch((err) => 
-        {
-            if (expectsResponse === true)
-                this.emit(trigger, null, err)
-        });
-    };
-};
-
-exports.emit = (trigger, data, error = null, expectsResponse = false) =>
-{
-    const wrappedData = {
-        trigger,
-        data: data,
-        expectsResponse,
-        error: (assert.isObject(error) === true) ? error.message : error
-    };
-
-    _ws.send( _stringify(wrappedData) );
-}
-
-exports.emitPromise = (trigger, data, timeout = 60000) =>
-{
-    return new Promise((resolve, reject) =>
-    {
-        const wsPromise = new WebSocketPromise(trigger, resolve, reject, timeout);
-        module.exports.emit(trigger, data, null, true);
-        _sentMessages.push(wsPromise);
-
-        // Cleanup the promise from the array of sent messages
-        // once it resolves, rejects or timeouts
-        wsPromise.onFinished(() => _sentMessages.findIndex((promise, i) =>
-        {
-            if (promise.getTrigger() === trigger)
-                _sentMessages.splice(i, 1);
-        }));
-    });
-};
 
 function _createConnection()
 {
-    _ws = new WebSocket(_masterServerAddress);
-
-    _ws.on("open", _connectedHandler);
-    _ws.on("ping", () => _heartbeat(_ws));
-    _ws.on("close", _disconnectHandler);
-    _ws.on("message", _onMessageReceived);
-    _ws.on("error", (err) => 
-    {
-        log.general(log.getLeanLevel(), `WebSocket Error`, err);
-    });
+    _wsWrapper.onConnected(_connectedHandler);
+    _wsWrapper.onReconnected(_reconnectedHandler);
+    _wsWrapper.onClose(_disconnectHandler);
+    _wsWrapper.onError((err) => log.general(log.getLeanLevel(), `WebSocket Error`, err));
 
     masterCommands.listen(module.exports);
 }
 
 function _connectedHandler()
 {
-    _heartbeat(_ws);
-    log.general(log.getNormalLevel(), `Connected to master server successfully.`);
+    log.general(log.getLeanLevel(), `Connected to master server; sending data...`);
 
     if (_shutdownGamesTimeout != null)
     {
         log.general(log.getLeanLevel(), `Stopped disconnection timeout`);
         clearTimeout(_shutdownGamesTimeout);
     }
+
+    _wsWrapper.emit("SERVER_DATA", {
+        id: configStore.id, 
+        capacity: configStore.capacity, 
+        ownerDiscordID: configStore.ownerDiscordID
+    });
 }
 
-
-/******************************
-*   DISCONNECTION HANDLING    *
-******************************/
-function _disconnectHandler(code, reason)
+function _reconnectedHandler()
 {
-    clearTimeout(_pingTimeout);
+    
+}
+
+function _disconnectHandler(code, reason, wsWrapper)
+{
     log.general(log.getLeanLevel(), `Socket disconnected with code ${code} and reason: ${reason}`);
-
-    // If code is 0, we forcibly disconnected the ws
-    // because pings from master stopped coming, so
-    // recreate a new connection now that this is closed
-    if (code === 0)
-        return _reconnectHandler();
-
 
     // Start a timeout of 5 minutes. If after the 5 minutes the socket
     // is still not reconnected, shut down all games and free all ports.
@@ -133,15 +64,19 @@ function _disconnectHandler(code, reason)
     if (_shutdownGamesTimeout != null)
         clearTimeout(_shutdownGamesTimeout);
 
-    _reconnectHandler();
-
     log.general(log.getLeanLevel(), `Starting timeout to shut down games if no reconnection happens.`);
-    _shutdownGamesTimeout = setTimeout(() => 
+    _shutdownGamesTimeout = _shutdownGamesHandler(wsWrapper);
+    wsWrapper.reconnect();
+}
+
+function _shutdownGamesHandler(wsWrapper)
+{
+    return setTimeout(() => 
     {
         _shutdownGamesTimeout = null;
 
         // 1 is OPEN
-        if (_ws.readyState === 1)
+        if (wsWrapper.readyState === 1)
         {
             log.general(log.getLeanLevel(), `Socket is still disconnected after timeout; shutting down all games...`);
 
@@ -155,133 +90,231 @@ function _disconnectHandler(code, reason)
     }, 300000);
 }
 
-function _reconnectHandler()
+
+function ClientSocketWrapper(ip, port)
 {
-    if (_reconnectionTimeout != null)
-        return;
+    const _self = this;
+    const _ip = ip;
+    const _port = port;
+    const _awaitingResponse = [];
+    const _handlers = [];
 
-    _reconnectionTimeout = setTimeout(() =>
-    {
-        log.general(log.getNormalLevel(), `Attempting to reconnect...`);
-        _reconnectionTimeout = null;
-        _createConnection();
+    var _ws = new WebSocket(`ws://${_ip}:${_port}`);
 
-    }, 10000);
-}
+    var _id;
+    var _pingTimeout;
+    var _reconnectTimeout;
+    var _onConnectedHandlers = [];
+    var _onReconnectedHandlers = [];
+    var _onCloseHandlers = [];
+    var _onErrorHandlers = [];
 
+    _initialize();
 
-// Handle incoming messages on this socket distributing them
-// among listening handlers or treating them as responses
-// from previously sent messages by this socket
-function _onMessageReceived(data)
-{
-    const parsedData = _parse(data);
-    const trigger = parsedData.trigger;
-    const pendingPromise = _sentMessages.find((wsPromise) => trigger === wsPromise.getTrigger());
-    const handler = _eventHandlers[trigger];
-
-    // If we were pending a response, handle it directly in the WebSocketPromise object
-    if (assert.isInstanceOfPrototype(pendingPromise, WebSocketPromise) === true)
-        pendingPromise.handleResponse(parsedData);
-
-    // Otherwise this is a direct message, so handle its data with the registered handler
-    else if (assert.isFunction(handler) === true)
-        handler(parsedData.data, parsedData.expectsResponse);
-
-    else log.error(log.getLeanLevel(), `Received message with unregistered trigger ${trigger}`);
-}
-
-// Following recommended implentation:
-// https://github.com/websockets/ws#how-to-detect-and-close-broken-connections
-function _heartbeat(ws)
-{
-    log.timeEnd("heartbeat");
-    //console.timeEnd("heartbeat");
-    clearTimeout(_pingTimeout);
-
-    // Use `WebSocket#terminate()`, which immediately destroys the connection,
-    // instead of `WebSocket#close()`, which waits for the close timer.
-    // Delay should be equal to the interval at which your server
-    // sends out pings plus a conservative assumption of the latency.
-    _pingTimeout = setTimeout(() => {
-        log.error(log.getLeanLevel(), `Connection to master timed out`);
-        ws.terminate();
-    }, 30000 + 1000);
     
-    //console.time("heartbeat");
-    log.time("heartbeat", `Master ping received, time since last`);
-}
+    _self.isConnecting = () => _ws != null && _ws.readyState === _ws.CONNECTING;
+    _self.isConnected = () => _ws != null && _ws.readyState === _ws.OPEN;
+    _self.isClosing = () => _ws != null && _ws.readyState === _ws.CLOSING;
+    _self.isClosed = () => _ws != null && _ws.readyState === _ws.CLOSED;
+    
+    _self.getId = () => _id;
+    _self.setId = (id) => _id = id;
 
-
-function WebSocketPromise(trigger, resolveFn, rejectFn, timeout)
-{
-    const _trigger = trigger;
-    const _resolveFn = resolveFn;
-    const _rejectFn = rejectFn;
-    const _timeout = timeout ?? 60000;
-
-    var _receivedResponse = false;
-    var _cleanupHandler;
-
-    this.getTrigger = () => _trigger;
-
-    this.onFinished = (cleanupFn) => _cleanupHandler = cleanupFn;
-
-    this.handleResponse = (data) =>
-    {
-        if (_receivedResponse === true)
-            return;
-
-        if (data == null)
-            _settle(_rejectFn.bind(this, new SocketResponseError(`No data packet for this response was received!`)));
-
-        else if (data.error != null)
-            _settle(_rejectFn.bind(this, new SocketResponseError(data.error)));
-
-        else _settle(_resolveFn.bind(this, data.data));
+    _self.clearPingTimeout = () => clearInterval(_pingTimeout);
+    _self.setPingTimeout = (handler, timeout) => {
+        _pingTimeout = setTimeout(handler, timeout);
     };
 
-    // If a timeout was given, start it as the creation of this object
-    if (assert.isInteger(_timeout) === true && _timeout > 0)
+    _self.close = () => _ws?.close();
+    _self.terminate = () => _ws?.terminate();
+    _self.reconnect = (delay = 5000) =>
     {
-        setTimeout(function handleTimeout()
+        if (_reconnectTimeout != null)
+            clearTimeout(_reconnectTimeout);
+
+        if (_self.isConnected() === true || _self.isClosing() === true)
+            _self.terminate();
+
+        _reconnectTimeout = setTimeout(() =>
         {
-            if (_receivedResponse === true)
-                return;
+            _ws = new WebSocket(`ws://${_ip}:${_port}`);
+            _initialize();
+            _onReconnectedHandlers.forEach((handler) => handler(_self));
 
-            _receivedResponse = true;
-            _settle(_rejectFn.bind(this, new TimeoutError(`Request timed out.`)));
+        }, delay);
+    };
 
-            if (assert.isFunction(_cleanupHandler) === true)
-                _cleanupHandler();
+    _self.emit = (trigger, data, error = null, expectsResponse = false) =>
+    {
+        const wrappedData = {
+            trigger: trigger,
+            data: data,
+            error: (typeof error === "object" && error != null) ? error.message : error,
+            expectsResponse: expectsResponse
+        };
+    
+        _ws.send( _stringify(wrappedData) );
+    };
 
-        }, _timeout);
+    _self.emitPromise = (trigger, data, timeout = 60000) =>
+    {
+        return new Promise((resolve, reject) =>
+        {
+            _self.emit(trigger, data, null, true);
+            _awaitingResponse.push({
+                trigger,
+                resolve,
+                reject
+            });
+    
+            setTimeout(() =>
+            {
+                const index = _awaitingResponse.findIndex((p) => p.trigger === trigger);
+
+                    // Promise already got deleted beforehand
+                    if (index === -1)
+                        return;
+        
+                    _awaitingResponse[index].reject(new TimeoutError(`Request ${trigger} to socket ${_id} timed out`));
+                    _awaitingResponse.splice(index, 1);
+    
+            }, timeout);
+        });
+    };
+
+    _self.onMessage = (trigger, handler, respond = false) =>
+    {
+        if (typeof handler !== "function")
+            throw new TypeError(`Expected handler to be a function; received ${typeof handler}`);
+    
+        _handlers[trigger] = _wrapHandler(handler, trigger, respond);
+    };
+
+    _self.onConnected = (handler) => {
+        (typeof handler === "function")
+            _onConnectedHandlers.push(handler);
+    };
+
+    _self.onReconnected = (handler) => {
+        (typeof handler === "function")
+            _onReconnectedHandlers.push(handler);
+    };
+
+    _self.onClose = (handler) => {
+        (typeof handler === "function")
+            _onCloseHandlers.push(handler);
+    };
+
+    _self.onError = (handler) => {
+        (typeof handler === "function")
+            _onErrorHandlers.push(handler);
+    };
+
+    
+    function _initialize()
+    {
+        _ws.on("open", () =>
+        {
+            _heartbeat(_ws);
+            _onConnectedHandlers.forEach((handler) => handler(_self));
+        });
+
+        _ws.on("message", (data) => {
+            _onMessageHandler(data);
+        });
+
+        _ws.on("close", (code, reason) => {
+            clearTimeout(_pingTimeout);
+            _onCloseHandlers.forEach((handler) => handler(code, reason, _self));
+        });
+
+        _ws.on("error", (err) => {
+            _onErrorHandlers.forEach((handler) => handler(err, _self));
+        });
+
+        _ws.on("ping", function onPing(data) {
+            _heartbeat(_ws, data);
+        });
     }
 
-    function _settle(handlerFn)
+    async function _onMessageHandler(message)
     {
-        if (_receivedResponse === true)
-            return;
+        const { trigger, data, error, expectsResponse } = _parse(message);
+        const promiseIndex = _awaitingResponse.findIndex((p) => p.trigger === trigger);
+        const pendingPromise = _awaitingResponse[promiseIndex];
+        const handler = _handlers[trigger];
+    
+        if (promiseIndex === -1 && handler != null)
+            handler(data, expectsResponse);
+    
+        if (promiseIndex > -1)
+        {
+            if (error != null)
+                pendingPromise.reject(new SocketResponseError(error));
+        
+            else pendingPromise.resolve(data);
 
-        _receivedResponse = true;
-        handlerFn();
+            // Remove promise after resolving/rejecting it
+            _awaitingResponse.splice(promiseIndex, 1);
+        }
+    }
 
-        if (assert.isFunction(_cleanupHandler) === true)
-            _cleanupHandler();
+    // Private heartbeat function to check for broken connection
+    function _heartbeat()
+    {
+        if (Math.random() > 0.05)
+            clearTimeout(_pingTimeout);
+
+        // Use `WebSocket#terminate()`, which immediately destroys the connection,
+        // instead of `WebSocket#close()`, which waits for the close timer.
+        // Delay should be equal to the interval at which your server
+        // sends out pings plus a conservative assumption of the latency.
+        _pingTimeout = setTimeout(function pingTimeout () {
+            _ws.terminate();
+
+        }, 30000 + 1000);
     }
 }
+
+
+function _wrapHandler(handler, trigger)
+{
+    return async (data, expectsResponse) =>
+    {
+        try
+        {
+            const returnValue = await handler(data);
+
+            if (expectsResponse === true)
+                module.exports.emit(trigger, returnValue);
+        }
+     
+        catch(err)
+        {
+            if (expectsResponse === true)
+                module.exports.emit(trigger, null, err);
+        }
+    }
+}
+
 
 function _parse(data)
 {
+    var formattedData = {};
     var parsedData;
 
     if (Buffer.isBuffer(data) === true)
         parsedData = _jsonParseWithBufferRevival(data.toString());
 
-    if (assert.isString(data) === true)
+    if (typeof data === "string")
         parsedData = _jsonParseWithBufferRevival(data);
 
-    return parsedData;
+    formattedData.trigger = parsedData.trigger;
+    formattedData.data = parsedData.data;
+    formattedData.error = parsedData.error;
+    formattedData.expectsResponse = parsedData.expectsResponse;
+
+    return formattedData;
 }
 
 // Parse JSON while also checking if there is any nested serialized
@@ -309,6 +342,7 @@ function _isSerializedBuffer(value)
     Array.isArray(value.data) === true;
 }
 
+
 // Stringify that prevents circular references taken from https://antony.fyi/pretty-printing-javascript-objects-as-json/
 function _stringify(data, spacing = 0)
 {
@@ -334,8 +368,4 @@ function _stringify(data, spacing = 0)
 	// enable garbage collection
 	cache = null;
 	return str;
-}
-
-function _byteCount(s) {
-    return encodeURI(s).split(/%..|./).length - 1;
 }

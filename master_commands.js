@@ -10,7 +10,6 @@ const mapAndModsCleaner = require("./cleaners/unused_maps_and_mods_cleaner.js");
 
 module.exports.listen = function(socketWrapper)
 {
-    socketWrapper.on("REQUEST_SERVER_DATA", _sendServerData);
     socketWrapper.on("GAME_DATA", _populateGameData);
     socketWrapper.on("UPLOAD_FILE", _downloadFile);
 
@@ -52,22 +51,6 @@ module.exports.listen = function(socketWrapper)
     socketWrapper.on("ROLLBACK", (data) => dom5Interface.rollback(data));
     socketWrapper.on("REMOVE_NATION", (data) => dom5Interface.removePretender(data));
 };
-
-/************************************
-*   MASTER SERVER AUTHENTICATION    *
-************************************/
-//This is called by the master server once it receives the socket connection,
-//to verify that this server is trusted by using the token.
-function _sendServerData(data)
-{
-    log.general(log.getLeanLevel(), "Received REQUEST_SERVER_DATA event from master server. Sending authentication attempt.");
-    
-    return Promise.resolve({
-        id: configStore.id, 
-        capacity: configStore.capacity, 
-        ownerDiscordID: configStore.ownerDiscordID
-    });
-}
 
 //Received when the master server validates the authentication,
 //at which point we can launch games.
