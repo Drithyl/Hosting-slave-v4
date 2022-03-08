@@ -33,7 +33,5 @@
 	"backupsCleaningInterval": 86400000,
 
 	"logsMaxDaysOld": 3,
-	"logsCleaningInterval": 86400000, 
-
-	"useWs": true
+	"logsCleaningInterval": 86400000
 }

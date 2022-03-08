@@ -1,6 +1,5 @@
 
-const configStore = require("./config_store.js");
-const socket = (configStore.useWs === true) ? require("./ws_wrapper.js") : require("./socket_io_wrapper.js");
+const socket = require("./ws_wrapper.js");
 
 
 module.exports.connect = (...args) => socket.connect(...args);
