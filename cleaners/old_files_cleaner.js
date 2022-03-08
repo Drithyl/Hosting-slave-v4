@@ -9,6 +9,7 @@ const configStore = require("../config_store.js");
 
 var backupCleaningInterval;
 var logCleaningInterval;
+var tmpFilesCleaningInterval;
 
 
 module.exports.startBackupCleanInterval = () =>
@@ -29,6 +30,17 @@ module.exports.startLogCleanInterval = () =>
         clearInterval(logCleaningInterval);
 
     logCleaningInterval = _startDirCleanInterval(logsPath, configStore.logsMaxDaysOld, configStore.logsCleaningInterval);
+};
+
+module.exports.startTmpFilesCleanInterval = () =>
+{
+    const tmpPath = safePath(configStore.dom5TmpPath);
+
+    if (tmpFilesCleaningInterval != null)
+        clearInterval(tmpFilesCleaningInterval);
+
+        // TODO: Add a name filter so only the directories called dom5_* and their subfiles are removed
+        tmpFilesCleaningInterval = _startDirCleanInterval(tmpPath, configStore.tmpFilesMaxDaysOld, configStore.tmpFilesCleaningInterval);
 };
 
 
