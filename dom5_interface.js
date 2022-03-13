@@ -173,7 +173,10 @@ module.exports.restart = async function(data)
 	log.general(log.getNormalLevel(), `Killing ${gameName}'s process...`);
     await gameStore.killGame(data.port);
     
-
+    // Pretender files (.2h) that have orders submitted in the
+    // current turn will NOT be kept as pretenders even if they
+    // are not deleted by Dominions. It seems that Dominions only
+    // considers "clean" .2h new turn files as pretender files
     if (deletePretenders !== true)
         await rw.keepOnlyFilesWithExt(gameDirPath, [".2h"]);
 
