@@ -50,6 +50,14 @@ module.exports.addGame = async (gameObject) =>
     STATUS_WRAPPERS_BY_NAME[gameName].setGameObject(gameObject);
 };
 
+module.exports.removeGame = (gameName) =>
+{
+    if (_hasStatus(gameName) === false)
+        return;
+
+    delete STATUS_WRAPPERS_BY_NAME[gameName];
+};
+
 module.exports.fetchStatus = (gameName) =>
 {
     if (_hasStatus(gameName) === true)
