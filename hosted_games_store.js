@@ -168,6 +168,7 @@ module.exports.deleteGame = function(data)
     .then(() =>
     {
         delete hostedGames[port];
+        statusStore.removeGame(data.name);
         return Promise.resolve();
     })
 	.catch((err) => Promise.reject(err));
