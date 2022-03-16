@@ -188,6 +188,10 @@ module.exports.deleteGameData = function(data)
 module.exports.overwriteSettings = function(data)
 {
 	const game = hostedGames[data.port];
+
+    if (game == null)
+        return Promise.reject(new Error(`Game does not exist in store. If you just hosted it, use !launch.`));
+
 	game.setArgs(data.args);
 
     // If ftherlnd exists, it must be deleted, as some settings
