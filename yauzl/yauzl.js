@@ -5,6 +5,8 @@ const path = require("path");
 const fsp = require("fs").promises;
 const yauzl = require("yauzl");
 const log = require("../logger.js");
+const rw = require("../reader_writer.js");
+const safePath = require("../safe_path.js");
 
 exports.extractTo = (zipfilePath, targetPath, filterFn = null) =>
 {
@@ -57,21 +59,6 @@ function _writeEntriesTo(zipfile, targetPath, filterFn = null)
             }
 
             Promise.resolve()
-            .then(() =>
-            {
-                log.upload(log.getVerboseLevel(), `Checking that path ${targetPath} exists...`);
-
-                // Make sure the directory that we are extracting this entry to exists,
-                // otherwise create it. The .zip standard might sometimes omit directories
-                // within itself; refer to https://github.com/thejoshwolfe/yauzl/issues/52
-                if (fs.existsSync(targetPath) === false)
-                {
-                    log.upload(log.getVerboseLevel(), `Path does not exist; creating it...`);
-                    return fsp.mkdir(targetPath);
-                }
-
-                else return Promise.resolve();
-            })
             .then(() => _writeEntryTo(entry, zipfile, targetPath))
             .then(() => 
             {
@@ -97,7 +84,7 @@ function _writeEntriesTo(zipfile, targetPath, filterFn = null)
 
 function _writeEntryTo(entry, zipfile, targetPath)
 {
-    const entryWritePath = path.resolve(targetPath, entry.fileName);
+    const entryWritePath = safePath(targetPath, entry.fileName);
     const filename = entry.fileName;
 
     return _ensurePathExists(entryWritePath)
@@ -112,7 +99,8 @@ function _writeEntryTo(entry, zipfile, targetPath)
 
 function _ensurePathExists(entryPath)
 {
-    const entryDirPath = path.dirname(entryPath);
+    const safeEntryPath = safePath(entryPath);
+    const entryDirPath = path.dirname(safeEntryPath);
     log.upload(log.getVerboseLevel(), `Checking that path ${entryDirPath} exists...`);
 
     // Make sure the directory that we are extracting this entry to exists,
@@ -121,7 +109,7 @@ function _ensurePathExists(entryPath)
     if (fs.existsSync(entryDirPath) === false)
     {
         log.upload(log.getVerboseLevel(), `Path does not exist; creating it...`);
-        return fsp.mkdir(entryDirPath);
+        return rw.checkAndCreateDirPath(entryDirPath);
     }
 
     log.upload(log.getVerboseLevel(), `Path exists; continuing...`);
