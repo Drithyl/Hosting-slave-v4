@@ -67,7 +67,6 @@ function Game(name, port, args)
         });
 
         _process.onProcessExit((code, signal) => {
-            _isOnline = false;
             statusStore.updateGameCounterStatus(_name);
             log.general(log.getNormalLevel(), `${_name} at ${_port}: Exited with code ${code} and signal ${signal}`);
         });
