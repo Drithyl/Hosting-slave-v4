@@ -55,7 +55,7 @@ module.exports.getGameByName = function(gameName)
 
 module.exports.requestHosting = async function(gameData)
 {
-    log.general(log.getNormalLevel(), `'${gameData.name}' at ${gameData.port}: Requesting hosting...`);
+    log.general(log.getVerboseLevel(), `'${gameData.name}' at ${gameData.port}: Requesting hosting...`);
     var game = hostedGames[gameData.port];
 
     if (game == null)
@@ -66,7 +66,7 @@ module.exports.requestHosting = async function(gameData)
 
     if (game.isOnline() === true)
     {
-        log.general(log.getNormalLevel(), `'${game.getName()}' at ${game.getPort()}: Already online; no need to launch`);
+        log.general(log.getVerboseLevel(), `'${game.getName()}' at ${game.getPort()}: Already online; no need to launch`);
         return Promise.resolve();
     }
 
@@ -74,7 +74,7 @@ module.exports.requestHosting = async function(gameData)
     // declared here or it will always be 0 if declared above
     const delay = configStore.gameHostMsDelay * gameHostRequests.length;
     gameHostRequests.push(game.getPort());
-    log.general(log.getNormalLevel(), `'${game.getName()}' at ${game.getPort()}: Added to hosting queue with ${delay}ms delay`);
+    log.general(log.getVerboseLevel(), `'${game.getName()}' at ${game.getPort()}: Added to hosting queue with ${delay}ms delay`);
     
     _setTimeoutPromise(delay, _host.bind(null, game, gameData));
     return Promise.resolve();
@@ -219,7 +219,7 @@ function _overwriteGame(existingGame, newGame)
     {
         hostedGames[newGame.getPort()] = newGame;
         statusStore.addGame(newGame);
-        log.general(log.getVerboseLevel(), `New data for game ${newGame.getName()} added`);
+        log.general(log.getLeanLevel(), `Game ${newGame.getName()} received different data from master; overwriting it`);
     });
 }
 
