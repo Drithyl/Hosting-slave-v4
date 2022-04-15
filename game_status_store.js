@@ -148,10 +148,10 @@ async function _updateStatus(gameName)
         return;
 
     if (_hasStatus(gameName) === false)
-        STATUS_WRAPPERS_BY_NAME[gameName] = new GameStatus(gameName);
+        await _addStatus(gameName);
 
-    
-    await STATUS_WRAPPERS_BY_NAME[gameName].updateStatus();
+    else STATUS_WRAPPERS_BY_NAME[gameName].updateStatus();
+
     _sendStatusUpdateToMaster(STATUS_WRAPPERS_BY_NAME[gameName]);
 }
 
