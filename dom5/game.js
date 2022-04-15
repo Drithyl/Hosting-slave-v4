@@ -63,6 +63,7 @@ function Game(name, port, args)
         _process.onProcessClose((code, signal) => {
             _isOnline = false;
             statusStore.updateGameCounterStatus(_name);
+            socketWrapper.emit("GAME_CLOSED", { name: _name, code, signal });
             log.general(log.getNormalLevel(), `${_name} at ${_port}: Closed with code ${code} and signal ${signal}`);
         });
 
@@ -77,6 +78,7 @@ function Game(name, port, args)
         });
 
         _process.onProcessStderr((data) => {
+            log.general(log.getNormalLevel(), `${_name} at ${_port} STDERR DATA`, data);
             socketWrapper.emit("STDIO_DATA", { name: _name, data, type: "stderr" });
         });
 
