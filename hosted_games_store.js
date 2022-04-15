@@ -16,13 +16,13 @@ var hostedGames = {};
 var gameHostRequests = [];
 
 
-module.exports.populate = function(gameDataArray)
+module.exports.populate = async function(gameDataArray)
 {
     for (var gameData of gameDataArray)
     {
         if (_gameDataExists(gameData) === false)
         {
-            _addNewGame(gameData);
+            await _addNewGame(gameData);
             statusStore.sendStatusUpdateToMaster(gameData.name);
             log.general(log.getVerboseLevel(), `Game ${gameData.name} at port ${gameData.port} is new; added to store.`);
             continue;
@@ -35,7 +35,7 @@ module.exports.populate = function(gameDataArray)
         if (Game.areSameSettings(oldGame, newGame) === false)
         {
             log.general(log.getVerboseLevel(), `Game ${gameData.name} already exists at port ${gameData.port} but with different settings; data is being overwritten...`);
-            _overwriteGame(oldGame, newGame);
+            await _overwriteGame(oldGame, newGame);
             statusStore.sendStatusUpdateToMaster(gameData.name);
         }
     }
@@ -59,10 +59,7 @@ module.exports.requestHosting = async function(gameData)
     var game = hostedGames[gameData.port];
 
     if (game == null)
-    {
-        game = new Game(gameData.name, gameData.port, gameData.args);
-        hostedGames[gameData.port] = game;
-    }
+        game = await _addNewGame(gameData);
 
     if (game.isOnline() === true)
     {
@@ -206,21 +203,19 @@ function _gameDataExists(gameData)
     return hostedGames[gameData.port] != null;   
 }
 
-function _addNewGame(gameData)
+async function _addNewGame(gameData)
 {
     hostedGames[gameData.port] = new Game(gameData.name, gameData.port, gameData.args);
-    statusStore.addGame(hostedGames[gameData.port]);
+    await statusStore.addGame(hostedGames[gameData.port]);
+    return hostedGames[gameData.port];
 }
 
-function _overwriteGame(existingGame, newGame)
+async function _overwriteGame(existingGame, newGame)
 {
-    module.exports.killGame(existingGame.getPort())
-    .then(() => 
-    {
-        hostedGames[newGame.getPort()] = newGame;
-        statusStore.addGame(newGame);
-        log.general(log.getLeanLevel(), `Game ${newGame.getName()} received different data from master; overwriting it`);
-    });
+    await killGame(existingGame.getPort());
+    hostedGames[newGame.getPort()] = newGame;
+    await awaitstatusStore.addGame(newGame);
+    log.general(log.getLeanLevel(), `Game ${newGame.getName()} received different data from master; overwriting it`);
 }
 
 function _setTimeoutPromise(delay, fnToCall)
