@@ -55,7 +55,7 @@ function SpawnedProcessWrapper(gameName, args, onSpawned)
 		//stdio: ["ignore", "ignore", "pipe"]
 		// TODO: temporary while I think of a solution to games freezing up
 		// (or the bot when all data is sent to it)
-		stdio: ["ignore", "ignore", "ignore"]
+		stdio: ["ignore", "ignore", "pipe"]
 	});
 
 	_instance.onProcessError = (handler) => _onError = handler;
