@@ -131,7 +131,7 @@ function _writeFile(entry, zipfile, entryWritePath)
 {
     const writeStream = fs.createWriteStream(entryWritePath);
 
-    return _openReadStream(zipfile, entry)
+    return _openReadStream(zipfile, entry, entryWritePath)
     .then((readStream) => 
     {
         return new Promise((resolve, reject) =>
@@ -160,7 +160,7 @@ function _writeFile(entry, zipfile, entryWritePath)
     });
 }
 
-function _openReadStream(zipfile, entry)
+function _openReadStream(zipfile, entry, entryWritePath)
 {
     return new Promise((resolve, reject) =>
     {
@@ -169,7 +169,7 @@ function _openReadStream(zipfile, entry)
             //if error, add to error messages and continue looping
             if (err)
             {
-                log.error(log.getLeanLevel(), `ERROR OPENING READSTREAM AT PATH ${writePath}.`);
+                log.error(log.getLeanLevel(), `ERROR OPENING READSTREAM AT PATH ${entryWritePath}.`);
                 return reject(err);
             }
     
