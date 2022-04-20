@@ -1,7 +1,5 @@
 
 const log = require("./logger.js");
-const configStore = require("./config_store.js");
-const downloader = require("./file_downloader.js");
 const dom5Interface = require("./dom5_interface.js");
 const gameStatusStore = require("./game_status_store.js");
 const hostedGamesStore = require("./hosted_games_store.js");
@@ -11,7 +9,6 @@ const mapAndModsCleaner = require("./cleaners/unused_maps_and_mods_cleaner.js");
 module.exports.listen = function(socketWrapper)
 {
     socketWrapper.on("GAME_DATA", _populateGameData);
-    socketWrapper.on("UPLOAD_FILE", _downloadFile);
 
     socketWrapper.on("RESET_PORT", (gameData) => hostedGamesStore.resetPort(gameData));
     socketWrapper.on("RESERVE_PORT", (data) => reservedPortsStore.reservePort());
@@ -65,24 +62,4 @@ function _populateGameData(gamesInfo)
 	}
 
 	else return hostedGamesStore.populate(gamesInfo);
-}
-
-function _downloadFile(data)
-{
-	if (typeof data.fileId !== "string")
-	  return Promise.reject(new Error("fileId must be specified."));
-
-    log.upload(log.getLeanLevel(), `Request to download ${data.type} zipfile ${data.fileId} received.`);
-
-    return Promise.resolve()
-    .then(() =>
-    {
-        if (/^map$/i.test(data.type) === true)
-            return downloader.downloadMap(data.fileId);
-
-        else if (/^mod$/i.test(data.type) === true)
-            return downloader.downloadMod(data.fileId);
-
-        else return Promise.reject(new Error("type must be 'map' or 'mod'"));
-    });
 }

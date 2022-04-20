@@ -16,7 +16,6 @@ function _initializeComponents()
     const fs = require("fs");
     const log = require("./logger.js");
     const statusStore = require("./game_status_store.js");
-    const googleDriveApi = require("./google_drive_api/index.js");
     const oldFilesCleaner = require("./cleaners/old_files_cleaner.js");
     const socketWrapper = require("./socket_wrapper.js");
 
@@ -32,7 +31,6 @@ function _initializeComponents()
     .then(() => statusStore.startUpdateCycle())
     .then(() => oldFilesCleaner.startBackupCleanInterval())
     .then(() => oldFilesCleaner.startLogCleanInterval())
-    .then(() => googleDriveApi.authorize())
     .then(() => socketWrapper.connect())
     .catch((err) => log.error(log.getLeanLevel(), `INITIALIZATION ERROR`, err));
 
