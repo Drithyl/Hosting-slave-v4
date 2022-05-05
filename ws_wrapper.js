@@ -7,7 +7,6 @@ const masterCommands = require("./master_commands.js");
 
 var _wsWrapper;
 var _shutdownGamesTimeoutId;
-const HEARTBEAT_TIMEOUT = 1000;
 
 
 exports.connect = () =>
@@ -229,8 +228,7 @@ function ClientSocketWrapper(ip, port)
         });
 
         _ws.on("ping", function onPing(data) {
-            const parsedData = (data != null) ? +data.toString() : null;
-            _heartbeat(_ws, parsedData);
+            _heartbeat(_ws, data);
         });
     }
 
@@ -257,7 +255,7 @@ function ClientSocketWrapper(ip, port)
     }
 
     // Private heartbeat function to check for broken connection
-    function _heartbeat(pingInterval)
+    function _heartbeat()
     {
         clearTimeout(_pingTimeout);
 
@@ -268,7 +266,7 @@ function ClientSocketWrapper(ip, port)
         _pingTimeout = setTimeout(function pingTimeout () {
             _ws.terminate();
 
-        }, pingInterval + HEARTBEAT_TIMEOUT);
+        }, 30000 + 1000);
     }
 }
 
