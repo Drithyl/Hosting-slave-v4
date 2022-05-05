@@ -6,7 +6,8 @@ const configStore = require("./config_store.js");
 const masterCommands = require("./master_commands.js");
 
 var _wsWrapper;
-var _shutdownGamesTimeout;
+var _shutdownGamesTimeoutId;
+const HEARTBEAT_TIMEOUT = 1000;
 
 
 exports.connect = () =>
@@ -35,10 +36,10 @@ function _connectedHandler()
 {
     log.general(log.getLeanLevel(), `Connected to master server; sending data...`);
 
-    if (_shutdownGamesTimeout != null)
+    if (_shutdownGamesTimeoutId != null)
     {
         log.general(log.getLeanLevel(), `Stopped disconnection timeout`);
-        clearTimeout(_shutdownGamesTimeout);
+        clearTimeout(_shutdownGamesTimeoutId);
     }
 
     _wsWrapper.emit("SERVER_DATA", {
@@ -61,35 +62,30 @@ function _disconnectHandler(code, reason, wsWrapper)
     // is still not reconnected, shut down all games and free all ports.
     // If the socket reconnected and disconnected again, 
     // clear the timout and start it up once more
-    if (_shutdownGamesTimeout != null)
-        clearTimeout(_shutdownGamesTimeout);
+    if (_shutdownGamesTimeoutId != null)
+        clearTimeout(_shutdownGamesTimeoutId);
 
     log.general(log.getLeanLevel(), `Starting timeout to shut down games if no reconnection happens.`);
-    _shutdownGamesTimeout = _shutdownGamesHandler(wsWrapper);
+    _shutdownGamesTimeoutId = setTimeout(() => _shutdownGamesTimeoutHandler(wsWrapper), 300000);
     wsWrapper.reconnect();
 }
 
-function _shutdownGamesHandler(wsWrapper)
+function _shutdownGamesTimeoutHandler(wsWrapper)
 {
-    return setTimeout(() => 
+    // Clear timeout id when it triggers
+    _shutdownGamesTimeoutId = null;
+
+    if (wsWrapper.isConnected() === true)
     {
-        _shutdownGamesTimeout = null;
+        log.general(log.getLeanLevel(), `Socket is still disconnected after timeout; shutting down all games...`);
 
-        // 1 is OPEN
-        if (wsWrapper.readyState === 1)
-        {
-            log.general(log.getLeanLevel(), `Socket is still disconnected after timeout; shutting down all games...`);
-
-            // release all reserved ports in assisted hosting instances,
-            // because if it's the master server that crashed, when it comes back up
-            // the ports will be reserved for no instance
-            reservedPortsStore.releaseAllPorts();
-            gameStore.killAllGames();
-        }
-
-    }, 300000);
+        // release all reserved ports in assisted hosting instances,
+        // because if it's the master server that crashed, when it comes back up
+        // the ports will be reserved for no instance
+        reservedPortsStore.releaseAllPorts();
+        gameStore.killAllGames();
+    }
 }
-
 
 function ClientSocketWrapper(ip, port)
 {
@@ -233,7 +229,8 @@ function ClientSocketWrapper(ip, port)
         });
 
         _ws.on("ping", function onPing(data) {
-            _heartbeat(_ws, data);
+            const parsedData = (data != null) ? +data.toString() : null;
+            _heartbeat(_ws, parsedData);
         });
     }
 
@@ -260,7 +257,7 @@ function ClientSocketWrapper(ip, port)
     }
 
     // Private heartbeat function to check for broken connection
-    function _heartbeat()
+    function _heartbeat(pingInterval)
     {
         clearTimeout(_pingTimeout);
 
@@ -271,7 +268,7 @@ function ClientSocketWrapper(ip, port)
         _pingTimeout = setTimeout(function pingTimeout () {
             _ws.terminate();
 
-        }, 30000 + 1000);
+        }, pingInterval + HEARTBEAT_TIMEOUT);
     }
 }
 
