@@ -4,8 +4,9 @@ const path = require("path");
 const fsp = require("fs").promises;
 const log = require("./logger.js");
 const Game = require("./dom5/game.js");
-const configStore = require("./config_store.js");
 const kill = require("./kill_instance.js");
+const configStore = require("./config_store.js");
+const checkIfPortOpen = require("./is_port_open.js");
 const dom5Interface = require("./dom5_interface.js");
 const statusStore = require("./game_status_store.js");
 const reservedPortsStore = require("./reserved_ports_store.js");
@@ -55,8 +56,8 @@ module.exports.getGameByName = function(gameName)
 
 module.exports.requestHosting = async function(gameData)
 {
-    log.general(log.getVerboseLevel(), `'${gameData.name}' at ${gameData.port}: Requesting hosting...`);
     var game = hostedGames[gameData.port];
+    var isPortOpen = await checkIfPortOpen(gameData.port);
 
     if (game == null)
         game = await _addNewGame(gameData);
@@ -67,14 +68,25 @@ module.exports.requestHosting = async function(gameData)
         return Promise.resolve();
     }
 
+    if (isPortOpen === false)
+    {
+        log.error(log.getVerboseLevel(), `'${game.getName()}' at ${game.getPort()}: Not online, but port is still busy. Cannot launch`);
+        return Promise.reject(new Error(`'${game.getName()}' at ${game.getPort()} is not online, but port is still busy. Cannot launch`));
+    }
+
+    if (gameHostRequests.includes(game.getPort()) === true)
+    {
+        log.general(log.getVerboseLevel(), `'${game.getName()}' at ${game.getPort()}: Already in queue to be launched`);
+        return Promise.resolve();
+    }
+
     // Due to the asynchronous code of isOnline above, this variable has to be
     // declared here or it will always be 0 if declared above
     const delay = configStore.gameHostMsDelay * gameHostRequests.length;
+
     gameHostRequests.push(game.getPort());
-    log.general(log.getVerboseLevel(), `'${game.getName()}' at ${game.getPort()}: Added to hosting queue with ${delay}ms delay`);
-    
     _setTimeoutPromise(delay, _host.bind(null, game, gameData));
-    return Promise.resolve();
+    log.general(log.getVerboseLevel(), `'${game.getName()}' at ${game.getPort()}: Added to hosting queue with ${delay}ms delay`);
 };
 
 module.exports.getUsedPorts = function()
@@ -212,7 +224,7 @@ async function _addNewGame(gameData)
 
 async function _overwriteGame(existingGame, newGame)
 {
-    await killGame(existingGame.getPort());
+    await exports.killGame(existingGame.getPort());
     hostedGames[newGame.getPort()] = newGame;
     await awaitstatusStore.addGame(newGame);
     log.general(log.getLeanLevel(), `Game ${newGame.getName()} received different data from master; overwriting it`);
