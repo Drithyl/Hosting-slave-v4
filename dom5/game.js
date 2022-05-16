@@ -124,8 +124,8 @@ function _addAdditionalArgs(gameName)
         "--nosteam",
         "--statusdump",
 		"--textonly",
-		..._backupCmd("--preexec", gameName), 
-		..._backupCmd("--postexec", gameName)
+		..._preExecCmd(gameName),
+		..._postExecCmd(gameName)
     ];
 		
 	if (process.platform === "win32")
@@ -134,16 +134,28 @@ function _addAdditionalArgs(gameName)
 	return args;
 }
 
-function _backupCmd(type, gameName)
+function _preExecCmd(gameName)
 {
-	let typeName = type.slice(2);
-	let backupModulePath = require.resolve("../backup_script.js");
+	let preprocessor = require.resolve("../turn_processing/preprocessing.js");
 
-	if (typeof backupModulePath !== "string")
+	if (typeof preprocessor !== "string")
 	    return [];
 
-	// Pass the dom5 flag (--preexec or --postexec) plus the cmd command to launch
-	// the node script, "node [path to backup_script.js]" plus the game's name and
-	// type as arguments to the script
-	else return [`${type}`, `node "${backupModulePath}" ${gameName} ${typeName}`];
+    // Pass the dom5 flag (--preexec or --postexec) plus the cmd
+    // command to launch the node script, "node [path to backup_script.js]" 
+    // plus the game's name as argument
+    return ["--preexec", `node "${preprocessor}" ${gameName}`];
+}
+
+function _postExecCmd(gameName)
+{
+	let postprocessor = require.resolve("../turn_processing/postprocessing.js");
+
+	if (typeof postprocessor !== "string")
+	    return [];
+    
+    // Pass the dom5 flag (--preexec or --postexec) plus the cmd
+    // command to launch the node script, "node [path to backup_script.js]" 
+    // plus the game's name as argument
+    return ["--postexec", `node "${postprocessor}" ${gameName}`];
 }
