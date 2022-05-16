@@ -22,6 +22,7 @@ function NationStatusWrapper(nationRawData, gameName)
     this.pretenderNbr = _parsedData.pretenderNbr;
     
     //controller of the nation. 0 is ai, 1 is human, 2 is ai (seems like the "went AI this turn" flag does not work)
+    this.justDied = (_parsedData.controller === -2) ? true : false;
     this.isDead = (_parsedData.controller === -1) ? true : false;
     this.isHuman = (_parsedData.controller === 1) ? true : false;
     this.isAi = (_parsedData.controller === 2) ? true : false;
