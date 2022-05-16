@@ -101,8 +101,10 @@ async function _notifyMasterOfTurnProcessing(gameName, isTurnProcessing)
 {
     try
     {
-        _logToFile(`${gameName} - Creating HTTP request to notify master of turn processing = ${isTurnProcessing}`);
-        const httpRequest = new HttpRequest(`${configStore.masterIP}/turn_processing`, "POST", configStore.masterHttpPort);
+        const route = `${configStore.masterIP}/turn_processing`;
+        _logToFile(`${gameName} - Creating HTTP request to notify master of turn processing = ${isTurnProcessing}...`);
+        const httpRequest = new HttpRequest(route, "POST", configStore.masterHttpPort);
+        _logToFile(`${gameName} - Route: ${route} at port ${configStore.masterHttpPort}`);
 
         httpRequest.setData({
             gameName,
