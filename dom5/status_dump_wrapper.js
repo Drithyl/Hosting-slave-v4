@@ -196,6 +196,9 @@ function _parseDumpData(rawData)
     lines = rawData.split("\n").slice(1);
     turnInfoLine = lines[0];
 
+    if (assert.isString(turnInfoLine) === false)
+        return data;
+
     data.nationsRawData = lines.slice(1);
     data.turnNbr = +turnInfoLine.replace(/^turn (-?\d+).*$/ig, "$1");
     data.eraNbr = +turnInfoLine.replace(/^.+era (\d+).*$/ig, "$1");
