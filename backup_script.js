@@ -1,135 +1,161 @@
 
-// Disable all console logging during backup, as it will otherwise be passed
-// to the parent node process as if it was stdout data from dom5
-process.env.LOG_TO_CONSOLE = false;
-
-const configStore = require("./config_store.js").loadConfig();
 
 const fs = require("fs");
 const path = require("path");
 const fsp = require("fs").promises;
 const rw = require("./reader_writer.js");
 const safePath = require("./safe_path.js");
+const configStore = require("./config_store.js");
 const cleaner = require("./cleaners/backups_cleaner.js");
 const statusDump = require("./dom5/status_dump_wrapper.js");
 
 
-const preexecRegex = new RegExp("^preexec$", "i");
-const postexecRegex = new RegExp("^postexec$", "i");
-const extensionsToBackupRegex = new RegExp("(\.2h)|(\.trn)|(ftherlnd)$", "i");
-
-
-const gameName = process.argv[2];
-const type = process.argv[3];
-const savedgamesPath = safePath(configStore.dom5DataPath, "savedgames", gameName);
-const clonedStatusdumpDir = safePath(configStore.dom5DataPath, configStore.tmpFilesDirName, gameName);
-const logDirPath = safePath(configStore.dataFolderPath, "logs", "games", gameName);
-
-var targetBackupDir = safePath(configStore.dataFolderPath, "backups", gameName);
+var backupExtensions;
+var savedgamesPath;
+var clonedStatusdumpDirpath;
+var logDirpath;
+var targetBackupDirpath;
 var writeStream;
 
-_createLoggingStream()
-.then(_checkBackupArgs)
-.then(_startBackupProcess)
-.catch((err) =>
+
+module.exports.backupPreTurn = async (gameName) =>
 {
-    if (writeStream != null)
-        _logToFile(err.stack);
+    _initializeGlobals(gameName);
+    targetBackupDirpath = path.resolve(targetBackupDirpath, configStore.preHostTurnBackupDirName);
 
-    process.exit();
-});
+    try
+    {
+        await _createLoggingStream();
 
+        _checkBackupArgs(gameName);
+    
+        await _cloneStatusdump(gameName);
+    
+        _logToFile(`Pre-processing backup for ${gameName} starting; checking arguments...`);
+        await _startBackupProcess(gameName, false);
+        _logToFile(`Finished backup process! Exiting...`);
+    }
+
+    catch(err)
+    {
+        if (writeStream != null)
+            _logToFile(err.stack);
+    }
+};
+
+module.exports.backupPostTurn = async (gameName) =>
+{
+    _initializeGlobals(gameName);
+    targetBackupDirpath = path.resolve(targetBackupDirpath, configStore.newTurnsBackupDirName);
+
+    try
+    {
+        await _createLoggingStream();
+        
+        _checkBackupArgs(gameName);
+    
+        await _cloneStatusdump(gameName);
+    
+        _logToFile(`Post-processing backup for ${gameName} starting; checking arguments...`);
+        await _startBackupProcess(gameName, true);
+        _logToFile(`Finished backup process! Exiting...`);
+    }
+
+    catch(err)
+    {
+        if (writeStream != null)
+            _logToFile(err.stack);
+    }
+};
+
+
+function _initializeGlobals(gameName)
+{
+    backupExtensions = new RegExp("(\.2h)|(\.trn)|(ftherlnd)$", "i");
+    savedgamesPath = safePath(configStore.dom5DataPath, "savedgames", gameName);
+    clonedStatusdumpDirpath = safePath(configStore.dom5DataPath, configStore.tmpFilesDirName, gameName);
+    logDirpath = safePath(configStore.dataFolderPath, "logs", "games", gameName);
+    targetBackupDirpath = safePath(configStore.dataFolderPath, "backups", gameName);
+}
 
 async function _createLoggingStream()
 {
     const date = new Date();
+    logFilename = path.resolve(logDirpath, `${date.getDate()}-${date.getMonth() + 1}-${date.getFullYear()}-turn.txt`);
 
-    await rw.checkAndCreateDirPath(logDirPath);
-    writeStream = fs.createWriteStream(path.resolve(logDirPath, `${date.getDate()}-${date.getMonth() + 1}-${date.getFullYear()}-backup.txt`), { flags: "a", autoClose: true });
+    await rw.checkAndCreateDirPath(logDirpath);
+    writeStream = fs.createWriteStream(logFilename, { flags: "a", autoClose: true });
 }
 
-
-function _checkBackupArgs()
+function _checkBackupArgs(gameName)
 {
-    _logToFile(`###############################################`);
     _logToFile(`Checking process arguments for backup...`);
 
     if (gameName == null)
         throw new Error(`BACKUP ERROR; NO GAME NAME ARGUMENT RECEIVED`);
     
-    if (preexecRegex.test(type) === true)
-        targetBackupDir = path.resolve(targetBackupDir, configStore.preHostTurnBackupDirName);
-    
-    else if (postexecRegex.test(type) === true)
-        targetBackupDir = path.resolve(targetBackupDir, configStore.newTurnsBackupDirName);
-    
-    else throw new Error(`INVALID BACKUP TYPE RECEIVED; EXPECTED preexec OR postexec, GOT '${type}'`);
-    
     _logToFile(`Arguments received properly.`);
 }
 
-
-async function _startBackupProcess()
+async function _startBackupProcess(gameName, isPostprocessing = false)
 {
-    var statusdumpWrapper;
     var backupFilenames;
+    const statusdumpWrapper = await _fetchStatusdump(gameName, isPostprocessing);
+    const backupDirName = `t${statusdumpWrapper.turnNbr}`;
+    
+    await _createDirectories(path.resolve(targetBackupDirpath, backupDirName));
 
-    _logToFile(`Backup type ${type} for ${gameName} starting; checking arguments...`);
-
-    if (preexecRegex.test(type) === true)
-    {
-        _logToFile(`Cloning statusdump...`);
-        await _cloneStatusdump(gameName);
-    }
-
-    _logToFile(`Fetching statusdump...`);
-    statusdumpWrapper = await statusDump.fetchStatusDump(gameName, clonedStatusdumpDir);
-
-    if (postexecRegex.test(type) === true)
-    {
-        // Manually increment turn number for the post-turn backup,
-        // as the turn number we have is the one from the previous turn
-        statusdumpWrapper.turnNbr++;
-        _logToFile(`This is post-exec, incremented turn nbr`);
-    }
-
-    _logToFile(`Statusdump fetched, turn is ${statusdumpWrapper.turnNbr}`);
-    await _createDirectories(path.resolve(targetBackupDir, `Turn ${statusdumpWrapper.turnNbr}`));
-
-    _logToFile(`Backup directory created at ${targetBackupDir}/Turn ${statusdumpWrapper.turnNbr}`);
+    _logToFile(`Backup directory created at ${targetBackupDirpath}/${backupDirName}`);
     backupFilenames = await fsp.readdir(savedgamesPath);
 
     _logToFile(`Read filenames, backing up files...`);
-    await _backupFiles(backupFilenames, savedgamesPath, path.resolve(targetBackupDir, `Turn ${statusdumpWrapper.turnNbr}`))
+    await _backupFiles(backupFilenames, savedgamesPath, path.resolve(targetBackupDirpath, backupDirName))
 
     _logToFile(`Finished backing up turn files, cleaning old ones...`);
     await _cleanUnusedBackups(statusdumpWrapper);
-
-    _logToFile(`Finished backup process! Exiting...`);
-    process.exit();
 }
 
-
-function _cloneStatusdump(gameName)
+async function _fetchStatusdump(gameName, isPostprocessing)
 {
-    return Promise.resolve()
-    .then(() =>
-    {
-        if (fs.existsSync(clonedStatusdumpDir) === false)
-        {
-            _logToFile(`Statusdump clone path ${clonedStatusdumpDir} does not exist; creating it...`);
-            return fsp.mkdir(clonedStatusdumpDir);
-        }
+    _logToFile(`Fetching statusdump...`);
 
-        else return Promise.resolve();
-    })
-    .then(() => statusDump.cloneStatusDump(gameName, clonedStatusdumpDir));
+    if (isPostprocessing === true)
+    {
+        statusdumpWrapper = await statusDump.fetchStatusDump(gameName, clonedStatusdumpDirpath);
+
+        // Manually increment turn number for the post-turn backup,
+        // as the turn number we have is the one from the previous turn
+        statusdumpWrapper.turnNbr++;
+        _logToFile(`Postprocessing; increment turn number`);
+    }
+    
+    else 
+    {
+        statusdumpWrapper = await statusDump.fetchStatusDump(gameName);
+    }
+
+    _logToFile(`Statusdump fetched, turn is ${statusdumpWrapper.turnNbr}`);
+    return statusdumpWrapper;
 }
 
-function _createDirectories(targetBackupDir)
+
+async function _cloneStatusdump(gameName)
+{
+    _logToFile(`Cloning statusdump...`);
+
+    if (fs.existsSync(clonedStatusdumpDirpath) === false)
+    {
+        _logToFile(`Statusdump clone path ${clonedStatusdumpDirpath} does not exist; creating it...`);
+        await fsp.mkdir(clonedStatusdumpDirpath);
+    }
+
+    statusDump.cloneStatusDump(gameName, clonedStatusdumpDirpath);
+}
+
+async function _createDirectories(targetBackupDirpath)
 {
     var directories = [];
-    var currentPath = path.dirname(targetBackupDir);
+    var currentPath = path.dirname(targetBackupDirpath);
 
     while (currentPath !== path.dirname(currentPath))
     {
@@ -137,60 +163,48 @@ function _createDirectories(targetBackupDir)
         currentPath = path.dirname(currentPath);
     }
 
-    return directories.forEachPromise((dir, index, nextPromise) =>
+    const promises = directories.map(async (dir) =>
     {
         if (fs.existsSync(dir) === false)
-        {
-            return fsp.mkdir(dir)
-            .then(() => nextPromise());
-        }
-            
-        else return nextPromise();
-    })
-    .catch((err) => Promise.reject(err));
+            await fsp.mkdir(dir);
+    });
+
+    await Promise.allSettled(promises);
 }
 
-function _backupFiles(filenames, sourcePath, targetPath)
+async function _backupFiles(filenames, sourcePath, targetPath)
 {
-    return filenames.forAllPromises((filename) =>
+    const promises = filenames.map(async (filename) =>
     {
         _logToFile(`Checking ${filename}...`);
         
-        if (extensionsToBackupRegex.test(filename) === false)
+        if (backupExtensions.test(filename) === false)
             return _logToFile(`Not a turn file; skipping.`);
 
-            _logToFile(`Turn file found, backing up...`);
+        _logToFile(`Turn file found, backing up...`);
 
-        return rw.copyFile(path.resolve(sourcePath, filename), path.resolve(targetPath, filename))
-        .then(() => _logToFile(`Turn file backed up.`))
-        .catch((err) => Promise.reject(err));
-    })
-    .catch((err) => Promise.reject(err));
+        await rw.copyFile(path.resolve(sourcePath, filename), path.resolve(targetPath, filename))
+        _logToFile(`Turn file backed up.`);
+    });
+
+    await Promise.allSettled(promises);
 }
 
-function _cleanUnusedBackups(statusDump)
+async function _cleanUnusedBackups(statusDump)
 {
     // If turn number is lower than number of backups to keep, no need to clean
     if (statusDump.turnNbr <= configStore.nbrOfTurnsBackedUp)
-    {
-        _logToFile(`No old turn backups to clean.`);
-        return Promise.resolve();
-    }
+        return _logToFile(`No old turn backups to clean.`);
 
     // Otherwise, delete previous backups according to the configuration
     const turnNbrToClean = statusDump.turnNbr - configStore.nbrOfTurnsBackedUp;
 
-    return cleaner.deleteBackupsUpToTurn(targetBackupDir, turnNbrToClean)
-    .catch((err) => Promise.reject(err));
+    await cleaner.deleteBackupsUpToTurn(targetBackupDirpath, turnNbrToClean);
 }
 
 
 function _logToFile(str)
 {
-    writeStream.write(`${_getTimestamp()}\t${str}\n`);
-}
-
-function _getTimestamp()
-{
-    return new Date(Date.now()).toISOString().replace(/^(.+)(T)/i, "$1$2 ");
+    const timestamp = new Date(Date.now()).toISOString().replace(/^(.+)(T)/i, "$1$2 ");
+    writeStream.write(`${timestamp}\t${str}\n`);
 }
