@@ -261,9 +261,9 @@ module.exports.backupSavefiles = function(gameData)
 	var target = path.resolve(configStore.dataFolderPath, "backups");
 
 	if (gameData.isNewTurn === true)
-	    target = path.resolve(target, configStore.newTurnsBackupDirName, gameName, `Turn ${gameData.turnNbr}`);
+	    target = path.resolve(target, configStore.newTurnsBackupDirName, gameName, `t${gameData.turnNbr}`);
 
-	else target = path.resolve(target, configStore.preHostTurnBackupDirName, gameName, `Turn ${gameData.turnNbr}`);
+	else target = path.resolve(target, configStore.preHostTurnBackupDirName, gameName, `t${gameData.turnNbr}`);
 
 	return rw.copyDir(source, target, false, ["", ".2h", ".trn"])
 	.then(() => Promise.resolve())
@@ -275,13 +275,13 @@ module.exports.rollback = function(data)
     const game = gameStore.getGame(data.port);
 	const gameName = game.getName();
 	const target = path.resolve(_savedGamesPath, gameName);
-	var source = path.resolve(configStore.dataFolderPath, "backups", gameName, configStore.preHostTurnBackupDirName, `Turn ${data.turnNbr}`);
+	var source = path.resolve(configStore.dataFolderPath, "backups", gameName, configStore.preHostTurnBackupDirName, `t${data.turnNbr}`);
 
 	if (fs.existsSync(source) === false)
 	{
         log.general(log.getNormalLevel(), `${gameName}: No backup of turn ${data.turnNbr} was found in ${configStore.preHostTurnBackupDirName}, looking in new turns...`, source);
     
-		source = path.resolve(configStore.dataFolderPath, "backups", gameName, configStore.newTurnsBackupDirName, `Turn ${data.turnNbr}`);
+		source = path.resolve(configStore.dataFolderPath, "backups", gameName, configStore.newTurnsBackupDirName, `t${data.turnNbr}`);
 
 		if (fs.existsSync(source) === false)
         {
