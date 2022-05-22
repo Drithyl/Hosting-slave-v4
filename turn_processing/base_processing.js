@@ -20,7 +20,15 @@ module.exports.preprocessing = async (gameName) =>
         _initializeGlobals(gameName);
         _logToFile(`###############################################`);
         _logToFile(`${gameName} - Beginning PREprocessing of new turn`);
-        await _turnProcessing(gameName, true);
+
+        // Remove domcmd file that may be leftover to avoid double turns
+        await _removeLeftoverDomCmdFile(gameName);
+
+        // Notify master that turn started processing
+        await _notifyMasterOfTurnProcessing(gameName, true);
+
+        // Run the preprocessing backup
+        await backupScript.backupPreTurn(gameName);
     }
 
     catch(err)
@@ -41,7 +49,12 @@ module.exports.postprocessing = async (gameName) =>
         _initializeGlobals(gameName);
         _logToFile(`###############################################`);
         _logToFile(`${gameName} - Beginning POSTprocessing of new turn`);
-        await _turnProcessing(gameName, false);
+
+        // Notify master that turn started processing
+        await _notifyMasterOfTurnProcessing(gameName, false);
+
+        // Run the preprocessing backup
+        await backupScript.backupPostTurn(gameName);
     }
 
     catch(err)
@@ -74,18 +87,6 @@ async function _removeLeftoverDomCmdFile(gameName)
     {
         _logToFile(`Found a leftover domcmd file at ${domcmdPath}, but could not remove it: ${err.message}`);
     }
-}
-
-async function _turnProcessing(gameName, isTurnProcessing)
-{
-    if (isTurnProcessing === true)
-        await _removeLeftoverDomCmdFile(gameName);
-
-    // Notify master that turn started processing
-    await _notifyMasterOfTurnProcessing(gameName, isTurnProcessing);
-
-    // Run the preprocessing backup
-    await backupScript.backupPreTurn(gameName);
 }
 
 function _initializeGlobals(gameName)
