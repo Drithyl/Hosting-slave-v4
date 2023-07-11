@@ -127,9 +127,7 @@ module.exports.isGameNameUsed = function(name)
 
 module.exports.killGame = function(port)
 {
-	return kill(hostedGames[port])
-	.then(() => Promise.resolve())
-	.catch((err) => Promise.reject(err));
+	return kill(hostedGames[port]);
 };
 
 module.exports.killGameByName = function(name)
