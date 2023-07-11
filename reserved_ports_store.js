@@ -7,19 +7,31 @@ var reservedPorts = [];
 
 module.exports.reservePort = function()
 {
-	var reservedPort = configStore.gamePortRange.first;
-	var usedPorts = gameInterface.getUsedPorts().concat(reservedPorts);
-
-	while (usedPorts.includes(reservedPort) === true)
+	const reservedPort = exports.findFirstFreePort();
+	
+	if (reservedPort == null)
 	{
-		reservedPort++;
-
-		if (reservedPort > configStore.gamePortRange.last)
-		    return Promise.reject(new Error(`There are no free ports.`));
+		return Promise.reject(new Error(`There are no free ports.`));
 	}
 
 	reservedPorts.push(reservedPort);
 	return Promise.resolve(reservedPort);
+};
+
+module.exports.findFirstFreePort = function()
+{
+	var port = configStore.gamePortRange.first;
+	const usedPorts = gameInterface.getUsedPorts().concat(reservedPorts);
+
+	while (usedPorts.includes(port) === true)
+	{
+		port++;
+
+		if (port > configStore.gamePortRange.last)
+		    return null;
+	}
+
+	return port;
 };
 
 module.exports.releasePort = function(port)

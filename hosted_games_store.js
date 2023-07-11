@@ -94,23 +94,25 @@ module.exports.getUsedPorts = function()
 	return Object.keys(hostedGames).map((portStr) => +portStr);
 };
 
-module.exports.resetPort = function(gameData)
+module.exports.resetPort = async function(gameData)
 {
     const game = hostedGames[gameData.port];
-    const newPort = reservedPortsStore.reservePort();
+    const newPort = reservedPortsStore.findFirstFreePort();
 
-    return exports.killGameByName(gameData.name)
-    .then(() =>
+    if (newPort == null)
     {
-        hostedGames[newPort] = game;
-        game.setPort(newPort);
+        throw new Error("There are no free ports available");
+    }
 
-        if (gameData.name == game.getName())
-            delete hostedGames[gameData.port];
+    await exports.killGameByName(gameData.name);
+    
+    hostedGames[newPort] = game;
+    game.setPort(newPort);
 
-        return Promise.resolve(newPort);
-    })
-    .catch((err) => Promise.reject(new Error(`Could not kill ${gameData.name}; can't do the port transfer. Try again later.`)));
+    if (gameData.name == game.getName())
+        delete hostedGames[gameData.port];
+
+    return newPort;
 };
 
 module.exports.isGameNameUsed = function(name)
