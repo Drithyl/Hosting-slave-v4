@@ -5,6 +5,9 @@
 # Sensitive config data
 config.json
 
+#vscode config
+.vscode/
+
 #node modules
 node_modules/
 
