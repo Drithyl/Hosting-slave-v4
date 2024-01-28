@@ -4,6 +4,7 @@ const log = require("./logger.js");
 const { WebSocket } = require("ws");
 const configStore = require("./config_store.js");
 const masterCommands = require("./master_commands.js");
+const reservedPortsStore = require("./reserved_ports_store.js");
 
 var _wsWrapper;
 var _shutdownGamesTimeoutId;
@@ -74,7 +75,7 @@ function _shutdownGamesTimeoutHandler(wsWrapper)
     // Clear timeout id when it triggers
     _shutdownGamesTimeoutId = null;
 
-    if (wsWrapper.isConnected() === true)
+    if (wsWrapper.isConnected() === false)
     {
         log.general(log.getLeanLevel(), `Socket is still disconnected after timeout; shutting down all games...`);
 
@@ -126,9 +127,6 @@ function ClientSocketWrapper(ip, port)
     {
         if (_reconnectTimeout != null)
             clearTimeout(_reconnectTimeout);
-
-        if (_self.isConnected() === true || _self.isClosing() === true)
-            _self.terminate();
 
         _reconnectTimeout = setTimeout(() =>
         {
@@ -264,6 +262,7 @@ function ClientSocketWrapper(ip, port)
         // Delay should be equal to the interval at which your server
         // sends out pings plus a conservative assumption of the latency.
         _pingTimeout = setTimeout(function pingTimeout () {
+            console.log("SLAVE TIMED OUT; COULD NOT CLEAR TIMEOUT IN TIME!");
             _ws.terminate();
 
         }, 30000 + 1000);

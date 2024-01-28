@@ -4,14 +4,18 @@ const fsp = require("fs").promises;
 const log = require("./logger.js");
 const assert = require("./asserter.js");
 const configStore = require("./config_store.js");
-const GameStatus = require("./dom5/game_status.js");
+const GameStatus = require("./dom/game_status.js");
 const socketWrapper = require("./socket_wrapper.js");
 const gamesStore = require("./hosted_games_store.js");
-const statusdumpFactory = require("./dom5/status_dump_wrapper.js");
+const { getDominionsSavedgamesPath, getDominionsTmpPath } = require('./helper_functions.js');
+const statusdumpFactory = require("./dom/status_dump_wrapper.js");
 
-const SAVEDGAMES_PATH = path.resolve(configStore.dom5DataPath, "savedgames");
-const TEMP_FILES_PATH = path.resolve(configStore.dom5DataPath, configStore.tmpFilesDirName);
-const STATUS_WRAPPERS_BY_NAME = {};
+const DOM5_SAVEDGAMES_PATH = getDominionsSavedgamesPath(configStore.dom5GameTypeName);
+const DOM6_SAVEDGAMES_PATH = getDominionsSavedgamesPath(configStore.dom6GameTypeName);
+
+const DOM5_STATUS_WRAPPERS = {};
+const DOM6_STATUS_WRAPPERS = {};
+
 var _isUpdating = false;
 
 
@@ -19,22 +23,21 @@ module.exports.isUpdating = () => _isUpdating;
 
 module.exports.populate = async () =>
 {
-    const gameNames = await fsp.readdir(SAVEDGAMES_PATH);
-
-    return gameNames.forEachPromise(async (gameName, i, nextPromise) =>
+    const games = await _readAllDominionsGames();
+    return games.forEachPromise(async ({name, gameType}, i, nextPromise) =>
     {
-        log.general(log.getVerboseLevel(), `Fetching ${gameName}'s status...`);
+        log.general(log.getVerboseLevel(), `Fetching ${name}'s (${gameType}) status...`);
 
         try
         {
-            await _addStatus(gameName);
-            log.general(log.getVerboseLevel(), `${gameName}'s status fetched!`);
+            await _addStatus(name, gameType);
+            log.general(log.getVerboseLevel(), `${name}'s (${gameType}) status fetched!`);
             return nextPromise();
         }
 
         catch(err)
         {
-            log.general(log.getVerboseLevel(), `${gameName}'s status could NOT be fetched!`, err);
+            log.general(log.getVerboseLevel(), `${name}'s (${gameType}) status could NOT be fetched!`, err);
             return nextPromise();
         }
     });
@@ -43,40 +46,41 @@ module.exports.populate = async () =>
 module.exports.addGame = async (gameObject) =>
 {
     const gameName = gameObject.getName();
+    const gameType = gameObject.getType();
 
-    if (_hasStatus(gameName) === false)
-        await _addStatus(gameName);
+    if (_hasStatus(gameName, gameType) === false)
+        await _addStatus(gameName, gameType);
 
-    STATUS_WRAPPERS_BY_NAME[gameName].setGameObject(gameObject);
+    _getWrappersByGameType(gameType)[gameName].setGameObject(gameObject);
 };
 
-module.exports.removeGame = (gameName) =>
+module.exports.removeGame = (gameName, gameType) =>
 {
-    if (_hasStatus(gameName) === false)
+    if (_hasStatus(gameName, gameType) === false)
         return;
 
-    delete STATUS_WRAPPERS_BY_NAME[gameName];
+    delete _getWrappersByGameType(gameType)[gameName];
 };
 
-module.exports.fetchStatus = (gameName) =>
+module.exports.fetchStatus = (gameName, gameType) =>
 {
-    if (_hasStatus(gameName) === true)
-        return STATUS_WRAPPERS_BY_NAME[gameName].getStatusDump();
+    if (_hasStatus(gameName, gameType) === true)
+        return _getWrappersByGameType(gameType)[gameName].getStatusDump();
 
     else return Promise.resolve();
 };
 
-module.exports.consumeStatus = (gameName) =>
+module.exports.consumeStatus = (gameData) =>
 {
-    if (_hasStatus(gameName) === true)
-        return STATUS_WRAPPERS_BY_NAME[gameName].consumeStatusDump();
+    if (_hasStatus(gameData.name, gameData.type) === true)
+        return _getWrappersByGameType(gameData.type).consumeStatusDump();
 
     else return Promise.resolve();
 };
 
-module.exports.forceUpdate = async (gameName) =>
+module.exports.forceUpdate = async (gameName, gameType) =>
 {
-    await _updateStatus(gameName);
+    await _updateStatus(gameName, gameType);
 };
 
 module.exports.startUpdateCycle = () =>
@@ -88,38 +92,40 @@ module.exports.startUpdateCycle = () =>
     setTimeout(_statusUpdateCycle, configStore.updateInterval);
 };
 
-module.exports.updateGameCounterStatus = async (gameName) =>
+module.exports.updateGameCounterStatus = async (gameName, gameType) =>
 {
-    if (_hasStatus(gameName) === false)
-        await _addStatus(gameName);
+    if (_hasStatus(gameName, gameType) === false)
+        await _addStatus(gameName, gameType);
     
-    if (_hasStatus(gameName) === true)
-        STATUS_WRAPPERS_BY_NAME[gameName].updateCounterStatus();
+    if (_hasStatus(gameName, gameType) === true)
+        _getWrappersByGameType(gameType)[gameName].updateCounterStatus();
 };
 
-module.exports.fetchPreviousTurnStatus = async (gameName) =>
+module.exports.fetchPreviousTurnStatus = async (gameName, gameType) =>
 {
-    const clonedStatusdumpPath = path.resolve(TEMP_FILES_PATH, gameName);
-    const wrapper = await statusdumpFactory.fetchStatusDump(gameName, clonedStatusdumpPath);
+    const clonedStatusdumpPath = path.resolve(getDominionsTmpPath(gameType), gameName);
+    const wrapper = await statusdumpFactory.fetchStatusDump(gameName, gameType, clonedStatusdumpPath);
     return wrapper;
 };
 
-module.exports.sendStatusUpdateToMaster = (gameName) => 
+module.exports.sendStatusUpdateToMaster = (gameName, gameType) => 
 {
-    if (_hasStatus(gameName) === true)
-        _sendStatusUpdateToMaster(STATUS_WRAPPERS_BY_NAME[gameName]);
+    if (_hasStatus(gameName, gameType) === true)
+        _sendStatusUpdateToMaster(_getWrappersByGameType(gameType)[gameName]);
 };
 
-function _hasStatus(gameName)
+function _hasStatus(gameName, gameType)
 {
-    return assert.isInstanceOfPrototype(STATUS_WRAPPERS_BY_NAME[gameName], GameStatus);
+    return assert.isInstanceOfPrototype(_getWrappersByGameType(gameType)[gameName], GameStatus);
 }
 
-async function _addStatus(gameName)
+async function _addStatus(gameName, gameType)
 {
-    STATUS_WRAPPERS_BY_NAME[gameName] = new GameStatus(gameName);
-    await STATUS_WRAPPERS_BY_NAME[gameName].updateStatus();
-    return STATUS_WRAPPERS_BY_NAME[gameName];
+    const gameStatus = new GameStatus(gameName, gameType);
+    const statusWrappers = _getWrappersByGameType(gameType);
+    statusWrappers[gameName] = gameStatus;
+    await gameStatus.updateStatus();
+    return gameStatus;
 }
 
 async function _statusUpdateCycle()
@@ -129,8 +135,8 @@ async function _statusUpdateCycle()
 
     try
     {
-        const gameNames = await fsp.readdir(SAVEDGAMES_PATH);
-        await Promise.allSettled(gameNames.map(_updateStatus));
+        const games = await _readAllDominionsGames();
+        await Promise.allSettled(games.map((game) => _updateStatus(game.name, game.gameType)));
         log.general(log.getNormalLevel(), `Finished game update cycle in ${Date.now() - startTime}ms`);
         setTimeout(_statusUpdateCycle, configStore.updateInterval);
     }
@@ -142,27 +148,50 @@ async function _statusUpdateCycle()
     }
 };
 
-async function _updateStatus(gameName)
+async function _updateStatus(name, gameType)
 {
-    if (gamesStore.getGameByName(gameName) == null)
+    const statusWrappers = _getWrappersByGameType(gameType);
+
+    if (gamesStore.getGameByName(name, gameType) == null)
         return;
 
-    if (_hasStatus(gameName) === false)
-        await _addStatus(gameName);
+    if (_hasStatus(name, gameType) === false)
+        await _addStatus(name, gameType);
 
-    else STATUS_WRAPPERS_BY_NAME[gameName].updateStatus();
+    else statusWrappers[name].updateStatus();
 
-    _sendStatusUpdateToMaster(STATUS_WRAPPERS_BY_NAME[gameName]);
+    _sendStatusUpdateToMaster(statusWrappers[name], gameType);
 }
 
-function _sendStatusUpdateToMaster(gameStatus)
+function _sendStatusUpdateToMaster(gameStatus, gameType)
 {
     socketWrapper.emit(
         "GAME_UPDATE", {
             gameName: gameStatus.getName(),
+            type: gameType,
             isOnline: gameStatus.isOnline(),
             uptime: gameStatus.consumeUptime(),
             statusdump: gameStatus.getStatusDump()
         }
     );
+}
+
+async function _readAllDominionsGames() {
+    const dom5GameNames = await fsp.readdir(DOM5_SAVEDGAMES_PATH);
+    const dom5GameObjects = dom5GameNames.map((name) => { return { name: name, gameType: configStore.dom5GameTypeName}; } );
+
+    const dom6GameNames = await fsp.readdir(DOM6_SAVEDGAMES_PATH);
+    const dom6GameObjects = dom6GameNames.map((name) => { return { name: name, gameType: configStore.dom6GameTypeName}; } );
+    
+    return [...dom5GameObjects, ...dom6GameObjects];
+}
+
+function _getWrappersByGameType(gameType) {
+    if (gameType === configStore.dom6GameTypeName)
+        return DOM6_STATUS_WRAPPERS;
+
+    else if (gameType === configStore.dom5GameTypeName)
+        return DOM5_STATUS_WRAPPERS;
+
+    return {};
 }

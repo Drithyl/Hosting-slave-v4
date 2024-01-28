@@ -1,19 +1,19 @@
 
 const fs = require("fs");
 const path = require("path");
-const configStore = require("../config_store.js");
-const SAVED_GAMES_PATH = path.resolve(configStore.dom5DataPath, `savedgames/`);
+const { getDominionsSavedgamesPath } = require("../helper_functions.js");
 
 module.exports = NationStatusWrapper;
 
-function NationStatusWrapper(nationRawData, gameName)
+function NationStatusWrapper(nationRawData, gameName, gameType)
 {
     const _parsedData = _parseNationRawData(nationRawData);
-    const _gameSaveDirPath = path.resolve(SAVED_GAMES_PATH, gameName);
+    const _gameSaveDirPath = path.resolve(getDominionsSavedgamesPath(gameType), gameName);
 
     this.filename = _parsedData.filename;
     this.fullName = _parsedData.fullName;
     this.name = _parsedData.name;
+    this.type = gameType;
     
     //the nation number
     this.nationNbr = _parsedData.nationNbr;

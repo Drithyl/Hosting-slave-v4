@@ -6,20 +6,28 @@ const assert = require("../asserter.js");
 const rw = require("../reader_writer.js");
 const safePath = require("../safe_path.js");
 const configStore = require("../config_store.js");
+const { getDominionsDataPath, getDominionsTmpPath } = require("../helper_functions.js");
 
-var backupCleaningInterval;
 var logCleaningInterval;
-var tmpFilesCleaningInterval;
+var dom5BackupCleaningInterval;
+var dom6BackupCleaningInterval;
+var dom5TmpFilesCleaningInterval;
+var dom6TmpFilesCleaningInterval;
 
 
 module.exports.startBackupCleanInterval = () =>
 {
-    const backupsPath = safePath(configStore.dataFolderPath, "backups");
+    const dom5BackupsPath = safePath(getDominionsDataPath(configStore.dom5GameTypeName), "backups");
+    const dom6BackupsPath = safePath(getDominionsDataPath(configStore.dom6GameTypeName), "backups");
 
-    if (backupCleaningInterval != null)
-        clearInterval(backupCleaningInterval);
+    if (dom5BackupCleaningInterval != null)
+        clearInterval(dom5BackupCleaningInterval);
+    
+    if (dom6BackupCleaningInterval != null)
+        clearInterval(dom6BackupCleaningInterval);
 
-    backupCleaningInterval = _startDirCleanInterval(backupsPath, configStore.backupsMaxDaysOld, configStore.backupsCleaningInterval);
+    dom5BackupCleaningInterval = _startDirCleanInterval(dom5BackupsPath, configStore.backupsMaxDaysOld, configStore.backupsCleaningInterval);
+    dom6BackupCleaningInterval = _startDirCleanInterval(dom6BackupsPath, configStore.backupsMaxDaysOld, configStore.backupsCleaningInterval);
 };
 
 module.exports.startLogCleanInterval = () =>
@@ -34,13 +42,20 @@ module.exports.startLogCleanInterval = () =>
 
 module.exports.startTmpFilesCleanInterval = () =>
 {
-    const tmpPath = safePath(configStore.dom5TmpPath);
+    const dom5TmpPath = safePath(getDominionsTmpPath(configStore.dom5GameTypeName));
+    const dom6TmpPath = safePath(getDominionsTmpPath(configStore.dom6GameTypeName));
 
-    if (tmpFilesCleaningInterval != null)
-        clearInterval(tmpFilesCleaningInterval);
+    if (dom5TmpFilesCleaningInterval != null)
+        clearInterval(dom5TmpFilesCleaningInterval);
 
-        // TODO: Add a name filter so only the directories called dom5_* and their subfiles are removed
-        tmpFilesCleaningInterval = _startDirCleanInterval(tmpPath, configStore.tmpFilesMaxDaysOld, configStore.tmpFilesCleaningInterval);
+    if (dom6TmpFilesCleaningInterval != null)
+        clearInterval(dom6TmpFilesCleaningInterval);
+
+    // TODO: Add a name filter so only the directories called dom5_* and their subfiles are removed
+    tmpFilesCleaningInterval = _startDirCleanInterval(dom5TmpPath, configStore.tmpFilesMaxDaysOld, configStore.tmpFilesCleaningInterval);
+
+    // TODO: Add a name filter so only the directories called dom6_* and their subfiles are removed
+    tmpFilesCleaningInterval = _startDirCleanInterval(dom6TmpPath, configStore.tmpFilesMaxDaysOld, configStore.tmpFilesCleaningInterval);
 };
 
 
@@ -90,8 +105,16 @@ async function _cleanDirIfOlderThan(dirPath, olderThanTimestamp)
 
     await rw.walkDir(dirPath, async (filePath, fileStat) =>
     {
-        const wasDeleted = await _deleteFileIfOlderThan(filePath, fileStat, olderThanTimestamp);
-        if (wasDeleted === true) deletedFiles.push(filePath);
+        try
+        {
+            const wasDeleted = await _deleteFileIfOlderThan(filePath, fileStat, olderThanTimestamp);
+            if (wasDeleted === true) deletedFiles.push(filePath);
+        }
+
+        catch(err)
+        {
+            log.cleaner(log.getWriteOnlyLevel(), `Could not delete file "${filePath}": ${err.message}`);
+        }
     });
 
     return deletedFiles;

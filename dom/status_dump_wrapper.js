@@ -7,13 +7,14 @@ const assert = require("../asserter.js");
 const rw = require("../reader_writer.js");
 const configStore = require("../config_store.js");
 const NationStatusWrapper = require("./nation_status_wrapper.js");
+const { getDominionsSavedgamesPath } = require("../helper_functions.js");
 
 const STATUSDUMP_FILENAME = "statusdump.txt";
 
 
-exports.fetchStatusDump = async (gameName, filePath = null) =>
+exports.fetchStatusDump = async (gameName, gameType, filePath = null) =>
 {
-    const gameDataPath = path.resolve(configStore.dom5DataPath, `savedgames/${gameName}`);
+    const gameDataPath = path.resolve(getDominionsSavedgamesPath(gameType), gameName);
     const statusDumpPath = (assert.isString(filePath) === false) ? path.resolve(gameDataPath, STATUSDUMP_FILENAME) : path.resolve(filePath, STATUSDUMP_FILENAME);
 
     if (fs.existsSync(statusDumpPath) === false)
@@ -23,14 +24,14 @@ exports.fetchStatusDump = async (gameName, filePath = null) =>
     }
 
     // Create wrapper object then update it to parse the latest statusdump data
-    const wrapper = new StatusDump(gameName, statusDumpPath);
+    const wrapper = new StatusDump(gameName, gameType, statusDumpPath);
     await wrapper.update();
     return wrapper;
 };
 
-exports.cloneStatusDump = (gameName, targetPath, sourcePath = null) =>
+exports.cloneStatusDump = (gameName, gameType, targetPath, sourcePath = null) =>
 {
-    const gameDataPath = path.resolve(configStore.dom5DataPath, "savedgames", gameName);
+    const gameDataPath = path.resolve(getDominionsSavedgamesPath(gameType), gameName);
     const statusDumpPath = (assert.isString(sourcePath) === false) ? path.resolve(gameDataPath, STATUSDUMP_FILENAME) : sourcePath;
 
     if (fs.existsSync(targetPath) === false)
@@ -45,12 +46,13 @@ exports.cloneStatusDump = (gameName, targetPath, sourcePath = null) =>
 
 exports.StatusDump = StatusDump;
 
-function StatusDump(gameName, originalPath)
+function StatusDump(gameName, gameType, originalPath)
 {
     assert.isStringOrThrow(gameName);
     assert.isStringOrThrow(originalPath);
 
     const _gameName = gameName;
+    const _gameType = gameType;
     const _originalPath = originalPath;
     
     this.lastUpdateTimestamp = 0;
@@ -110,11 +112,11 @@ function StatusDump(gameName, originalPath)
             {
                 //avoid bad types and empty strings from splitting
                 if (assert.isString(nationData) === true && /\S+/.test(nationData) === true)
-                    this.nationStatusArray.push(new NationStatusWrapper(nationData, _gameName));
+                    this.nationStatusArray.push(new NationStatusWrapper(nationData, _gameName, _gameType));
             });
         }
 
-        log.general(log.getVerboseLevel(), `${_gameName}'s status was updated!`);
+        log.general(log.getVerboseLevel(), `${_gameName}'s (${_gameType}) status was updated!`);
         return this;
     };
 

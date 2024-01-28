@@ -5,30 +5,34 @@ const stream = require("stream");
 const assert = require("./asserter.js");
 const rw = require("./reader_writer.js");
 const configStore = require("./config_store.js");
-const spawn = require('child_process').spawn;
+const spawn = require("child_process").spawn;
+const { getDominionsExePath } = require("./helper_functions.js");
 
 const DOM5_EXE_PATH = configStore.dom5ExePath;
+const DOM6_EXE_PATH = configStore.dom6ExePath;
+
 const BASE_LOG_PATH = path.resolve(configStore.dataFolderPath, "logs", "games");
-const MISSING_EXE_MESSAGE = `The dom5 executable path ${DOM5_EXE_PATH} does not exist!`;
 
 
-if (fs.existsSync(DOM5_EXE_PATH) === false)
-	throw new Error(MISSING_EXE_MESSAGE);
-
+// Ensure both Dominions executables exist
+_validateExecutablePath(configStore.dom5GameTypeName);
+_validateExecutablePath(configStore.dom6GameTypeName);
 
 
 module.exports.SpawnedProcessWrapper = SpawnedProcessWrapper;
 
-function SpawnedProcessWrapper(gameName, args, onSpawned)
+function SpawnedProcessWrapper(gameName, gameType, args, onSpawned)
 {
     assert.isStringOrThrow(gameName);
+    assert.isValidGameTypeOrThrow(gameType);
     assert.isArrayOrThrow(args);
 
 	// Exe must be present when spawning occurs!
-	if (fs.existsSync(DOM5_EXE_PATH) === false)
-		throw new Error(MISSING_EXE_MESSAGE);
+	_validateExecutablePath(gameType);
 
 	const _name = gameName;
+	const _type = gameType;
+	const _exePath = getDominionsExePath(_type);
 	const _args = args;
 	const _onSpawned = onSpawned;
 	const _logDirPath = path.resolve(BASE_LOG_PATH, _name);
@@ -51,7 +55,7 @@ function SpawnedProcessWrapper(gameName, args, onSpawned)
 	// This makes the games remain running but unable to be connected, hanging at "Waiting for info..."
 	// https://nodejs.org/api/stream.html#stream_class_stream_readable
 	// stdio array is [stdin, stdout, stderr]
-	const _instance = spawn(DOM5_EXE_PATH, _args, { 
+	const _instance = spawn(_exePath, _args, { 
 		//stdio: ["ignore", "ignore", "pipe"]
 		// TODO: temporary while I think of a solution to games freezing up
 		// (or the bot when all data is sent to it)
@@ -152,4 +156,11 @@ function SpawnedProcessWrapper(gameName, args, onSpawned)
 	}
 
 	return _instance;
+}
+
+function _validateExecutablePath(gameType) {
+	const exePath = getDominionsExePath(gameType);
+
+	if (fs.existsSync(exePath) === false)
+		throw new Error(`The dom executable path ${exePath} does not exist!`);
 }

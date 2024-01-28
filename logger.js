@@ -2,7 +2,7 @@
 const fs = require("fs");
 const path = require("path");
 const stream = require("stream");
-const configStore = require("./config_store.js");
+const configStore = require("./config_store.js").loadConfig();
 const assert = require("./asserter.js");
 
 const BASE_LOG_PATH = `${configStore.dataFolderPath}/logs`;
