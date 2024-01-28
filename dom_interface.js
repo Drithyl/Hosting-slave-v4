@@ -8,27 +8,33 @@ const rw = require("./reader_writer.js");
 const gameStore = require("./hosted_games_store.js");
 const readFileBuffer = require("./read_file_buffer.js");
 const gameStatusStore = require("./game_status_store.js");
-const provCountFn = require("./dom5/parse_province_count.js");
+const provCountFn = require("./dom/parse_province_count.js");
+const {
+    getDominionsRootPath,
+    getDominionsMapsPath,
+    getDominionsModsPath,
+    getDominionsSavedgamesPath,
+    getDominionsMapExtension,
+    appendDominionsMapExtension
+} = require("./helper_functions.js")
 
-const _savedGamesPath = `${configStore.dom5DataPath}/savedgames`;
 
-
-module.exports.getModList = function()
+module.exports.getModList = function(gameType)
 {
-	return rw.getDirFilenames(configStore.dom5ModsPath, ".dm")
+	return rw.getDirFilenames(getDominionsModsPath(gameType), ".dm")
 	.then((filenames) => Promise.resolve(filenames))
 	.catch((err) => Promise.reject(err));
 };
 
-module.exports.getMapList = async function()
+module.exports.getMapList = async function(gameType)
 {
 	const mapsWithProvinceCount = [];
-    const filenames = await fsp.readdir(configStore.dom5MapsPath);
-    const mapFilenames = filenames.filter((filename) => path.extname(filename) === ".map");
+    const filenames = await fsp.readdir(getDominionsMapsPath(gameType));
+    const mapFilenames = filenames.filter((filename) => path.extname(filename) === getDominionsMapExtension(gameType));
 
     await mapFilenames.forAllPromises(async (filename) =>
     {
-        const filePath = path.resolve(configStore.dom5MapsPath, filename);
+        const filePath = path.resolve(getDominionsMapsPath(gameType), filename);
         const content = await fsp.readFile(filePath, "utf-8");
         const provs = provCountFn(content);
 
@@ -42,10 +48,11 @@ module.exports.getMapList = async function()
 module.exports.getTurnFiles = async function(data)
 {
     const gameName = data.name;
+    const gameType = data.type;
     const nationNames = data.nationNames;
-    const gameFilesPath = path.resolve(_savedGamesPath, gameName);
+    const gameFilesPath = path.resolve(getDominionsSavedgamesPath(gameType), gameName);
     const scoresPath = path.resolve(gameFilesPath, "scores.html");
-    const gameStatus = await gameStatusStore.fetchStatus(gameName);
+    const gameStatus = await gameStatusStore.fetchStatus(gameName, gameType);
     const files = { turnFiles: {} };
 
     const promises = nationNames.map(async (nationName) =>
@@ -76,7 +83,7 @@ module.exports.getTurnFile = function(data)
 {
     const gameName = data.name;
     const nationFilename = data.nationFilename;
-    const filePath = path.resolve(_savedGamesPath, gameName, `${nationFilename}.trn`);
+    const filePath = path.resolve(getDominionsSavedgamesPath(data.type), gameName, `${nationFilename}.trn`);
 
     return readFileBuffer(filePath)
     .then((buffer) => Promise.resolve(buffer))
@@ -86,23 +93,23 @@ module.exports.getTurnFile = function(data)
 module.exports.getScoreFile = function(data)
 {
     const gameName = data.name;
-    const filePath = path.resolve(_savedGamesPath, gameName, "scores.html");
+    const filePath = path.resolve(getDominionsSavedgamesPath(data.type), gameName, "scores.html");
 
     return readFileBuffer(filePath)
     .then((buffer) => Promise.resolve(buffer))
     .catch((err) => Promise.reject(err));
 };
 
-//Timer is received in ms but must be written in seconds in domcmd
-//for the current timer, and in minutes for the default timer
-//Always changing both current and default timer is necessary
-//to avoid unwanted default timers being set when games are loaded
+// Timer is received in ms but must be written in seconds in domcmd
+// for the current timer, and in minutes for the default timer
+// Always changing both current and default timer is necessary
+// to avoid unwanted default timers being set when games are loaded
 module.exports.changeTimer = function(data)
 {
     const gameName = data.name;
     const defaultTimer = +data.timer / 60000;
     const currentTimer = +data.currentTimer * 0.001;
-    const domcmdPath = path.resolve(_savedGamesPath, gameName, "domcmd");
+    const domcmdPath = path.resolve(getDominionsSavedgamesPath(data.type), gameName, "domcmd");
 
     var timerArguments = "";
 
@@ -136,7 +143,7 @@ module.exports.start = async function(data)
     // while reinforcing the default timer once again (important in case this is a 
     // start after a restart, we don't want to keep old values)
     const startData = Object.assign(data, { timer: data.timer, currentTimer: 6000 });
-    const statusdump = await gameStatusStore.fetchStatus(data.name);
+    const statusdump = await gameStatusStore.fetchStatus(data.name, data.type);
     const submittedPretenders = statusdump.getSubmittedPretenders();
 
     if (statusdump.hasSelectedNations() === false)
@@ -151,9 +158,9 @@ module.exports.start = async function(data)
 	.catch((err) => Promise.reject(err));
 };
 
-module.exports.hasStarted = function(gameName)
+module.exports.hasStarted = function(gameName, gameType)
 {
-    const ftherlndPath = path.resolve(_savedGamesPath, gameName, "ftherlnd");
+    const ftherlndPath = path.resolve(getDominionsSavedgamesPath(gameType), gameName, "ftherlnd");
 
     if (fs.existsSync(ftherlndPath) === true)
         return true;
@@ -165,10 +172,10 @@ module.exports.restart = async function(data)
 {
     const gameName = data.name;
     const deletePretenders = data.deletePretenders;
-    const gameDirPath = path.resolve(_savedGamesPath, gameName);
+    const gameDirPath = path.resolve(getDominionsSavedgamesPath(data.type), gameName);
 
 
-	// kill game first so it doesn't automatically regenerate
+	// Kill game first so it doesn't automatically regenerate
 	// the statuspage file as soon as it gets deleted
 	log.general(log.getNormalLevel(), `Killing ${gameName}'s process...`);
     await gameStore.killGame(data.port);
@@ -188,7 +195,7 @@ module.exports.restart = async function(data)
 
 module.exports.getSubmittedPretender = async function(data)
 {
-	const status = await gameStatusStore.fetchStatus(data.name);
+	const status = await gameStatusStore.fetchStatus(data.name, data.type);
     var nations;
     var foundNation;
 
@@ -206,7 +213,7 @@ module.exports.getSubmittedPretender = async function(data)
 
 module.exports.getSubmittedPretenders = async function(data)
 {
-	const status = await gameStatusStore.fetchStatus(data.name);
+	const status = await gameStatusStore.fetchStatus(data.name, data.type);
 
     if (status == null)
         return null;
@@ -217,7 +224,7 @@ module.exports.getSubmittedPretenders = async function(data)
 module.exports.removePretender = async function(data)
 {
 	const gameName = data.name;
-    var filePath = path.resolve(_savedGamesPath, gameName, data.nationFilename);
+    var filePath = path.resolve(getDominionsSavedgamesPath(data.type), gameName, data.nationFilename);
     
     if (/\.2h$/i.test(data.nationFilename) === false)
         filePath += ".2h";
@@ -227,14 +234,12 @@ module.exports.removePretender = async function(data)
 
 
     await fsp.unlink(filePath);
-    await gameStatusStore.forceUpdate(gameName);
+    await gameStatusStore.forceUpdate(data.name, data.type);
 };
 
 module.exports.getStales = function(data)
 {
-    const clonedStatusdumpPath = path.resolve(configStore.dom5DataPath, configStore.tmpFilesDirName, data.name);
-
-	return gameStatusStore.fetchPreviousTurnStatus(data.name, clonedStatusdumpPath)
+	return gameStatusStore.fetchPreviousTurnStatus(data.name, data.type)
     .then((statusdumpWrapper) => 
     {
         if (statusdumpWrapper == null)
@@ -246,7 +251,7 @@ module.exports.getStales = function(data)
 
 module.exports.getUndoneTurns = async function(data)
 {
-    const status = await gameStatusStore.fetchStatus(data.name);
+    const status = await gameStatusStore.fetchStatus(data.name, data.type);
 
     if (status == null)
         return Promise.reject(`No undone turn data available for ${data.name}`);
@@ -257,7 +262,7 @@ module.exports.getUndoneTurns = async function(data)
 module.exports.backupSavefiles = function(gameData)
 {
 	const gameName = gameData.name;
-	const source = path.resolve(_savedGamesPath, gameName);
+	const source = path.resolve(getDominionsSavedgamesPath(gameData.type), gameName);
 	var target = path.resolve(configStore.dataFolderPath, "backups");
 
 	if (gameData.isNewTurn === true)
@@ -274,7 +279,7 @@ module.exports.rollback = function(data)
 {
     const game = gameStore.getGame(data.port);
 	const gameName = game.getName();
-	const target = path.resolve(_savedGamesPath, gameName);
+	const target = path.resolve(getDominionsSavedgamesPath(data.type), gameName);
 	var source = path.resolve(configStore.dataFolderPath, "backups", gameName, configStore.preHostTurnBackupDirName, `t${data.turnNbr}`);
 
 	if (fs.existsSync(source) === false)
@@ -302,7 +307,7 @@ module.exports.rollback = function(data)
 module.exports.deleteGameSavefiles = function(data)
 {
 	const gameName = data.name;
-    const dirPath = path.resolve(_savedGamesPath, gameName);
+    const dirPath = path.resolve(getDominionsSavedgamesPath(data.type), gameName);
     const backupPath = path.resolve(configStore.dataFolderPath, "backups", gameName);
     const logPath = path.resolve(configStore.dataFolderPath, "logs", "games", gameName);
 
@@ -319,23 +324,30 @@ module.exports.deleteGameSavefiles = function(data)
 	.catch((err) => Promise.reject(err));
 };
 
-module.exports.getLastHostedTime = function(gameName)
+module.exports.getLastHostedTime = function(data)
 {
-    const gameDataPath = path.resolve(_savedGamesPath, gameName);
+    const gameDataPath = path.resolve(getDominionsSavedgamesPath(data.type), data.name);
     const ftherlndPath = path.resolve(gameDataPath, "ftherlnd");
 
     return fsp.stat(ftherlndPath)
     .then((ftherlndStat) => Promise.resolve(ftherlndStat.mtime.getTime()));
 };
 
-module.exports.validateMapfile = function(mapfile)
+module.exports.validateMapfile = function(data)
 {
-    const mapfileWithExtension = (/\.map$/i.test(mapfile) === false) ? `${mapfile}.map` : mapfile;
-	const dataMapPath = path.resolve(configStore.dom5MapsPath, mapfileWithExtension);
-	const rootMapPath = path.resolve(configStore.dom5RootPath, "maps", mapfileWithExtension);
+	if (typeof data.filename !== "string")
+		return Promise.reject(new Error(`Invalid argument type provided; expected string path, got ${data.filename}`));
 
-	if (typeof mapfile !== "string")
-		return Promise.reject(new Error(`Invalid argument type provided; expected string path, got ${mapfile}`));
+    const mapfileWithoutExtension = path.parse(data.filename).name;
+    const mapfileWithExtension = appendDominionsMapExtension(data.filename, data.gameType);
+	const dataMapPath = path.resolve(getDominionsMapsPath(data.gameType), mapfileWithExtension);
+	const rootMapPath = path.resolve(getDominionsRootPath(data.gameType), "maps", mapfileWithExtension);
+
+    // In Dom6, maps are stored each within a folder of their own. We expect the same name as the .map file
+	const mapWithinMapFolderPath = path.resolve(getDominionsMapsPath(data.gameType), mapfileWithoutExtension, mapfileWithExtension);
+
+    if (data.gameType === configStore.dom6GameTypeName && fs.existsSync(mapWithinMapFolderPath) === true)
+        return Promise.resolve();
 
 	if (fs.existsSync(dataMapPath) === true || fs.existsSync(rootMapPath) === true)
 		return Promise.resolve();
@@ -343,8 +355,10 @@ module.exports.validateMapfile = function(mapfile)
 	else return Promise.reject(new Error(`The map file '${mapfileWithExtension}' could not be found.`));
 };
 
-module.exports.validateMods = function(modfiles)
+module.exports.validateMods = function(data)
 {
+    const modfiles = data.filenames;
+
 	if (Array.isArray(modfiles) === false)
 		return Promise.reject(new Error(`Invalid argument type provided; expected array of string paths, got ${modfiles}`));
 
@@ -352,7 +366,7 @@ module.exports.validateMods = function(modfiles)
 	{
 		const modfile = modfiles[i];
         const modfileWithExtension = (/\.dm$/i.test(modfile) === false) ? `${modfile}.dm` : modfile;
-        const modPath = path.resolve(configStore.dom5ModsPath, modfileWithExtension);
+        const modPath = path.resolve(getDominionsModsPath(data.gameType), modfileWithExtension);
 
 		if (typeof modfile !== "string")
 			return Promise.reject(new Error(`Invalid modfiles element; expected path string, got ${modfile}`));

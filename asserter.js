@@ -23,7 +23,7 @@ exports.isInstanceOfPrototype = isInstanceOfPrototype;
 exports.isPermissionsError = isPermissionsError;
 exports.isSemanticError = isSemanticError;
 exports.doesStringEndIn = doesStringEndIn;
-exports.assertGameTypeIsValid = assertGameTypeIsValid;
+exports.isValidGameType = isValidGameType;
 exports.isValidPath = isValidPath;
 exports.isValidDiscordId = isValidDiscordId;
 exports.isSafePathToDelete = isSafePathToDelete;
@@ -45,7 +45,7 @@ exports.isStringInArrayOrThrow = isStringInArrayOrThrow;
 exports.isInstanceOfPrototypeOrThrow = isInstanceOfPrototypeOrThrow;
 exports.isSemanticErrorOrThrow = isSemanticErrorOrThrow;
 exports.doesStringEndInOrThrow = doesStringEndInOrThrow;
-exports.assertGameTypeIsValidOrThrow = assertGameTypeIsValidOrThrow;
+exports.isValidGameTypeOrThrow = isValidGameTypeOrThrow;
 exports.isValidPathOrThrow = isValidPathOrThrow;
 exports.isValidDiscordIdOrThrow = isValidDiscordIdOrThrow;
 exports.isSafePathToDeleteOrThrow = isSafePathToDeleteOrThrow;
@@ -151,11 +151,10 @@ function isValidDiscordId(id)
 	return isString(id) === true && /^\d{18}$/.test(id) === true;
 }
 
-function assertGameTypeIsValid(gameType)
+function isValidGameType(gameType)
 {
-  if (gameType.toLowerCase() === CONFIG.coe4GameTypeName.toLowerCase() ||
-      gameType.toLowerCase() === CONFIG.dom4GameTypeName.toLowerCase() ||
-      gameType.toLowerCase() === CONFIG.dom5GameTypeName.toLowerCase())
+  if (gameType.toLowerCase() === config.dom5GameTypeName.toLowerCase() ||
+      gameType.toLowerCase() === config.dom6GameTypeName.toLowerCase())
   {
     return true;
   }
@@ -168,11 +167,13 @@ function assertGameTypeIsValid(gameType)
 function isSafePathToDelete(filePath)
 {
   const normDataRoot = path.resolve(config.dataFolderPath);
-  const normDomDataRoot = path.resolve(config.dom5DataPath);
+  const normDom5DataRoot = path.resolve(config.dom5DataPath);
+  const normDom6DataRoot = path.resolve(config.dom6DataPath);
   const fullPath = path.join(filePath);
 
   if (fullPath.indexOf(normDataRoot) === 0 ||
-      fullPath.indexOf(normDomDataRoot) === 0)
+      fullPath.indexOf(normDom5DataRoot) === 0 ||
+      fullPath.indexOf(normDom6DataRoot) === 0)
   {
     return true;
   }
@@ -294,9 +295,9 @@ function doesStringEndInOrThrow(str, ending)
     throw new SemanticError(`Expected string to end in <${ending}>, got <${str}>`);
 }
 
-function assertGameTypeIsValidOrThrow(gameType)
+function isValidGameTypeOrThrow(gameType)
 {
-  if (assertGameTypeIsValid(gameType) === false)
+  if (isValidGameType(gameType) === false)
     throw new SemanticError(`Value of gameType does not match any configured value, got: <${gameType}>`);
 }
 

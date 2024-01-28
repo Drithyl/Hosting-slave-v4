@@ -5,10 +5,11 @@ const fsp = require("fs").promises;
 const log = require("../logger.js");
 const configStore = require("../config_store.js");
 const rw = require("../reader_writer.js");
+const { getDominionsMapsPath, getDominionsModsPath } = require("../helper_functions.js");
 
 
-module.exports.deleteUnusedMaps = (mapsInUse, force = false) => _deleteUnusedFilesInDir(mapsInUse, configStore.dom5MapsPath, force);
-module.exports.deleteUnusedMods = (modsInUse, force = false) => _deleteUnusedFilesInDir(modsInUse, configStore.dom5ModsPath, force);
+module.exports.deleteUnusedMaps = (mapsInUse, gameType, force = false) => _deleteUnusedFilesInDir(mapsInUse, getDominionsMapsPath(gameType), force);
+module.exports.deleteUnusedMods = (modsInUse, gameType, force = false) => _deleteUnusedFilesInDir(modsInUse, getDominionsModsPath(gameType), force);
 
 
 function _deleteUnusedFilesInDir(filesInUse, dirPath, force = false)

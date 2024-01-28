@@ -1,18 +1,24 @@
 
 /** Required here for when the backup_script executes helper functions,
 /*  as they are called as a separate Node instance */
-require("./helper_functions.js");
+require("./helper_functions.js").init();
 
 const fs = require("fs");
 const path = require("path");
 const fsp = require("fs").promises;
 const log = require("./logger.js");
 const configStore = require("./config_store.js");
+const { getDominionsTmpPath } = require('./helper_functions.js');
 
-const _tmpDataPath = path.resolve(configStore.dom5DataPath, configStore.tmpFilesDirName);
+const DOM5_TMP_PATH = getDominionsTmpPath(configStore.dom5GameTypeName);
+const DOM6_TMP_PATH = getDominionsTmpPath(configStore.dom6GameTypeName);
 
-if (fs.existsSync(_tmpDataPath) === false)
-	fs.mkdirSync(_tmpDataPath);
+
+if (fs.existsSync(DOM5_TMP_PATH) === false)
+	fs.mkdirSync(DOM5_TMP_PATH);
+
+if (fs.existsSync(DOM6_TMP_PATH) === false)
+	fs.mkdirSync(DOM6_TMP_PATH);
 
 
 module.exports.readStreamToString = (path) =>

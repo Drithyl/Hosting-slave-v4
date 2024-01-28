@@ -6,9 +6,10 @@ const statusdumpFactory = require("./status_dump_wrapper.js");
 
 module.exports = GameStatus;
 
-function GameStatus(gameName)
+function GameStatus(gameName, gameType)
 {
     const _gameName = gameName;
+    const _gameType = gameType;
 
     this.game = null;
     this.statusWrapper = null;
@@ -16,6 +17,7 @@ function GameStatus(gameName)
     this.uptime = 0;
 
     this.getName = () => _gameName;
+    this.getType = () => _gameType;
     this.hasGameObject = () => this.game != null;
     this.setGameObject = (gameObject) =>
     {
@@ -63,7 +65,7 @@ function GameStatus(gameName)
 
         // Ootherwise, try to fetch a new one parsing the savedgames data
         else if (this.statusWrapper == null)
-            updatedWrapper = await statusdumpFactory.fetchStatusDump(_gameName);
+            updatedWrapper = await statusdumpFactory.fetchStatusDump(_gameName, _gameType);
 
         if (updatedWrapper != null)
             this.statusWrapper = updatedWrapper;

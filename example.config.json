@@ -18,11 +18,20 @@
 
 	"dataFolderPath": "./data/",
 	"tmpFilesDirName": "tmp",
+
 	"dom5RootPath": "C:/SteamLibrary/steamapps/common/Dominions5",
 	"dom5ExePath": "C:/SteamLibrary/steamapps/common/Dominions5/Dominions5.exe",
 	"dom5DataPath": "C:/Users/MistZ/AppData/Roaming/Dominions5/",
 	"dom5MapsPath": "C:/Users/MistZ/AppData/Roaming/Dominions5/maps",
 	"dom5ModsPath": "C:/Users/MistZ/AppData/Roaming/Dominions5/mods",
+	"dom5TmpPath": "C:/Users/MistZ/AppData/Local/Temp",
+	
+	"dom6RootPath": "C:/SteamLibrary/steamapps/common/Dominions6",
+	"dom6ExePath": "C:/SteamLibrary/steamapps/common/Dominions6/Dominions6.exe",
+	"dom6DataPath": "C:/Users/MistZ/AppData/Roaming/Dominions6/",
+	"dom6MapsPath": "C:/Users/MistZ/AppData/Roaming/Dominions6/maps",
+	"dom6ModsPath": "C:/Users/MistZ/AppData/Roaming/Dominions6/mods",
+	"dom6TmpPath": "C:/Users/MistZ/AppData/Local/Temp",
 
 	"newTurnsBackupDirName": "New Blank Turns",
 	"preHostTurnBackupDirName": "Pre-host Turns",
@@ -30,9 +39,14 @@
 	"updateInterval": 10000,
 	"loggingInterval": 60000,
 
+	"dom5GameTypeName": "dom5",
+	"dom6GameTypeName": "dom6",
+
 	"backupsMaxDaysOld": 15,
 	"backupsCleaningInterval": 86400000,
 
 	"logsMaxDaysOld": 3,
-	"logsCleaningInterval": 86400000
+	"logsCleaningInterval": 86400000,
+
+	"useWs": true
 }

@@ -69,6 +69,27 @@ exports.askConfigQuestions = () =>
 
         newConfig.dom5DataPath = answer;
     }))
+    .then(() => _promisifiedQuestion("Input Dom6 root path: ", (answer) =>
+    {
+        if (fs.existsSync(answer) === false)
+            return Promise.reject("Path does not exist.");
+
+        newConfig.dom6RootPath = answer;
+    }))
+    .then(() => _promisifiedQuestion("Input Dom6 exe path: ", (answer) =>
+    {
+        if (fs.existsSync(answer) === false)
+            return Promise.reject("Path does not exist.");
+
+        newConfig.dom6ExePath = answer;
+    }))
+    .then(() => _promisifiedQuestion("Input Dom6 data path: ", (answer) =>
+    {
+        if (fs.existsSync(answer) === false)
+            return Promise.reject("Path does not exist.");
+
+        newConfig.dom6DataPath = answer;
+    }))
     .then(() => fs.writeFileSync("./config.json", JSON.stringify(newConfig, null, 2)));
 };
 

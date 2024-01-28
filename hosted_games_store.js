@@ -3,13 +3,14 @@ const fs = require("fs");
 const path = require("path");
 const fsp = require("fs").promises;
 const log = require("./logger.js");
-const Game = require("./dom5/game.js");
+const Game = require("./dom/game.js");
 const kill = require("./kill_instance.js");
 const configStore = require("./config_store.js");
 const checkIfPortOpen = require("./is_port_open.js");
-const dom5Interface = require("./dom5_interface.js");
+const domInterface = require("./dom_interface.js");
 const statusStore = require("./game_status_store.js");
 const reservedPortsStore = require("./reserved_ports_store.js");
+const { getDominionsSavedGamesPath } = require("./helper_functions.js");
 
 var hostedGames = {};
 
@@ -24,20 +25,20 @@ module.exports.populate = async function(gameDataArray)
         if (_gameDataExists(gameData) === false)
         {
             await _addNewGame(gameData);
-            statusStore.sendStatusUpdateToMaster(gameData.name);
+            statusStore.sendStatusUpdateToMaster(gameData.name, gameData.type);
             log.general(log.getVerboseLevel(), `Game ${gameData.name} at port ${gameData.port} is new; added to store.`);
             continue;
         }
 
         const oldGame = hostedGames[gameData.port];
-        const newGame = new Game(gameData.name, gameData.port, gameData.args);
+        const newGame = new Game(gameData.name, gameData.type, gameData.port, gameData.args);
 
         // If not same settings, kill old game and overwrite with new game
         if (Game.areSameSettings(oldGame, newGame) === false)
         {
             log.general(log.getVerboseLevel(), `Game ${gameData.name} already exists at port ${gameData.port} but with different settings; data is being overwritten...`);
             await _overwriteGame(oldGame, newGame);
-            statusStore.sendStatusUpdateToMaster(gameData.name);
+            statusStore.sendStatusUpdateToMaster(gameData.name, gameData.type);
         }
     }
 
@@ -49,9 +50,9 @@ module.exports.getGame = function(port)
     return hostedGames[port];
 };
 
-module.exports.getGameByName = function(gameName)
+module.exports.getGameByName = function(gameName, gameType)
 {
-    return _getGameByName(gameName);
+    return _getGameByName(gameName, gameType);
 };
 
 module.exports.requestHosting = async function(gameData)
@@ -104,7 +105,7 @@ module.exports.resetPort = async function(gameData)
         throw new Error("There are no free ports available");
     }
 
-    await exports.killGameByName(gameData.name);
+    await exports.killGameByName(gameData.name, gameData.type);
     
     hostedGames[newPort] = game;
     game.setPort(newPort);
@@ -117,9 +118,10 @@ module.exports.resetPort = async function(gameData)
 
 module.exports.isGameNameUsed = function(name)
 {
-	var savePath = path.resolve(configStore.dom5DataPath, "savedgames", name);
+	const dom5SavePath = path.resolve(getDominionsSavedGamesPath(config.dom5GameTypeName), name);
+	const dom6SavePath = path.resolve(getDominionsSavedGamesPath(config.dom6GameTypeName), name);
 
-	if (fs.existsSync(savePath) === true)
+	if (fs.existsSync(dom5SavePath) === true || fs.existsSync(dom6SavePath) === true)
 		return Promise.resolve(true);
 
 	else return Promise.resolve(false);
@@ -127,12 +129,18 @@ module.exports.isGameNameUsed = function(name)
 
 module.exports.killGame = function(port)
 {
+    if (hostedGames[port] == null)
+    {
+        log.general(log.getLeanLevel(), `No game to kill at port ${port}`);
+        return Promise.resolve();
+    }
+
 	return kill(hostedGames[port]);
 };
 
-module.exports.killGameByName = function(name)
+module.exports.killGameByName = function(name, gameType)
 {
-    const game = _getGameByName(name);
+    const game = _getGameByName(name, gameType);
 
 	return kill(game)
 	.then(() => Promise.resolve())
@@ -145,10 +153,10 @@ module.exports.killAllGames = function()
 	{
         if (game.isOnline()  === true)
         {
-            log.general(log.getNormalLevel(), `Killing ${game.getName()}...`);
+            log.general(log.getNormalLevel(), `Killing ${game.getName()} (${game.getType()})...`);
 
             return exports.killGame(port)
-            .catch((err) => log.error(log.getLeanLevel(), `COULD NOT KILL ${game.getName()} AT PORT ${port}`, err));
+            .catch((err) => log.error(log.getLeanLevel(), `COULD NOT KILL ${game.getName()} (${game.getType()}) AT PORT ${port}`, err));
         }
 	});
 };
@@ -160,7 +168,7 @@ module.exports.isGameOnline = function(port)
 
 module.exports.deleteFtherlndFile = function(data)
 {
-    const ftherlndPath = path.resolve(configStore.dom5DataPath, "savedgames", data.name, "ftherlnd");
+    const ftherlndPath = path.resolve(getDominionsSavedGamesPath(data.type), data.name, "ftherlnd");
 
     if (fs.existsSync(ftherlndPath) === false)
         return Promise.resolve();
@@ -172,12 +180,15 @@ module.exports.deleteGame = function(data)
 {
     const port = data.port;
 
+    // Release port in case it was an unsuccessful game creation
+    reservedPortsStore.releasePort(port);
+
 	return exports.killGame(port)
-    .then(() => dom5Interface.deleteGameSavefiles(data))
+    .then(() => domInterface.deleteGameSavefiles(data))
     .then(() =>
     {
         delete hostedGames[port];
-        statusStore.removeGame(data.name);
+        statusStore.removeGame(data.name, data.type);
         return Promise.resolve();
     })
 	.catch((err) => Promise.reject(err));
@@ -217,7 +228,7 @@ function _gameDataExists(gameData)
 
 async function _addNewGame(gameData)
 {
-    hostedGames[gameData.port] = new Game(gameData.name, gameData.port, gameData.args);
+    hostedGames[gameData.port] = new Game(gameData.name, gameData.type, gameData.port, gameData.args);
     await statusStore.addGame(hostedGames[gameData.port]);
     return hostedGames[gameData.port];
 }
@@ -260,15 +271,16 @@ async function _host(game, timerData, isCurrentTurnRollback)
      *  default and current ones sent by the master server to ensure
      *  that they are both correct even after a turn rolls.
      */
-    if (dom5Interface.hasStarted(game.getName()) === true)
-        return dom5Interface.changeTimer(timerData);
+    if (domInterface.hasStarted(game.getName(), game.getType()) === true)
+        return domInterface.changeTimer(timerData);
 
     else return Promise.resolve();
 }
 
-function _getGameByName(gameName)
+function _getGameByName(gameName, gameType)
 {
     for (var port in hostedGames)
-        if (hostedGames[port].getName() == gameName)
+        if (hostedGames[port].getName() === gameName &&
+            hostedGames[port].getType() === gameType)
             return hostedGames[port];
 }

@@ -7,7 +7,8 @@ const rw = require("./reader_writer.js");
 const safePath = require("./safe_path.js");
 const configStore = require("./config_store.js");
 const cleaner = require("./cleaners/backups_cleaner.js");
-const statusDump = require("./dom5/status_dump_wrapper.js");
+const statusDump = require("./dom/status_dump_wrapper.js");
+const { getDominionsDataPath } = require("./helper_functions.js");
 
 
 var backupExtensions;
@@ -18,22 +19,23 @@ var targetBackupDirpath;
 var writeStream;
 
 
-module.exports.backupPreTurn = async (gameName) =>
+module.exports.backupPreTurn = async (gameName, gameType) =>
 {
-    _initializeGlobals(gameName);
+    _initializeGlobals(gameName, gameType);
     targetBackupDirpath = path.resolve(targetBackupDirpath, configStore.preHostTurnBackupDirName);
 
     try
     {
         await _createLoggingStream();
 
-        _checkBackupArgs(gameName);
+        _checkBackupArgs(gameName, gameType);
     
-        await _cloneStatusdump(gameName);
+        await _cloneStatusdump(gameName, gameType);
     
         _logToFile(`Pre-processing backup for ${gameName} starting; checking arguments...`);
-        await _startBackupProcess(gameName, false);
+        const statusdumpWrapper = await _startBackupProcess(gameName, gameType, false);
         _logToFile(`Finished backup process! Exiting...`);
+        return statusdumpWrapper;
     }
 
     catch(err)
@@ -43,22 +45,23 @@ module.exports.backupPreTurn = async (gameName) =>
     }
 };
 
-module.exports.backupPostTurn = async (gameName) =>
+module.exports.backupPostTurn = async (gameName, gameType) =>
 {
-    _initializeGlobals(gameName);
+    _initializeGlobals(gameName, gameType);
     targetBackupDirpath = path.resolve(targetBackupDirpath, configStore.newTurnsBackupDirName);
 
     try
     {
         await _createLoggingStream();
         
-        _checkBackupArgs(gameName);
+        _checkBackupArgs(gameName, gameType);
     
-        await _cloneStatusdump(gameName);
+        await _cloneStatusdump(gameName, gameType);
     
         _logToFile(`Post-processing backup for ${gameName} starting; checking arguments...`);
-        await _startBackupProcess(gameName, true);
+        const statusdumpWrapper = await _startBackupProcess(gameName, gameType, true);
         _logToFile(`Finished backup process! Exiting...`);
+        return statusdumpWrapper;
     }
 
     catch(err)
@@ -69,11 +72,12 @@ module.exports.backupPostTurn = async (gameName) =>
 };
 
 
-function _initializeGlobals(gameName)
+function _initializeGlobals(gameName, gameType)
 {
+    const dataPath = getDominionsDataPath(gameType);
     backupExtensions = new RegExp("(\.2h)|(\.trn)|(ftherlnd)$", "i");
-    savedgamesPath = safePath(configStore.dom5DataPath, "savedgames", gameName);
-    clonedStatusdumpDirpath = safePath(configStore.dom5DataPath, configStore.tmpFilesDirName, gameName);
+    savedgamesPath = safePath(dataPath, "savedgames", gameName);
+    clonedStatusdumpDirpath = safePath(dataPath, configStore.tmpFilesDirName, gameName);
     logDirpath = safePath(configStore.dataFolderPath, "logs", "games", gameName);
     targetBackupDirpath = safePath(configStore.dataFolderPath, "backups", gameName);
 }
@@ -87,20 +91,23 @@ async function _createLoggingStream()
     writeStream = fs.createWriteStream(logFilename, { flags: "a", autoClose: true });
 }
 
-function _checkBackupArgs(gameName)
+function _checkBackupArgs(gameName, gameType)
 {
     _logToFile(`Checking process arguments for backup...`);
 
     if (gameName == null)
         throw new Error(`BACKUP ERROR; NO GAME NAME ARGUMENT RECEIVED`);
+
+    if (gameType !== configStore.dom5GameTypeName && gameType !== configStore.dom6GameTypeName)
+        throw new Error(`BACKUP ERROR; GAME TYPE ARGUMENT RECEIVED INCORRECT: ${gameType}`);
     
     _logToFile(`Arguments received properly.`);
 }
 
-async function _startBackupProcess(gameName, isPostprocessing = false)
+async function _startBackupProcess(gameName, gameType, isPostprocessing = false)
 {
     var backupFilenames;
-    const statusdumpWrapper = await _fetchStatusdump(gameName, isPostprocessing);
+    const statusdumpWrapper = await _fetchStatusdump(gameName, gameType, isPostprocessing);
     const backupDirName = `t${statusdumpWrapper.turnNbr}`;
     
     await _createDirectories(path.resolve(targetBackupDirpath, backupDirName));
@@ -113,15 +120,18 @@ async function _startBackupProcess(gameName, isPostprocessing = false)
 
     _logToFile(`Finished backing up turn files, cleaning old ones...`);
     await _cleanUnusedBackups(statusdumpWrapper);
+
+    // Return the statusdumpWrapper in case the caller needs to use its data
+    return statusdumpWrapper;
 }
 
-async function _fetchStatusdump(gameName, isPostprocessing)
+async function _fetchStatusdump(gameName, gameType, isPostprocessing)
 {
     _logToFile(`Fetching statusdump...`);
 
     if (isPostprocessing === true)
     {
-        statusdumpWrapper = await statusDump.fetchStatusDump(gameName, clonedStatusdumpDirpath);
+        statusdumpWrapper = await statusDump.fetchStatusDump(gameName, gameType, clonedStatusdumpDirpath);
 
         // Manually increment turn number for the post-turn backup,
         // as the turn number we have is the one from the previous turn
@@ -131,7 +141,7 @@ async function _fetchStatusdump(gameName, isPostprocessing)
     
     else 
     {
-        statusdumpWrapper = await statusDump.fetchStatusDump(gameName);
+        statusdumpWrapper = await statusDump.fetchStatusDump(gameName, gameType);
     }
 
     _logToFile(`Statusdump fetched, turn is ${statusdumpWrapper.turnNbr}`);
@@ -139,7 +149,7 @@ async function _fetchStatusdump(gameName, isPostprocessing)
 }
 
 
-async function _cloneStatusdump(gameName)
+async function _cloneStatusdump(gameName, gameType)
 {
     _logToFile(`Cloning statusdump...`);
 
@@ -149,7 +159,7 @@ async function _cloneStatusdump(gameName)
         await fsp.mkdir(clonedStatusdumpDirpath);
     }
 
-    statusDump.cloneStatusDump(gameName, clonedStatusdumpDirpath);
+    statusDump.cloneStatusDump(gameName, gameType, clonedStatusdumpDirpath);
 }
 
 async function _createDirectories(targetBackupDirpath)
