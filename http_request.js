@@ -52,7 +52,10 @@ function HttpRequest(fullPath, method, port = 443)
             _options.headers = {
                 "Accept": "application/json",
                 "Content-Type": "application/json",
-                "Content-Length": _data.length,
+                // See: https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Content-Length
+                // The size of the message in bytes. NOTE, if it's lower than the actual data sent,
+                // the data will get trimmed down and likely end up malformed
+                "Content-Length": (new TextEncoder().encode(_data)).length,
             };
         }
     }

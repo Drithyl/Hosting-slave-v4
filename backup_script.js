@@ -19,10 +19,13 @@ var targetBackupDirpath;
 var writeStream;
 
 
-module.exports.backupPreTurn = async (gameName, gameType) =>
+module.exports.backupTurn = async (statusdumpWrapper, backupPath) =>
 {
+    const gameName = statusdumpWrapper.getName();
+    const gameType = statusdumpWrapper.getType();
+
     _initializeGlobals(gameName, gameType);
-    targetBackupDirpath = path.resolve(targetBackupDirpath, configStore.preHostTurnBackupDirName);
+    targetBackupDirpath = backupPath;
 
     try
     {
@@ -32,10 +35,11 @@ module.exports.backupPreTurn = async (gameName, gameType) =>
     
         await _cloneStatusdump(gameName, gameType);
     
-        _logToFile(`Pre-processing backup for ${gameName} starting; checking arguments...`);
-        const statusdumpWrapper = await _startBackupProcess(gameName, gameType, false);
+        _logToFile(`Backup for ${gameName} starting; checking arguments...`);
+    
+        await _startBackupProcess(statusdumpWrapper);
+
         _logToFile(`Finished backup process! Exiting...`);
-        return statusdumpWrapper;
     }
 
     catch(err)
@@ -45,31 +49,6 @@ module.exports.backupPreTurn = async (gameName, gameType) =>
     }
 };
 
-module.exports.backupPostTurn = async (gameName, gameType) =>
-{
-    _initializeGlobals(gameName, gameType);
-    targetBackupDirpath = path.resolve(targetBackupDirpath, configStore.newTurnsBackupDirName);
-
-    try
-    {
-        await _createLoggingStream();
-        
-        _checkBackupArgs(gameName, gameType);
-    
-        await _cloneStatusdump(gameName, gameType);
-    
-        _logToFile(`Post-processing backup for ${gameName} starting; checking arguments...`);
-        const statusdumpWrapper = await _startBackupProcess(gameName, gameType, true);
-        _logToFile(`Finished backup process! Exiting...`);
-        return statusdumpWrapper;
-    }
-
-    catch(err)
-    {
-        if (writeStream != null)
-            _logToFile(err.stack);
-    }
-};
 
 
 function _initializeGlobals(gameName, gameType)
@@ -104,10 +83,11 @@ function _checkBackupArgs(gameName, gameType)
     _logToFile(`Arguments received properly.`);
 }
 
-async function _startBackupProcess(gameName, gameType, isPostprocessing = false)
+async function _startBackupProcess(statusdumpWrapper)
 {
     var backupFilenames;
-    const statusdumpWrapper = await _fetchStatusdump(gameName, gameType, isPostprocessing);
+    const gameName = statusdumpWrapper.getName();
+    const gameType = statusdumpWrapper.getType();
     const backupDirName = `t${statusdumpWrapper.turnNbr}`;
     
     await _createDirectories(path.resolve(targetBackupDirpath, backupDirName));
@@ -120,32 +100,6 @@ async function _startBackupProcess(gameName, gameType, isPostprocessing = false)
 
     _logToFile(`Finished backing up turn files, cleaning old ones...`);
     await _cleanUnusedBackups(statusdumpWrapper);
-
-    // Return the statusdumpWrapper in case the caller needs to use its data
-    return statusdumpWrapper;
-}
-
-async function _fetchStatusdump(gameName, gameType, isPostprocessing)
-{
-    _logToFile(`Fetching statusdump...`);
-
-    if (isPostprocessing === true)
-    {
-        statusdumpWrapper = await statusDump.fetchStatusDump(gameName, gameType, clonedStatusdumpDirpath);
-
-        // Manually increment turn number for the post-turn backup,
-        // as the turn number we have is the one from the previous turn
-        statusdumpWrapper.turnNbr++;
-        _logToFile(`Postprocessing; increment turn number`);
-    }
-    
-    else 
-    {
-        statusdumpWrapper = await statusDump.fetchStatusDump(gameName, gameType);
-    }
-
-    _logToFile(`Statusdump fetched, turn is ${statusdumpWrapper.turnNbr}`);
-    return statusdumpWrapper;
 }
 
 
