@@ -3,6 +3,7 @@
 const log = require("./logger.js");
 const { WebSocket } = require("ws");
 const configStore = require("./config_store.js");
+const gameStore = require("./hosted_games_store.js");
 const masterCommands = require("./master_commands.js");
 const reservedPortsStore = require("./reserved_ports_store.js");
 
