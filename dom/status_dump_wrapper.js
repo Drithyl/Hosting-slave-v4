@@ -62,6 +62,9 @@ function StatusDump(gameName, gameType, originalPath)
     this.turnLimitNbr;
     this.nationStatusArray = [];
 
+    this.getName = () => _gameName;
+    this.getType = () => _gameType;
+
     this.getlastUpdateTimestamp = () => this.lastUpdateTimestamp;
 
     this.update = async () =>
@@ -183,6 +186,22 @@ function StatusDump(gameName, gameType, originalPath)
 
         return Promise.resolve(staleObj);
     };
+
+    this.toJSON = () =>
+    {
+        const json = {
+            gameName: _gameName,
+            gameType: _gameType,
+            lastUpdateTimestamp: this.lastUpdateTimestamp,
+            turnNumber: this.turnNbr,
+            eraNumber: this.eraNbr,
+            numberOfMods: this.nbrOfMods,
+            turnLimitNumber: this.turnLimitNbr,
+            nationStatuses: this.nationStatusArray.map((n) => n.toJSON())
+        };
+
+        return json;
+    }
 }
 
 function _parseDumpData(rawData)

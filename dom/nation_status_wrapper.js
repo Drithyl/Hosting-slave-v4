@@ -38,6 +38,29 @@ function NationStatusWrapper(nationRawData, gameName, gameType)
     this.wasTurnChecked = (_parsedData.turnStatus === 0) ? false : true;
     this.isTurnUnfinished = (_parsedData.turnStatus === 1) ? true : false;
     this.isTurnFinished = (_parsedData.turnStatus === 2) ? true : false;
+
+    this.toJSON = () =>
+    {
+        const json = {
+            filename: this.filename,
+            fullName: this.fullName,
+            name: this.name,
+            gameType: this.type,
+            nationNumber: this.nationNbr,
+            pretenderNumber: this.pretenderNbr,
+            isSubmitted: this.isSubmitted,
+            hasJustDied: this.justDied,
+            isDead: this.isDead,
+            isHuman: this.isHuman,
+            isAi: this.isAi,
+            difficultyNumber: this.aiDifficultyNbr,
+            wasTurnChecked: this.wasTurnChecked,
+            isTurnUnfinished: this.isTurnUnfinished,
+            isTurnFinished: this.isTurnFinished
+        };
+
+        return json;
+    }
 }
 
 function _parseNationRawData(nationRawData)
