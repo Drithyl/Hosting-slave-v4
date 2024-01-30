@@ -237,7 +237,7 @@ async function _overwriteGame(existingGame, newGame)
 {
     await exports.killGame(existingGame.getPort());
     hostedGames[newGame.getPort()] = newGame;
-    await awaitstatusStore.addGame(newGame);
+    await statusStore.addGame(newGame);
     log.general(log.getLeanLevel(), `Game ${newGame.getName()} received different data from master; overwriting it`);
 }
 
