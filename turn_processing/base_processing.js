@@ -6,11 +6,13 @@ const safePath = require("../safe_path.js");
 const configStore = require("../config_store.js").loadConfig();
 const HttpRequest = require("../http_request.js");
 const backupScript = require("../backup_script.js");
-const { getDominionsSavedgamesPath } = require("../helper_functions.js");
+const statusDump = require("../dom/status_dump_wrapper.js");
+const { getDominionsDataPath, getDominionsSavedgamesPath } = require("../helper_functions.js");
 
-var logDirpath;
 var logFilename;
 var writeStream;
+var logDirpath;
+let clonedStatusdumpPath;
 
 module.exports.preprocessing = async (gameName, gameType) =>
 {
@@ -23,16 +25,22 @@ module.exports.preprocessing = async (gameName, gameType) =>
         // Remove domcmd file that may be leftover to avoid double turns
         await _removeLeftoverDomCmdFile(gameName, gameType);
 
+        // Clone the game's statusdump, so that we can capture its information
+        // even after the turn has rolled and altered its contents
+        await _cloneStatusdump(gameName, gameType);
+
         // Notify master that turn started processing
         await _notifyMaster(gameName, 'preexec-start');
 
+        // Parse the current statusdump file for the game
+        const statusdumpWrapper = await _fetchStatusdump(gameName, gameType, false);
+        const backupPath = safePath(configStore.dataFolderPath, "backups", gameName, configStore.preHostTurnBackupDirName);
+
         // Run the preprocessing backup
-        const statusdumpWrapper = await backupScript.backupPreTurn(gameName, gameType);
-        const turnNumber = statusdumpWrapper.turnNbr;
-        const nationStatusArray = statusdumpWrapper.nationStatusArray;
+        await backupScript.backupTurn(statusdumpWrapper, backupPath);
 
         // Notify master that pre-backup finished
-        await _notifyMaster(gameName, 'preexec-finish', { turnNumber });
+        await _notifyMaster(gameName, 'preexec-finish', { turnNumber: statusdumpWrapper.turnNbr });
     }
 
     catch(error)
@@ -57,16 +65,21 @@ module.exports.postprocessing = async (gameName, gameType) =>
         _logToFile(`###############################################`);
         _logToFile(`${gameName} (${gameType}) - Beginning POSTprocessing of new turn`);
 
+        // Remove domcmd file that may be leftover to avoid double turns
+        await _removeLeftoverDomCmdFile(gameName, gameType);
+
         // Notify master that turn finished processing
         await _notifyMaster(gameName, 'postexec-start');
 
-        // Run the postprocessing backup
-        const statusdumpWrapper = await backupScript.backupPostTurn(gameName, gameType);
-        const turnNumber = statusdumpWrapper.turnNbr;
-        const nationStatusArray = statusdumpWrapper.nationStatusArray;
+        // Parse the current statusdump file for the game
+        const statusdumpWrapper = await _fetchStatusdump(gameName, gameType, true);
+        const backupPath = safePath(configStore.dataFolderPath, "backups", gameName, configStore.newTurnsBackupDirName);
 
-        // Notify master that pre-backup finished
-        await _notifyMaster(gameName, 'postexec-finish', { turnNumber });
+        // Run the postprocessing backup
+        await backupScript.backupTurn(statusdumpWrapper, backupPath);
+
+        // Notify master that post-backup finished, and send the statusdump data
+        await _notifyMaster(gameName, 'postexec-finish', { statusdump: statusdumpWrapper.toJSON() });
     }
 
     catch(error)
@@ -83,6 +96,42 @@ module.exports.postprocessing = async (gameName, gameType) =>
     }
 };
 
+
+async function _cloneStatusdump(gameName, gameType)
+{
+    _logToFile(`Cloning statusdump...`);
+
+    if (fs.existsSync(clonedStatusdumpPath) === false)
+    {
+        _logToFile(`Statusdump clone path ${clonedStatusdumpPath} does not exist; creating it...`);
+        await fsp.mkdir(clonedStatusdumpPath);
+    }
+
+    statusDump.cloneStatusDump(gameName, gameType, clonedStatusdumpPath);
+}
+
+async function _fetchStatusdump(gameName, gameType, isPostprocessing)
+{
+    _logToFile(`Fetching statusdump...`);
+
+    if (isPostprocessing === true)
+    {
+        statusdumpWrapper = await statusDump.fetchStatusDump(gameName, gameType, clonedStatusdumpPath);
+
+        // Manually increment turn number for the post-turn backup,
+        // as the turn number we have is the one from the previous turn
+        statusdumpWrapper.turnNbr++;
+        _logToFile(`Postprocessing; increment turn number`);
+    }
+    
+    else 
+    {
+        statusdumpWrapper = await statusDump.fetchStatusDump(gameName, gameType);
+    }
+
+    _logToFile(`Statusdump fetched, turn is ${statusdumpWrapper.turnNbr}`);
+    return statusdumpWrapper;
+}
 
 async function _removeLeftoverDomCmdFile(gameName, gameType)
 {
@@ -104,11 +153,13 @@ async function _removeLeftoverDomCmdFile(gameName, gameType)
     }
 }
 
-function _initializeGlobals(gameName)
+function _initializeGlobals(gameName, gameType)
 {
     const date = new Date();
+    const dataPath = getDominionsDataPath(gameType);
 
     logDirpath = safePath(configStore.dataFolderPath, "logs", "games", gameName);
+    clonedStatusdumpPath = safePath(dataPath, configStore.tmpFilesDirName, gameName);
     logFilename = `${date.getDate()}-${date.getMonth() + 1}-${date.getFullYear()}-turn.txt`;
     writeStream = fs.createWriteStream(path.resolve(logDirpath, logFilename), { flags: "a", autoClose: true });
 }
@@ -126,7 +177,8 @@ async function _notifyMaster(gameName, status, data = {})
             gameName,
             serverToken: configStore.id,
             status,
-            turnNumber: data.turnNumber
+            turnNumber: data.turnNumber,
+            statusdump: data.statusdump
         };
 
         if (data.error)
