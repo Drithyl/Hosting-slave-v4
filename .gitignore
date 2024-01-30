@@ -14,4 +14,7 @@ node_modules/
 #app data
 data/
 
+# test scripts
+tests/
+
 package-lock.json
