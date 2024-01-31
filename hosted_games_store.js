@@ -10,7 +10,7 @@ const checkIfPortOpen = require("./is_port_open.js");
 const domInterface = require("./dom_interface.js");
 const statusStore = require("./game_status_store.js");
 const reservedPortsStore = require("./reserved_ports_store.js");
-const { getDominionsSavedGamesPath } = require("./helper_functions.js");
+const { getDominionsSavedgamesPath } = require("./helper_functions.js");
 
 var hostedGames = {};
 
@@ -118,8 +118,8 @@ module.exports.resetPort = async function(gameData)
 
 module.exports.isGameNameUsed = function(name)
 {
-	const dom5SavePath = path.resolve(getDominionsSavedGamesPath(config.dom5GameTypeName), name);
-	const dom6SavePath = path.resolve(getDominionsSavedGamesPath(config.dom6GameTypeName), name);
+	const dom5SavePath = path.resolve(getDominionsSavedgamesPath(config.dom5GameTypeName), name);
+	const dom6SavePath = path.resolve(getDominionsSavedgamesPath(config.dom6GameTypeName), name);
 
 	if (fs.existsSync(dom5SavePath) === true || fs.existsSync(dom6SavePath) === true)
 		return Promise.resolve(true);
@@ -168,7 +168,7 @@ module.exports.isGameOnline = function(port)
 
 module.exports.deleteFtherlndFile = function(data)
 {
-    const ftherlndPath = path.resolve(getDominionsSavedGamesPath(data.type), data.name, "ftherlnd");
+    const ftherlndPath = path.resolve(getDominionsSavedgamesPath(data.type), data.name, "ftherlnd");
 
     if (fs.existsSync(ftherlndPath) === false)
         return Promise.resolve();
