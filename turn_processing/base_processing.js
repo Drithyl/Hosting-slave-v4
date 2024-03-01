@@ -7,7 +7,7 @@ const configStore = require("../config_store.js").loadConfig();
 const HttpRequest = require("../http_request.js");
 const backupScript = require("../backup_script.js");
 const statusDump = require("../dom/status_dump_wrapper.js");
-const { getDominionsDataPath, getDominionsSavedgamesPath } = require("../helper_functions.js");
+const { getDominionsSavedgamesPath, getSlaveTmpPath } = require("../helper_functions.js");
 
 var logFilename;
 var writeStream;
@@ -61,7 +61,7 @@ module.exports.postprocessing = async (gameName, gameType) =>
 {
     try
     {
-        _initializeGlobals(gameName, gameType);
+        _initializeGlobals(gameName);
         _logToFile(`###############################################`);
         _logToFile(`${gameName} (${gameType}) - Beginning POSTprocessing of new turn`);
 
@@ -153,13 +153,13 @@ async function _removeLeftoverDomCmdFile(gameName, gameType)
     }
 }
 
-function _initializeGlobals(gameName, gameType)
+function _initializeGlobals(gameName)
 {
     const date = new Date();
-    const dataPath = getDominionsDataPath(gameType);
+    const slaveTmpPath = getSlaveTmpPath();
 
     logDirpath = safePath(configStore.dataFolderPath, "logs", "games", gameName);
-    clonedStatusdumpPath = safePath(dataPath, configStore.tmpFilesDirName, gameName);
+    clonedStatusdumpPath = safePath(slaveTmpPath, gameName);
     logFilename = `${date.getDate()}-${date.getMonth() + 1}-${date.getFullYear()}-turn.txt`;
     writeStream = fs.createWriteStream(path.resolve(logDirpath, logFilename), { flags: "a", autoClose: true });
 }

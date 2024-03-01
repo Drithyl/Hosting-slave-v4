@@ -7,7 +7,7 @@ const configStore = require("./config_store.js");
 const GameStatus = require("./dom/game_status.js");
 const socketWrapper = require("./socket_wrapper.js");
 const gamesStore = require("./hosted_games_store.js");
-const { getDominionsSavedgamesPath, getDominionsTmpPath } = require('./helper_functions.js');
+const { getDominionsSavedgamesPath, getSlaveTmpPath } = require('./helper_functions.js');
 const statusdumpFactory = require("./dom/status_dump_wrapper.js");
 
 const DOM5_SAVEDGAMES_PATH = getDominionsSavedgamesPath(configStore.dom5GameTypeName);
@@ -103,7 +103,7 @@ module.exports.updateGameCounterStatus = async (gameName, gameType) =>
 
 module.exports.fetchPreviousTurnStatus = async (gameName, gameType) =>
 {
-    const clonedStatusdumpPath = path.resolve(getDominionsTmpPath(gameType), gameName);
+    const clonedStatusdumpPath = path.resolve(getSlaveTmpPath(), gameName);
     const wrapper = await statusdumpFactory.fetchStatusDump(gameName, gameType, clonedStatusdumpPath);
     return wrapper;
 };

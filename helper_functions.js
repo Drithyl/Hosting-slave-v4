@@ -31,6 +31,10 @@ module.exports.getDominionsExePath = function(gameType) {
     }
 };
 
+module.exports.getSlaveTmpPath = function() {
+    return path.resolve(configStore.dataFolderPath, configStore.tmpFilesDirName);
+};
+
 module.exports.getDominionsTmpPath = function(gameType) {
     return path.resolve(module.exports.getDominionsDataPath(gameType), configStore.tmpFilesDirName);
 };
