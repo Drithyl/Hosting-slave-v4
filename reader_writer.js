@@ -7,6 +7,12 @@ const fs = require("fs");
 const path = require("path");
 const fsp = require("fs").promises;
 const log = require("./logger.js");
+const { getSlaveTmpPath } = require('./helper_functions.js');
+
+const SLAVE_TMP_PATH = getSlaveTmpPath();
+
+if (fs.existsSync(SLAVE_TMP_PATH) === false)
+	fs.mkdirSync(SLAVE_TMP_PATH);
 
 
 module.exports.readStreamToString = (path) =>
