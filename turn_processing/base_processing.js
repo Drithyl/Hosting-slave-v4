@@ -159,6 +159,12 @@ function _initializeGlobals(gameName)
     const slaveTmpPath = getSlaveTmpPath();
 
     logDirpath = safePath(configStore.dataFolderPath, "logs", "games", gameName);
+
+    // Create game logging path if it does not exist
+    if (fs.existsSync(logDirpath) === false) {
+        fs.mkdirSync(logDirpath);
+    }
+
     clonedStatusdumpPath = safePath(slaveTmpPath, gameName);
     logFilename = `${date.getDate()}-${date.getMonth() + 1}-${date.getFullYear()}-turn.txt`;
     writeStream = fs.createWriteStream(path.resolve(logDirpath, logFilename), { flags: "a", autoClose: true });
