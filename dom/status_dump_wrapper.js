@@ -158,7 +158,7 @@ function StatusDump(gameName, gameType, originalPath)
 
         const undoneTurns = this.nationStatusArray.filter((nationStatus) => 
         {
-            return nationStatus.wasTurnChecked === false && nationStatus.isHuman === true;
+            return nationStatus.wasTurnChecked === false && nationStatus.isHuman === true && nationStatus.isDead === false;
         });
 
         return undoneTurns;
