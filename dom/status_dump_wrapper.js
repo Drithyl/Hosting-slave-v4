@@ -56,6 +56,7 @@ function StatusDump(gameName, gameType, originalPath)
     const _originalPath = originalPath;
     
     this.lastUpdateTimestamp = 0;
+    this.hasStarted;
     this.turnNbr;
     this.eraNbr;
     this.nbrOfMods;
@@ -67,7 +68,7 @@ function StatusDump(gameName, gameType, originalPath)
 
     this.getlastUpdateTimestamp = () => this.lastUpdateTimestamp;
 
-    this.update = async () =>
+    this.update = async (force = false) =>
     {
         if (fs.existsSync(_originalPath) === false)
             return;
@@ -77,7 +78,7 @@ function StatusDump(gameName, gameType, originalPath)
         const statusdumpMTime = stat.mtime.getTime();
 
         // If it hasn't changed, no need to update it
-        if (this.lastUpdateTimestamp >= statusdumpMTime)
+        if (this.lastUpdateTimestamp >= statusdumpMTime && force === false)
             return;
 
         // Otherwise get the most recent statusdump metadata and update this wrapper

@@ -189,8 +189,19 @@ module.exports.restart = async function(data)
 
     else await rw.keepOnlyFilesWithExt(gameDirPath);
 
+    // Force a refresh of the game status and send it to the bot
+    await module.exports.refresh(data);
 
+    // Host the game again
 	await gameStore.requestHosting(data);
+};
+
+module.exports.refresh = async function(data)
+{
+    const gameName = data.name;
+
+	log.general(log.getNormalLevel(), `Refreshing ${gameName}'s status...`);
+    await gameStatusStore.forceUpdate(data.name, data.type);
 };
 
 module.exports.getSubmittedPretender = async function(data)

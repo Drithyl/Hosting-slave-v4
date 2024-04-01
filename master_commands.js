@@ -44,6 +44,7 @@ module.exports.listen = function(socketWrapper)
     socketWrapper.on("OVERWRITE_SETTINGS", (data) => hostedGamesStore.overwriteSettings(data));
     socketWrapper.on("START_GAME", (data) => domInterface.start(data));
     socketWrapper.on("RESTART_GAME", (data) => domInterface.restart(data));
+    socketWrapper.on("REFRESH_GAME", (data) => domInterface.refresh(data));
     socketWrapper.on("BACKUP_SAVEFILES", (data) => domInterface.backupSavefiles(data));
     socketWrapper.on("ROLLBACK", (data) => domInterface.rollback(data));
     socketWrapper.on("REMOVE_NATION", (data) => domInterface.removePretender(data));

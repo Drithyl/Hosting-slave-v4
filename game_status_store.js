@@ -80,7 +80,7 @@ module.exports.consumeStatus = (gameData) =>
 
 module.exports.forceUpdate = async (gameName, gameType) =>
 {
-    await _updateStatus(gameName, gameType);
+    await _updateStatus(gameName, gameType, true);
 };
 
 module.exports.startUpdateCycle = () =>
@@ -148,7 +148,7 @@ async function _statusUpdateCycle()
     }
 };
 
-async function _updateStatus(name, gameType)
+async function _updateStatus(name, gameType, force = false)
 {
     const statusWrappers = _getWrappersByGameType(gameType);
 
@@ -158,7 +158,9 @@ async function _updateStatus(name, gameType)
     if (_hasStatus(name, gameType) === false)
         await _addStatus(name, gameType);
 
-    else statusWrappers[name].updateStatus();
+    else {
+        await statusWrappers[name].updateStatus(force);
+    }
 
     _sendStatusUpdateToMaster(statusWrappers[name], gameType);
 }
