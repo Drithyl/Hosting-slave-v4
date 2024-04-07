@@ -318,6 +318,11 @@ module.exports.rollback = function(data)
 module.exports.deleteGameSavefiles = function(data)
 {
 	const gameName = data.name;
+
+    if (gameName == null) {
+        return Promise.reject(new Error(`Cannot delete game with undefined or null name!`));
+    }
+
     const dirPath = path.resolve(getDominionsSavedgamesPath(data.type), gameName);
     const backupPath = path.resolve(configStore.dataFolderPath, "backups", gameName);
     const logPath = path.resolve(configStore.dataFolderPath, "logs", "games", gameName);
@@ -363,7 +368,7 @@ module.exports.validateMapfile = function(data)
 	if (fs.existsSync(dataMapPath) === true || fs.existsSync(rootMapPath) === true)
 		return Promise.resolve();
 
-	else return Promise.reject(new Error(`The map file '${mapfileWithExtension}' could not be found.`));
+	else return Promise.reject(new Error(`The map file "${mapfileWithExtension}" could not be found at any of these paths:\n\n"${mapWithinMapFolderPath}"\n"${dataMapPath}"\n"${rootMapPath}"`));
 };
 
 module.exports.validateMods = function(data)
