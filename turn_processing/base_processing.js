@@ -104,7 +104,7 @@ async function _cloneStatusdump(gameName, gameType)
     if (fs.existsSync(clonedStatusdumpPath) === false)
     {
         _logToFile(`Statusdump clone path ${clonedStatusdumpPath} does not exist; creating it...`);
-        await fsp.mkdir(clonedStatusdumpPath);
+        await fsp.mkdir(clonedStatusdumpPath, { recursive: true });
     }
 
     statusDump.cloneStatusDump(gameName, gameType, clonedStatusdumpPath);
