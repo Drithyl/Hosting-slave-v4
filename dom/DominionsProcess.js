@@ -1,27 +1,23 @@
 
 const fs = require("fs");
+const fsp = fs.promises;
 const path = require("path");
 const stream = require("stream");
-const assert = require("./asserter.js");
-const rw = require("./reader_writer.js");
-const configStore = require("./config_store.js");
+const assert = require("../utilities/type-utilities.js");
+const rw = require("../utilities/file-utilities.js");
 const spawn = require("child_process").spawn;
-const { getDominionsExePath } = require("./helper_functions.js");
-
-const DOM5_EXE_PATH = configStore.dom5ExePath;
-const DOM6_EXE_PATH = configStore.dom6ExePath;
-
-const BASE_LOG_PATH = path.resolve(configStore.dataFolderPath, "logs", "games");
+const { getDominionsExePath } = require("../utilities/path-utilities.js");
+const { DOM5_GAME_TYPE_NAME, DOM6_GAME_TYPE_NAME, LOGS_DIR_PATH } = require("../constants.js");
 
 
 // Ensure both Dominions executables exist
-_validateExecutablePath(configStore.dom5GameTypeName);
-_validateExecutablePath(configStore.dom6GameTypeName);
+_validateExecutablePath(DOM5_GAME_TYPE_NAME);
+_validateExecutablePath(DOM6_GAME_TYPE_NAME);
 
 
-module.exports.SpawnedProcessWrapper = SpawnedProcessWrapper;
+module.exports = DominionsProcess;
 
-function SpawnedProcessWrapper(gameName, gameType, args, onSpawned)
+function DominionsProcess(gameName, gameType, args, onSpawned)
 {
     assert.isStringOrThrow(gameName);
     assert.isValidGameTypeOrThrow(gameType);
@@ -35,7 +31,7 @@ function SpawnedProcessWrapper(gameName, gameType, args, onSpawned)
 	const _exePath = getDominionsExePath(_type);
 	const _args = args;
 	const _onSpawned = onSpawned;
-	const _logDirPath = path.resolve(BASE_LOG_PATH, _name);
+	const _logDirPath = path.resolve(LOGS_DIR_PATH, _name);
 
 	var dayOfMonth = new Date().getDate();
 	var _stdoutWriteStream;
@@ -72,7 +68,10 @@ function SpawnedProcessWrapper(gameName, gameType, args, onSpawned)
 	_instance.on("spawn", async () =>
 	{
 		_spawnedSuccessfully = true;
-		await rw.checkAndCreateDirPath(_logDirPath);
+
+		if (fs.existsSync(_logDirPath) === false)
+			await fsp.mkdir(_logDirPath, { recursive: true });
+
 		//_updateStreamPaths();
 		onSpawned();
 	});

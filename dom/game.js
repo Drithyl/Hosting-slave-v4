@@ -1,9 +1,9 @@
 
 const log = require("../logger.js");
-const assert = require("../asserter.js");
-const socketWrapper = require("../socket_wrapper.js");
+const assert = require("../utilities/type-utilities.js");
+const socketWrapper = require("../network/socket_wrapper.js");
 const statusStore = require("../game_status_store.js");
-const { SpawnedProcessWrapper } = require("../process_spawn.js");
+const { DominionsProcess } = require("./DominionsProcess.js");
 
 module.exports = Game;
 
@@ -46,7 +46,7 @@ function Game(name, type, port, args)
     {
         return new Promise((resolve, reject) =>
         {
-            _process = new SpawnedProcessWrapper(_name, _type, args, (err) =>
+            _process = new DominionsProcess(_name, _type, args, (err) =>
             {
                 if (err)
                     return reject(err);

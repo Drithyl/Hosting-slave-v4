@@ -2,7 +2,7 @@
 
 const http = require('http');
 const https = require('https');
-const asserter = require("./asserter.js");
+const asserter = require("../utilities/type-utilities.js");
 
 const GET_METHOD = "GET";
 const POST_METHOD = "POST";

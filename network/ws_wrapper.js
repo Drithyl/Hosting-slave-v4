@@ -1,10 +1,9 @@
 
 
-const log = require("./logger.js");
+const log = require("../logger.js");
 const { WebSocket } = require("ws");
-const configStore = require("./config_store.js");
 const gameStore = require("./hosted_games_store.js");
-const masterCommands = require("./master_commands.js");
+const masterCommands = require("./endpoints.js");
 const reservedPortsStore = require("./reserved_ports_store.js");
 
 var _wsWrapper;
@@ -14,7 +13,7 @@ var _shutdownGamesTimeoutId;
 exports.connect = () =>
 {
     log.general(log.getNormalLevel(), "Attempting to connect to the master server...");
-    _wsWrapper = new ClientSocketWrapper(configStore.masterIP, configStore.masterPort);
+    _wsWrapper = new ClientSocketWrapper(process.env.BOT_SERVER_HOST, process.env.BOT_SERVER_PORT);
     return Promise.resolve(_createConnection());
 };
 
@@ -44,9 +43,9 @@ function _connectedHandler()
     }
 
     _wsWrapper.emit("SERVER_DATA", {
-        id: configStore.id, 
-        capacity: configStore.capacity, 
-        ownerDiscordID: configStore.ownerDiscordID
+        id: process.env.APP_ID, 
+        capacity: process.env.MAX_GAMES, 
+        ownerDiscordID: process.env.OWNER_DISCORD_ID
     });
 }
 

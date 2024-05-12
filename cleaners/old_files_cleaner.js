@@ -3,10 +3,9 @@ const fs = require("fs");
 const fsp = fs.promises;
 const log = require("../logger.js");
 const assert = require("../asserter.js");
-const rw = require("../reader_writer.js");
-const safePath = require("../safe_path.js");
-const configStore = require("../config_store.js");
-const { getDominionsDataPath, getDominionsTmpPath } = require("../helper_functions.js");
+const rw = require("../utilities/file-utilities.js");
+const { getDominionsDataPath, getDominionsTmpPath, safePath } = require("../utilities/path-utilities.js");
+const { DOM5_GAME_TYPE_NAME, DOM6_GAME_TYPE_NAME, LOGS_DIR_PATH } = require("../constants.js");
 
 var logCleaningInterval;
 var dom5BackupCleaningInterval;
@@ -17,8 +16,8 @@ var dom6TmpFilesCleaningInterval;
 
 module.exports.startBackupCleanInterval = () =>
 {
-    const dom5BackupsPath = safePath(getDominionsDataPath(configStore.dom5GameTypeName), "backups");
-    const dom6BackupsPath = safePath(getDominionsDataPath(configStore.dom6GameTypeName), "backups");
+    const dom5BackupsPath = safePath(getDominionsDataPath(DOM5_GAME_TYPE_NAME), "backups");
+    const dom6BackupsPath = safePath(getDominionsDataPath(DOM6_GAME_TYPE_NAME), "backups");
 
     if (dom5BackupCleaningInterval != null)
         clearInterval(dom5BackupCleaningInterval);
@@ -26,24 +25,22 @@ module.exports.startBackupCleanInterval = () =>
     if (dom6BackupCleaningInterval != null)
         clearInterval(dom6BackupCleaningInterval);
 
-    dom5BackupCleaningInterval = _startDirCleanInterval(dom5BackupsPath, configStore.backupsMaxDaysOld, configStore.backupsCleaningInterval);
-    dom6BackupCleaningInterval = _startDirCleanInterval(dom6BackupsPath, configStore.backupsMaxDaysOld, configStore.backupsCleaningInterval);
+    dom5BackupCleaningInterval = _startDirCleanInterval(dom5BackupsPath, process.env.CLEAN_BACKUPS_OLDER_THAN_DAYS, process.env.CLEAN_BACKUPS_INTERVAL_IN_MS);
+    dom6BackupCleaningInterval = _startDirCleanInterval(dom6BackupsPath, process.env.CLEAN_BACKUPS_OLDER_THAN_DAYS, process.env.CLEAN_BACKUPS_INTERVAL_IN_MS);
 };
 
 module.exports.startLogCleanInterval = () =>
 {
-    const logsPath = safePath(configStore.dataFolderPath, "logs");
-
     if (logCleaningInterval != null)
         clearInterval(logCleaningInterval);
 
-    logCleaningInterval = _startDirCleanInterval(logsPath, configStore.logsMaxDaysOld, configStore.logsCleaningInterval);
+    logCleaningInterval = _startDirCleanInterval(LOGS_DIR_PATH, process.env.CLEAN_LOGS_OLDER_THAN_DAYS, process.env.CLEAN_LOGS_INTERVAL_IN_MS);
 };
 
 module.exports.startTmpFilesCleanInterval = () =>
 {
-    const dom5TmpPath = safePath(getDominionsTmpPath(configStore.dom5GameTypeName));
-    const dom6TmpPath = safePath(getDominionsTmpPath(configStore.dom6GameTypeName));
+    const dom5TmpPath = safePath(getDominionsTmpPath(DOM5_GAME_TYPE_NAME));
+    const dom6TmpPath = safePath(getDominionsTmpPath(DOM6_GAME_TYPE_NAME));
 
     if (dom5TmpFilesCleaningInterval != null)
         clearInterval(dom5TmpFilesCleaningInterval);
@@ -52,10 +49,10 @@ module.exports.startTmpFilesCleanInterval = () =>
         clearInterval(dom6TmpFilesCleaningInterval);
 
     // TODO: Add a name filter so only the directories called dom5_* and their subfiles are removed
-    tmpFilesCleaningInterval = _startDirCleanInterval(dom5TmpPath, configStore.tmpFilesMaxDaysOld, configStore.tmpFilesCleaningInterval);
+    tmpFilesCleaningInterval = _startDirCleanInterval(dom5TmpPath, process.env.CLEAN_TMP_FILES_OLDER_THAN_DAYS, process.env.CLEAN_TMP_FILES_INTERVAL_IN_MS);
 
     // TODO: Add a name filter so only the directories called dom6_* and their subfiles are removed
-    tmpFilesCleaningInterval = _startDirCleanInterval(dom6TmpPath, configStore.tmpFilesMaxDaysOld, configStore.tmpFilesCleaningInterval);
+    tmpFilesCleaningInterval = _startDirCleanInterval(dom6TmpPath, process.env.CLEAN_TMP_FILES_OLDER_THAN_DAYS, process.env.CLEAN_TMP_FILES_INTERVAL_IN_MS);
 };
 
 

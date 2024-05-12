@@ -1,22 +1,23 @@
 
-const log = require("./logger.js");
-const configStore = require("./config_store.js");
-const gameStore = require("./hosted_games_store.js");
-const masterCommands = require("./master_commands.js");
-const reservedPortsStore = require("./reserved_ports_store.js");
-const { TimeoutError, SocketResponseError } = require("./errors.js");
+const log = require("../logger.js");
+const socketIoObject = require('socket.io-client');
+const gameStore = require("../stores/hosted_games_store.js");
+const masterCommands = require("../endpoints.js");
+const reservedPortsStore = require("../stores/reserved_ports_store.js");
+const TimeoutError = require("../errors/TimeoutError.js");
+const SocketResponseError = require("../errors/SocketResponseError.js");
 
 /****************************************
 *   SOCKET CONNECTION TO MASTER SERVER  *
 ****************************************/
-const _socketIoObject = require('socket.io-client');
-const _masterServerAddress = `http://${configStore.masterIP}:${configStore.masterPort}/`;
+const _masterServerAddress = `http://${process.env.BOT_SERVER_HOST}:${process.env.BOT_SERVER_PORT}/`;
+
+const MAX_PING_TIMEOUT = 120000;
 
 //By default, io will try to reconnect forever with a small delay between each attempt
-var _socket;
-var _shutdownGamesTimeout;
-var _lastPingTimestamp = Date.now();
-const MAX_PING_TIMEOUT = 120000;
+let _socket;
+let _shutdownGamesTimeout;
+let _lastPingTimestamp = Date.now();
 
 exports.connect = () =>
 {
@@ -69,7 +70,7 @@ exports.emitPromise = (trigger, data) =>
 {
     return new Promise((resolve, reject) =>
     {
-        var receivedResponse = false;
+        let receivedResponse = false;
 
         _socket.emit(trigger, data, function handleResponse(errMessage, returnData)
         {
@@ -92,7 +93,7 @@ exports.emitPromise = (trigger, data) =>
 
 function _createConnection()
 {
-    _socket = _socketIoObject(_masterServerAddress);
+    _socket = socketIoObject(_masterServerAddress);
 
     _socket.on("connect", _connectedHandler);
     _socket.on("connect_error", () => log.general(log.getLeanLevel(), `Could not connect to master`));

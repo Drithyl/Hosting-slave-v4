@@ -3,9 +3,8 @@ const fs = require("fs");
 const path = require("path");
 const fsp = require("fs").promises;
 const log = require("../logger.js");
-const configStore = require("../config_store.js");
-const rw = require("../reader_writer.js");
-const { getDominionsMapsPath, getDominionsModsPath } = require("../helper_functions.js");
+const rw = require("../utilities/file-utilities.js");
+const { getDominionsMapsPath, getDominionsModsPath } = require("../utilities/path-utilities.js");
 
 
 module.exports.deleteUnusedMaps = (mapsInUse, gameType, force = false) => _deleteUnusedFilesInDir(mapsInUse, getDominionsMapsPath(gameType), force);

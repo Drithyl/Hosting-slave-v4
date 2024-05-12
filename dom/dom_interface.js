@@ -2,22 +2,21 @@
 const fs = require("fs");
 const path = require("path");
 const fsp = require("fs").promises;
-const log = require("./logger.js");
-const configStore = require("./config_store.js");
-const rw = require("./reader_writer.js");
-const gameStore = require("./hosted_games_store.js");
-const readFileBuffer = require("./read_file_buffer.js");
-const gameStatusStore = require("./game_status_store.js");
-const provCountFn = require("./dom/parse_province_count.js");
+const log = require("../logger.js");
+const rw = require("../utilities/file-utilities.js");
+const gameStore = require("../stores/hosted_games_store.js");
+const gameStatusStore = require("../stores/game_status_store.js");
+const provCountFn = require("./parse_province_count.js");
 const {
-    getDominionsRootPath,
     getDominionsMapsPath,
     getDominionsModsPath,
     getDominionsSavedgamesPath,
     getDominionsMapExtension,
-    appendDominionsMapExtension
-} = require("./helper_functions.js")
-
+    getGamePostTurnBackupPath,
+    getGamePreTurnBackupPath,
+    getGameBackupPath,
+    getGameLogPath,
+} = require("../utilities/path-utilities.js");
 
 module.exports.getModList = function(gameType)
 {
@@ -67,14 +66,14 @@ module.exports.getTurnFiles = async function(data)
         if (fs.existsSync(filepath) === false)
             files.turnFiles[nationName] = "File does not exist?";
 
-        files.turnFiles[nationName] = await readFileBuffer(filepath);
+        files.turnFiles[nationName] = await rw.readFileBuffer(filepath);
     });
 
     await Promise.allSettled(promises);
 
 
     if (fs.existsSync(scoresPath) === true)
-        files.scores = await readFileBuffer(scoresPath);
+        files.scores = await rw.readFileBuffer(scoresPath);
 
     return files;
 };
@@ -85,7 +84,7 @@ module.exports.getTurnFile = function(data)
     const nationFilename = data.nationFilename;
     const filePath = path.resolve(getDominionsSavedgamesPath(data.type), gameName, `${nationFilename}.trn`);
 
-    return readFileBuffer(filePath)
+    return rw.readFileBuffer(filePath)
     .then((buffer) => Promise.resolve(buffer))
     .catch((err) => Promise.reject(err));
 };
@@ -95,7 +94,7 @@ module.exports.getScoreFile = function(data)
     const gameName = data.name;
     const filePath = path.resolve(getDominionsSavedgamesPath(data.type), gameName, "scores.html");
 
-    return readFileBuffer(filePath)
+    return rw.readFileBuffer(filePath)
     .then((buffer) => Promise.resolve(buffer))
     .catch((err) => Promise.reject(err));
 };
@@ -274,14 +273,16 @@ module.exports.backupSavefiles = function(gameData)
 {
 	const gameName = gameData.name;
 	const source = path.resolve(getDominionsSavedgamesPath(gameData.type), gameName);
-	var target = path.resolve(configStore.dataFolderPath, "backups");
+	let target;
 
 	if (gameData.isNewTurn === true)
-	    target = path.resolve(target, configStore.newTurnsBackupDirName, gameName, `t${gameData.turnNbr}`);
+	    target = path.resolve(getGamePostTurnBackupPath(gameName), `t${gameData.turnNbr}`);
 
-	else target = path.resolve(target, configStore.preHostTurnBackupDirName, gameName, `t${gameData.turnNbr}`);
+	else target = path.resolve(getGamePreTurnBackupPath(gameName), `t${gameData.turnNbr}`);
 
-	return rw.copyDir(source, target, false, ["", ".2h", ".trn"])
+	return fsp.cp(source, target, { recursive: true, force: true, filter: (src, dest) => {
+        return ["", ".2h", ".trn"].includes(path.extname(src));
+    }})
 	.then(() => Promise.resolve())
 	.catch((err) => Promise.reject(err));
 };
@@ -291,13 +292,12 @@ module.exports.rollback = function(data)
     const game = gameStore.getGame(data.port);
 	const gameName = game.getName();
 	const target = path.resolve(getDominionsSavedgamesPath(data.type), gameName);
-	var source = path.resolve(configStore.dataFolderPath, "backups", gameName, configStore.preHostTurnBackupDirName, `t${data.turnNbr}`);
+	var source = path.resolve(getGamePreTurnBackupPath(gameName), `t${data.turnNbr}`);
 
 	if (fs.existsSync(source) === false)
 	{
-        log.general(log.getNormalLevel(), `${gameName}: No backup of turn ${data.turnNbr} was found in ${configStore.preHostTurnBackupDirName}, looking in new turns...`, source);
-    
-		source = path.resolve(configStore.dataFolderPath, "backups", gameName, configStore.newTurnsBackupDirName, `t${data.turnNbr}`);
+        log.general(log.getNormalLevel(), `${gameName}: No pre-turn backup of turn ${data.turnNbr} was found at "${source}", looking for post-turn backups...`, source);
+		source = path.resolve(getGamePostTurnBackupPath(gameName), `t${data.turnNbr}`);
 
 		if (fs.existsSync(source) === false)
         {
@@ -307,8 +307,10 @@ module.exports.rollback = function(data)
 	}
     
     log.general(log.getNormalLevel(), `${gameName}: Copying backup of turn ${data.turnNbr} into into the game's savedgames...`, source);
-
-	return rw.copyDir(source, target, false, ["", ".2h", ".trn"])
+    
+    return fsp.cp(source, target, { recursive: true, force: true, filter: (src, dest) => {
+        return ["", ".2h", ".trn"].includes(path.extname(src));
+    }})
 	.then(() => gameStore.killGame(data.port))
 	.then(() => game.launchProcessWithRollbackedTurn())
 	.then(() => Promise.resolve())
@@ -324,17 +326,17 @@ module.exports.deleteGameSavefiles = function(data)
     }
 
     const dirPath = path.resolve(getDominionsSavedgamesPath(data.type), gameName);
-    const backupPath = path.resolve(configStore.dataFolderPath, "backups", gameName);
-    const logPath = path.resolve(configStore.dataFolderPath, "logs", "games", gameName);
+    const backupPath = getGameBackupPath(gameName);
+    const logPath = getGameLogPath(gameName);
 
-	return rw.deleteDir(dirPath)
-    .then(() => rw.deleteDir(backupPath))
+	return fsp.rm(dirPath, { recursive: true })
+    .then(() => fsp.rm(backupPath, { recursive: true }))
     .then(() => 
     {
         log.general(log.getNormalLevel(), `${gameName}: deleted the savedgames files and their backups.`);
 
         // Delete log files, but don't block the resolution of the promise
-        rw.deleteDir(logPath);
+        fsp.rm(logPath, { recursive: true });
         return Promise.resolve();
     })
 	.catch((err) => Promise.reject(err));

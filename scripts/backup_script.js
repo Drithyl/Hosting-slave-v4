@@ -3,12 +3,11 @@
 const fs = require("fs");
 const path = require("path");
 const fsp = require("fs").promises;
-const rw = require("./reader_writer.js");
-const safePath = require("./safe_path.js");
-const configStore = require("./config_store.js");
-const cleaner = require("./cleaners/backups_cleaner.js");
-const statusDump = require("./dom/status_dump_wrapper.js");
-const { getDominionsDataPath } = require("./helper_functions.js");
+const rw = require("../utilities/file-utilities.js");
+const cleaner = require("../cleaners/backups_cleaner.js");
+const statusDump = require("../dom/status_dump_wrapper.js");
+const { getDominionsSavedgamesPath, getStatusdumpClonePath, safePath } = require("../utilities/path-utilities.js");
+const { DOM5_GAME_TYPE_NAME, DOM6_GAME_TYPE_NAME, GAME_LOGS_DIR_PATH, BACKUPS_DIR_PATH } = require("../constants.js");
 
 
 var backupExtensions;
@@ -53,12 +52,11 @@ module.exports.backupTurn = async (statusdumpWrapper, backupPath) =>
 
 function _initializeGlobals(gameName, gameType)
 {
-    const dataPath = getDominionsDataPath(gameType);
+    savedgamesPath = getDominionsSavedgamesPath(gameType);
     backupExtensions = new RegExp("(\.2h)|(\.trn)|(ftherlnd)$", "i");
-    savedgamesPath = safePath(dataPath, "savedgames", gameName);
-    clonedStatusdumpDirpath = safePath(dataPath, configStore.tmpFilesDirName, gameName);
-    logDirpath = safePath(configStore.dataFolderPath, "logs", "games", gameName);
-    targetBackupDirpath = safePath(configStore.dataFolderPath, "backups", gameName);
+    clonedStatusdumpDirpath = getStatusdumpClonePath(gameName, gameType);
+    logDirpath = safePath(GAME_LOGS_DIR_PATH, gameName);
+    targetBackupDirpath = safePath(BACKUPS_DIR_PATH, gameName);
 }
 
 async function _createLoggingStream()
@@ -66,7 +64,9 @@ async function _createLoggingStream()
     const date = new Date();
     logFilename = path.resolve(logDirpath, `${date.getDate()}-${date.getMonth() + 1}-${date.getFullYear()}-turn.txt`);
 
-    await rw.checkAndCreateDirPath(logDirpath);
+    if (fs.existsSync(logDirpath) === false)
+        await fsp.mkdir(logDirpath, { recursive: true });
+
     writeStream = fs.createWriteStream(logFilename, { flags: "a", autoClose: true });
 }
 
@@ -77,7 +77,7 @@ function _checkBackupArgs(gameName, gameType)
     if (gameName == null)
         throw new Error(`BACKUP ERROR; NO GAME NAME ARGUMENT RECEIVED`);
 
-    if (gameType !== configStore.dom5GameTypeName && gameType !== configStore.dom6GameTypeName)
+    if (gameType !== DOM5_GAME_TYPE_NAME && gameType !== DOM6_GAME_TYPE_NAME)
         throw new Error(`BACKUP ERROR; GAME TYPE ARGUMENT RECEIVED INCORRECT: ${gameType}`);
     
     _logToFile(`Arguments received properly.`);
@@ -86,17 +86,16 @@ function _checkBackupArgs(gameName, gameType)
 async function _startBackupProcess(statusdumpWrapper)
 {
     var backupFilenames;
-    const gameName = statusdumpWrapper.getName();
-    const gameType = statusdumpWrapper.getType();
     const backupDirName = `t${statusdumpWrapper.turnNbr}`;
+    const backupDirPath = path.resolve(targetBackupDirpath, backupDirName);
     
-    await _createDirectories(path.resolve(targetBackupDirpath, backupDirName));
+    await _createDirectories(backupDirPath);
 
-    _logToFile(`Backup directory created at ${targetBackupDirpath}/${backupDirName}`);
+    _logToFile(`Backup directory created at "${backupDirPath}"`);
     backupFilenames = await fsp.readdir(savedgamesPath);
 
     _logToFile(`Read filenames, backing up files...`);
-    await _backupFiles(backupFilenames, savedgamesPath, path.resolve(targetBackupDirpath, backupDirName))
+    await _backupFiles(backupFilenames, savedgamesPath, backupDirPath)
 
     _logToFile(`Finished backing up turn files, cleaning old ones...`);
     await _cleanUnusedBackups(statusdumpWrapper);
@@ -147,7 +146,7 @@ async function _backupFiles(filenames, sourcePath, targetPath)
 
         _logToFile(`Turn file found, backing up...`);
 
-        await rw.copyFile(path.resolve(sourcePath, filename), path.resolve(targetPath, filename))
+        await fsp.copyFile(path.resolve(sourcePath, filename), path.resolve(targetPath, filename));
         _logToFile(`Turn file backed up.`);
     });
 
@@ -156,12 +155,14 @@ async function _backupFiles(filenames, sourcePath, targetPath)
 
 async function _cleanUnusedBackups(statusDump)
 {
+    const maxNumberOfBackups = process.env.MAX_TURN_BACKUPS_PER_GAME;
+
     // If turn number is lower than number of backups to keep, no need to clean
-    if (statusDump.turnNbr <= configStore.nbrOfTurnsBackedUp)
+    if (statusDump.turnNbr <= maxNumberOfBackups)
         return _logToFile(`No old turn backups to clean.`);
 
     // Otherwise, delete previous backups according to the configuration
-    const turnNbrToClean = statusDump.turnNbr - configStore.nbrOfTurnsBackedUp;
+    const turnNbrToClean = statusDump.turnNbr - maxNumberOfBackups;
 
     await cleaner.deleteBackupsUpToTurn(targetBackupDirpath, turnNbrToClean);
 }

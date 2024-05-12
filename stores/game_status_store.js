@@ -1,17 +1,16 @@
 
-const path = require("path");
 const fsp = require("fs").promises;
-const log = require("./logger.js");
-const assert = require("./asserter.js");
-const configStore = require("./config_store.js");
-const GameStatus = require("./dom/game_status.js");
-const socketWrapper = require("./socket_wrapper.js");
+const log = require("../logger.js");
+const assert = require("../utilities/type-utilities.js");
+const GameStatus = require("../dom/game_status.js");
+const socketWrapper = require("../network/socket_wrapper.js");
 const gamesStore = require("./hosted_games_store.js");
-const { getDominionsSavedgamesPath, getSlaveTmpPath } = require('./helper_functions.js');
-const statusdumpFactory = require("./dom/status_dump_wrapper.js");
+const statusdumpFactory = require("../dom/status_dump_wrapper.js");
+const { DOM5_GAME_TYPE_NAME, DOM6_GAME_TYPE_NAME } = require("../constants.js");
+const { getDominionsSavedgamesPath, getStatusdumpClonePath } = require('../utilities/path-utilities.js');
 
-const DOM5_SAVEDGAMES_PATH = getDominionsSavedgamesPath(configStore.dom5GameTypeName);
-const DOM6_SAVEDGAMES_PATH = getDominionsSavedgamesPath(configStore.dom6GameTypeName);
+const DOM5_SAVEDGAMES_PATH = getDominionsSavedgamesPath(DOM5_GAME_TYPE_NAME);
+const DOM6_SAVEDGAMES_PATH = getDominionsSavedgamesPath(DOM6_GAME_TYPE_NAME);
 
 const DOM5_STATUS_WRAPPERS = {};
 const DOM6_STATUS_WRAPPERS = {};
@@ -89,7 +88,7 @@ module.exports.startUpdateCycle = () =>
         return;
 
     _isUpdating = true;
-    setTimeout(_statusUpdateCycle, configStore.updateInterval);
+    setTimeout(_statusUpdateCycle, process.env.GAME_UPDATE_INTERVAL_IN_MS);
 };
 
 module.exports.updateGameCounterStatus = async (gameName, gameType) =>
@@ -103,7 +102,7 @@ module.exports.updateGameCounterStatus = async (gameName, gameType) =>
 
 module.exports.fetchPreviousTurnStatus = async (gameName, gameType) =>
 {
-    const clonedStatusdumpPath = path.resolve(getSlaveTmpPath(), gameName);
+    const clonedStatusdumpPath = getStatusdumpClonePath(gameName, gameType);
     const wrapper = await statusdumpFactory.fetchStatusDump(gameName, gameType, clonedStatusdumpPath);
     return wrapper;
 };
@@ -138,13 +137,13 @@ async function _statusUpdateCycle()
         const games = await _readAllDominionsGames();
         await Promise.allSettled(games.map((game) => _updateStatus(game.name, game.gameType)));
         log.general(log.getNormalLevel(), `Finished game update cycle in ${Date.now() - startTime}ms`);
-        setTimeout(_statusUpdateCycle, configStore.updateInterval);
+        setTimeout(_statusUpdateCycle, process.env.GAME_UPDATE_INTERVAL_IN_MS);
     }
     
     catch(err)
     {
         log.error(log.getNormalLevel(), `Error during game update cycle`, err);
-        setTimeout(_statusUpdateCycle, configStore.updateInterval);
+        setTimeout(_statusUpdateCycle, process.env.GAME_UPDATE_INTERVAL_IN_MS);
     }
 };
 
@@ -180,19 +179,19 @@ function _sendStatusUpdateToMaster(gameStatus, gameType)
 
 async function _readAllDominionsGames() {
     const dom5GameNames = await fsp.readdir(DOM5_SAVEDGAMES_PATH);
-    const dom5GameObjects = dom5GameNames.map((name) => { return { name: name, gameType: configStore.dom5GameTypeName}; } );
+    const dom5GameObjects = dom5GameNames.map((name) => { return { name: name, gameType: DOM5_GAME_TYPE_NAME}; } );
 
     const dom6GameNames = await fsp.readdir(DOM6_SAVEDGAMES_PATH);
-    const dom6GameObjects = dom6GameNames.map((name) => { return { name: name, gameType: configStore.dom6GameTypeName}; } );
+    const dom6GameObjects = dom6GameNames.map((name) => { return { name: name, gameType: DOM6_GAME_TYPE_NAME}; } );
     
     return [...dom5GameObjects, ...dom6GameObjects];
 }
 
 function _getWrappersByGameType(gameType) {
-    if (gameType === configStore.dom6GameTypeName)
+    if (gameType === DOM6_GAME_TYPE_NAME)
         return DOM6_STATUS_WRAPPERS;
 
-    else if (gameType === configStore.dom5GameTypeName)
+    else if (gameType === DOM5_GAME_TYPE_NAME)
         return DOM5_STATUS_WRAPPERS;
 
     return {};

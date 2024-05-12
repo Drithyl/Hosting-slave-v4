@@ -1,6 +1,6 @@
 
-const Counter = require("../counter.js");
-const assert = require("../asserter.js");
+const { Counter } = require("../utilities/time-utilities.js");
+const assert = require("../utilities/type-utilities.js");
 const statusdumpFactory = require("./status_dump_wrapper.js");
 
 

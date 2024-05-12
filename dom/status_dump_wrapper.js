@@ -3,11 +3,10 @@ const fs = require("fs");
 const path = require("path");
 const fsp = require("fs").promises;
 const log = require("../logger.js");
-const assert = require("../asserter.js");
-const rw = require("../reader_writer.js");
-const configStore = require("../config_store.js");
+const assert = require("../utilities/type-utilities.js");
+const rw = require("../utilities/file-utilities.js");
 const NationStatusWrapper = require("./nation_status_wrapper.js");
-const { getDominionsSavedgamesPath } = require("../helper_functions.js");
+const { getDominionsSavedgamesPath } = require("../utilities/path-utilities.js");
 
 const STATUSDUMP_FILENAME = "statusdump.txt";
 
@@ -40,7 +39,7 @@ exports.cloneStatusDump = (gameName, gameType, targetPath, sourcePath = null) =>
     if (fs.existsSync(statusDumpPath) === false)
         return Promise.reject(new Error(`Could not find ${gameName}'s statusdump.`));
 
-    return rw.copyFile(statusDumpPath, `${targetPath}/${STATUSDUMP_FILENAME}`)
+    return fsp.copyFile(statusDumpPath, `${targetPath}/${STATUSDUMP_FILENAME}`)
     .catch((err) => Promise.reject(new Error(`Could not clone statusdump:\n\n${err.message}`)));
 };
 

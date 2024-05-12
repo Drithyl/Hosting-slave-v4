@@ -1,7 +1,7 @@
 
 const fs = require("fs");
 const path = require("path");
-const { getDominionsSavedgamesPath } = require("../helper_functions.js");
+const { getDominionsSavedgamesPath } = require("../utilities/path-utilities.js");
 
 module.exports = NationStatusWrapper;
 

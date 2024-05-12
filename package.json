@@ -29,6 +29,7 @@
 	},
 	"homepage": "https://github.com/Drithyl/Hosting-slave-v4#readme",
 	"dependencies": {
+		"dotenv": "^16.4.5",
 		"kill-port": "^1.6.1",
 		"socket.io": "^4.4.1",
 		"tcp-port-used": "^1.0.2",

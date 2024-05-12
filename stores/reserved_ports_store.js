@@ -1,6 +1,5 @@
 
-const log = require("./logger.js");
-const configStore = require("./config_store.js");
+const log = require("../logger.js");
 const gameInterface = require("./hosted_games_store.js");
 
 var reservedPorts = [];
@@ -20,14 +19,14 @@ module.exports.reservePort = function()
 
 module.exports.findFirstFreePort = function()
 {
-	var port = configStore.gamePortRange.first;
+	var port = process.env.GAME_PORT_RANGE_START;
 	const usedPorts = gameInterface.getUsedPorts().concat(reservedPorts);
 
 	while (usedPorts.includes(port) === true)
 	{
 		port++;
 
-		if (port > configStore.gamePortRange.last)
+		if (port > process.env.GAME_PORT_RANGE_END)
 		    return null;
 	}
 

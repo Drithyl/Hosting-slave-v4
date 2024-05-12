@@ -6,7 +6,7 @@ and hexacyanide's answer on Stack Overflow:
 https://stackoverflow.com/questions/19129570/how-can-i-check-if-port-is-busy-in-nodejs/35251815
 */
 
-const log = require("./logger.js");
+const log = require("../logger.js");
 const { exec } = require("child_process");
 const tcpPortUsed = require("tcp-port-used");
 

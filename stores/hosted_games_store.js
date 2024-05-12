@@ -2,15 +2,15 @@
 const fs = require("fs");
 const path = require("path");
 const fsp = require("fs").promises;
-const log = require("./logger.js");
-const Game = require("./dom/game.js");
-const kill = require("./kill_instance.js");
-const configStore = require("./config_store.js");
-const checkIfPortOpen = require("./is_port_open.js");
-const domInterface = require("./dom_interface.js");
+const log = require("../logger.js");
+const Game = require("../dom/game.js");
+const kill = require("../dom/kill_instance.js");
+const checkIfPortOpen = require("../network/is_port_open.js");
+const domInterface = require("../dom/dom_interface.js");
 const statusStore = require("./game_status_store.js");
 const reservedPortsStore = require("./reserved_ports_store.js");
-const { getDominionsSavedgamesPath } = require("./helper_functions.js");
+const { getDominionsSavedgamesPath } = require("../utilities/path-utilities.js");
+const { DOM5_GAME_TYPE_NAME, DOM6_GAME_TYPE_NAME } = require("../constants.js");
 
 var hostedGames = {};
 
@@ -83,7 +83,7 @@ module.exports.requestHosting = async function(gameData)
 
     // Due to the asynchronous code of isOnline above, this variable has to be
     // declared here or it will always be 0 if declared above
-    const delay = configStore.gameHostMsDelay * gameHostRequests.length;
+    const delay = process.env.LAUNCH_DELAY_PER_GAME_IN_MS * gameHostRequests.length;
 
     gameHostRequests.push(game.getPort());
     _setTimeoutPromise(delay, _host.bind(null, game, gameData));
@@ -118,8 +118,8 @@ module.exports.resetPort = async function(gameData)
 
 module.exports.isGameNameUsed = function(name)
 {
-	const dom5SavePath = path.resolve(getDominionsSavedgamesPath(config.dom5GameTypeName), name);
-	const dom6SavePath = path.resolve(getDominionsSavedgamesPath(config.dom6GameTypeName), name);
+	const dom5SavePath = path.resolve(getDominionsSavedgamesPath(DOM5_GAME_TYPE_NAME), name);
+	const dom6SavePath = path.resolve(getDominionsSavedgamesPath(DOM6_GAME_TYPE_NAME), name);
 
 	if (fs.existsSync(dom5SavePath) === true || fs.existsSync(dom6SavePath) === true)
 		return Promise.resolve(true);

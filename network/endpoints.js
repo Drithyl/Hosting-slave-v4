@@ -1,10 +1,10 @@
 
-const log = require("./logger.js");
-const domInterface = require("./dom_interface.js");
-const gameStatusStore = require("./game_status_store.js");
-const hostedGamesStore = require("./hosted_games_store.js");
-const reservedPortsStore = require("./reserved_ports_store.js");
-const mapAndModsCleaner = require("./cleaners/unused_maps_and_mods_cleaner.js");
+const log = require("../logger.js");
+const domInterface = require("../dom/dom_interface.js");
+const gameStatusStore = require("../stores/game_status_store.js");
+const hostedGamesStore = require("../stores/hosted_games_store.js");
+const reservedPortsStore = require("../stores/reserved_ports_store.js");
+const mapAndModsCleaner = require("../cleaners/unused_maps_and_mods_cleaner.js");
 
 module.exports.listen = function(socketWrapper)
 {
