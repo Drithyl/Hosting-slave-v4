@@ -59,7 +59,7 @@ module.exports.postprocessing = async (gameName, gameType) =>
 {
     try
     {
-        _initializeGlobals(gameName);
+        _initializeGlobals(gameName, gameType);
         _logToFile(`###############################################`);
         _logToFile(`${gameName} (${gameType}) - Beginning POSTprocessing of new turn`);
 
@@ -116,6 +116,10 @@ async function _fetchStatusdump(gameName, gameType, isPostprocessing)
     {
         statusdumpWrapper = await statusDump.fetchStatusDump(gameName, gameType, clonedStatusdumpPath);
 
+        if (statusdumpWrapper.turnNbr == null) {
+            throw new Error(`Expected integer in postprocessing statusdump's turnNbr; instead got ${statusdumpWrapper.turnNbr}`);
+        }
+
         // Manually increment turn number for the post-turn backup,
         // as the turn number we have is the one from the previous turn
         statusdumpWrapper.turnNbr++;
@@ -151,7 +155,7 @@ async function _removeLeftoverDomCmdFile(gameName, gameType)
     }
 }
 
-function _initializeGlobals(gameName)
+function _initializeGlobals(gameName, gameType)
 {
     const date = new Date();
     logDirpath = getGameLogPath(gameName);

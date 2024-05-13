@@ -14,9 +14,9 @@ module.exports = HttpRequest;
 
 function HttpRequest(fullPath, method, port = 443)
 {
-    var _data = "";
-    var _options;
-    var _port = port;
+    let _data = "";
+    let _options;
+    let _port = port;
 
 
     _validateArguments(fullPath, method, port);

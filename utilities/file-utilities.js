@@ -2,7 +2,7 @@
 require("dotenv").config();
 
 // Required here for when the backup_script executes helper functions, as they are called as a separate Node instance
-require("../helper_functions.js").init();
+require("../utilities/type-utilities.js").extendTypes();
 
 const fs = require("fs");
 const path = require("path");

@@ -1,6 +1,6 @@
 
 const log = require("../logger.js");
-const domInterface = require("../dom/dom_interface.js");
+const domInterface = require("../dominions/dom_interface.js");
 const gameStatusStore = require("../stores/game_status_store.js");
 const hostedGamesStore = require("../stores/hosted_games_store.js");
 const reservedPortsStore = require("../stores/reserved_ports_store.js");

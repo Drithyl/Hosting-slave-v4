@@ -207,8 +207,8 @@ function StatusDump(gameName, gameType, originalPath)
 function _parseDumpData(rawData)
 {
     const data = {};
-    var lines;
-    var turnInfoLine;
+    let lines;
+    let turnInfoLine;
 
     if (assert.isString(rawData) === false)
         return data;

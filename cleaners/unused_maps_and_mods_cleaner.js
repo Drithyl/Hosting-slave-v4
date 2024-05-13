@@ -13,7 +13,7 @@ module.exports.deleteUnusedMods = (modsInUse, gameType, force = false) => _delet
 
 function _deleteUnusedFilesInDir(filesInUse, dirPath, force = false)
 {
-    var relatedFilesInUse = [];
+    let relatedFilesInUse = [];
     
     if (Array.isArray(filesInUse) === false)
         return Promise.reject(new Error(`Expected filesInUse to be an array, got ${typeof filesInUse} instead.`), []);
@@ -42,11 +42,11 @@ function _deleteUnusedFilesInDir(filesInUse, dirPath, force = false)
  */
 function _getListOfRelatedFilesInUse(filesInUse, dirPath)
 {
-    var list = [];
+    let list = [];
 
     return filesInUse.forAllPromises((filename) =>
     {
-        var assetTagssMatch;
+        let assetTagssMatch;
         const filePath = path.resolve(dirPath, filename);
 
         if (fs.existsSync(filePath) === false)
@@ -82,7 +82,7 @@ function _getListOfRelatedFilesInUse(filesInUse, dirPath)
 
 function _deleteUnusedFiles(filePaths, filesInUse, force)
 {
-    var deletedFiles = [];
+    let deletedFiles = [];
     log.cleaner(log.getLeanLevel(), "Total related files to check for cleaning", filePaths.length);
 
     if (filePaths.length <= 0)

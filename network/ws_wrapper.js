@@ -2,9 +2,9 @@
 
 const log = require("../logger.js");
 const { WebSocket } = require("ws");
-const gameStore = require("./hosted_games_store.js");
 const masterCommands = require("./endpoints.js");
-const reservedPortsStore = require("./reserved_ports_store.js");
+const gameStore = require("../stores/hosted_games_store.js");
+const reservedPortsStore = require("../stores/reserved_ports_store.js");
 
 var _wsWrapper;
 var _shutdownGamesTimeoutId;

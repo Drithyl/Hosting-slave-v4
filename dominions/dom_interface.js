@@ -110,7 +110,7 @@ module.exports.changeTimer = function(data)
     const currentTimer = +data.currentTimer * 0.001;
     const domcmdPath = path.resolve(getDominionsSavedgamesPath(data.type), gameName, "domcmd");
 
-    var timerArguments = "";
+    let timerArguments = "";
 
     if (isNaN(defaultTimer) === false)
         timerArguments += `setinterval ${defaultTimer}\n`;
@@ -206,8 +206,8 @@ module.exports.refresh = async function(data)
 module.exports.getSubmittedPretender = async function(data)
 {
 	const status = await gameStatusStore.fetchStatus(data.name, data.type);
-    var nations;
-    var foundNation;
+    let nations;
+    let foundNation;
 
     if (status == null)
         return null;
@@ -234,7 +234,7 @@ module.exports.getSubmittedPretenders = async function(data)
 module.exports.removePretender = async function(data)
 {
 	const gameName = data.name;
-    var filePath = path.resolve(getDominionsSavedgamesPath(data.type), gameName, data.nationFilename);
+    let filePath = path.resolve(getDominionsSavedgamesPath(data.type), gameName, data.nationFilename);
     
     if (/\.2h$/i.test(data.nationFilename) === false)
         filePath += ".2h";
@@ -292,7 +292,7 @@ module.exports.rollback = function(data)
     const game = gameStore.getGame(data.port);
 	const gameName = game.getName();
 	const target = path.resolve(getDominionsSavedgamesPath(data.type), gameName);
-	var source = path.resolve(getGamePreTurnBackupPath(gameName), `t${data.turnNbr}`);
+	let source = path.resolve(getGamePreTurnBackupPath(gameName), `t${data.turnNbr}`);
 
 	if (fs.existsSync(source) === false)
 	{

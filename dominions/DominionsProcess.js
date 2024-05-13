@@ -3,9 +3,8 @@ const fs = require("fs");
 const fsp = fs.promises;
 const path = require("path");
 const stream = require("stream");
-const assert = require("../utilities/type-utilities.js");
-const rw = require("../utilities/file-utilities.js");
 const spawn = require("child_process").spawn;
+const assert = require("../utilities/type-utilities.js");
 const { getDominionsExePath } = require("../utilities/path-utilities.js");
 const { DOM5_GAME_TYPE_NAME, DOM6_GAME_TYPE_NAME, LOGS_DIR_PATH } = require("../constants.js");
 
@@ -33,16 +32,16 @@ function DominionsProcess(gameName, gameType, args, onSpawned)
 	const _onSpawned = onSpawned;
 	const _logDirPath = path.resolve(LOGS_DIR_PATH, _name);
 
-	var dayOfMonth = new Date().getDate();
-	var _stdoutWriteStream;
-	var _stderrWriteStream;
+	let dayOfMonth = new Date().getDate();
+	let _stdoutWriteStream;
+	let _stderrWriteStream;
 
-	var _spawnedSuccessfully = false;
-	var _onError;
-	var _onExit;
-	var _onClose;
-	var _onStderr;
-	var _onStdout;
+	let _spawnedSuccessfully = false;
+	let _onError;
+	let _onExit;
+	let _onClose;
+	let _onStderr;
+	let _onStdout;
 
 
 	// Stdio pipes are not ignored by default. If these pipes are not listened to (with .on("data") or .pipe())

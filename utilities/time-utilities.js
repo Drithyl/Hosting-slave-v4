@@ -28,7 +28,7 @@ module.exports.Counter = class Counter {
 
     getUptime = () =>
     {
-        var returnedUptime = 0;
+        let returnedUptime = 0;
 
         if (this.#isStarted === false)
             returnedUptime = this.#uptimeSinceLast;

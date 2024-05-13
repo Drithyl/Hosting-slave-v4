@@ -2,10 +2,9 @@
 const fs = require("fs");
 const fsp = fs.promises;
 const log = require("../logger.js");
-const assert = require("../asserter.js");
 const rw = require("../utilities/file-utilities.js");
-const { getDominionsDataPath, getDominionsTmpPath, safePath } = require("../utilities/path-utilities.js");
 const { DOM5_GAME_TYPE_NAME, DOM6_GAME_TYPE_NAME, LOGS_DIR_PATH } = require("../constants.js");
+const { getDominionsDataPath, getDominionsTmpPath, safePath, isSafePathToDeleteOrThrow } = require("../utilities/path-utilities.js");
 
 var logCleaningInterval;
 var dom5BackupCleaningInterval;
@@ -58,7 +57,7 @@ module.exports.startTmpFilesCleanInterval = () =>
 
 function _startDirCleanInterval (dirPath, maxDaysOld, interval)
 {
-    assert.isSafePathToDeleteOrThrow(dirPath);
+    isSafePathToDeleteOrThrow(dirPath);
     const maxDaysOldTimestamp = _getTimestampOfNDaysAgo(maxDaysOld);
 
     const intervalId = setInterval(async () =>

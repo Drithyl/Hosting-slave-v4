@@ -1,11 +1,11 @@
 
 const fsp = require("fs").promises;
 const log = require("../logger.js");
-const assert = require("../utilities/type-utilities.js");
-const GameStatus = require("../dom/game_status.js");
-const socketWrapper = require("../network/socket_wrapper.js");
+const GameStatus = require("../dominions/game_status.js");
 const gamesStore = require("./hosted_games_store.js");
-const statusdumpFactory = require("../dom/status_dump_wrapper.js");
+const assert = require("../utilities/type-utilities.js");
+const socketWrapper = require("../network/socket_wrapper.js");
+const statusdumpFactory = require("../dominions/status_dump_wrapper.js");
 const { DOM5_GAME_TYPE_NAME, DOM6_GAME_TYPE_NAME } = require("../constants.js");
 const { getDominionsSavedgamesPath, getStatusdumpClonePath } = require('../utilities/path-utilities.js');
 

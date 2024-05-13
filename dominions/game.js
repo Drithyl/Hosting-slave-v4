@@ -2,8 +2,8 @@
 const log = require("../logger.js");
 const assert = require("../utilities/type-utilities.js");
 const socketWrapper = require("../network/socket_wrapper.js");
-const statusStore = require("../game_status_store.js");
-const { DominionsProcess } = require("./DominionsProcess.js");
+const statusStore = require("../stores/game_status_store.js");
+const DominionsProcess = require("./DominionsProcess.js");
 
 module.exports = Game;
 
@@ -15,10 +15,10 @@ function Game(name, type, port, args)
 
     const _name = name;
     const _type = type;
-    var _port = port;
-    var _args = args.concat(_addAdditionalArgs(_name, _type));
-    var _process;
-    var _isOnline = false;
+    let _port = port;
+    let _args = args.concat(_addAdditionalArgs(_name, _type));
+    let _process;
+    let _isOnline = false;
 
     this.getName = () => _name;
     this.getType = () => _type;
@@ -100,8 +100,8 @@ Game.areSameSettings = (gameA, gameB) =>
 
 function _areArgsEqual(argsA, argsB)
 {
-    var sortedArgs = [...argsA];
-    var theseSortedArgs = [...argsB];
+    let sortedArgs = [...argsA];
+    let theseSortedArgs = [...argsB];
 
     if (argsA === argsB) return true;
     if (argsA == null || argsB == null) return false;
@@ -110,7 +110,7 @@ function _areArgsEqual(argsA, argsB)
     sortedArgs = sortedArgs.sort((a, b) => a - b);
     theseSortedArgs = theseSortedArgs.sort((a, b) => a - b);
 
-    for (var i = 0; i < sortedArgs.length; ++i)
+    for (let i = 0; i < sortedArgs.length; ++i)
         if (sortedArgs[i] !== theseSortedArgs[i])
             return false;
 
@@ -133,7 +133,7 @@ function _addAdditionalArgs(gameName, gameType)
 	if (process.platform === "win32")
         args.push("--nocrashbox");
 
-	return args;
+	return [...args, gameName];
 }
 
 function _preExecCmd(gameName, gameType)
