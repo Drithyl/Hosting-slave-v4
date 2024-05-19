@@ -5,7 +5,7 @@ const path = require("path");
 const fsp = require("fs").promises;
 const rw = require("../utilities/file-utilities.js");
 const cleaner = require("../cleaners/backups_cleaner.js");
-const statusDump = require("../dom/status_dump_wrapper.js");
+const statusDump = require("../dominions/status_dump_wrapper.js");
 const { getDominionsSavedgamesPath, getStatusdumpClonePath, safePath } = require("../utilities/path-utilities.js");
 const { DOM5_GAME_TYPE_NAME, DOM6_GAME_TYPE_NAME, GAME_LOGS_DIR_PATH, BACKUPS_DIR_PATH } = require("../constants.js");
 

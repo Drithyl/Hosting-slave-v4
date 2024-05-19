@@ -4,7 +4,7 @@ const path = require("path");
 const fsp = require("fs").promises;
 const HttpRequest = require("../network/http_request.js");
 const backupScript = require("../scripts/backup_script.js");
-const statusDump = require("../dom/status_dump_wrapper.js");
+const statusDump = require("../dominions/status_dump_wrapper.js");
 const { getDominionsSavedgamesPath, getGamePreTurnBackupPath, getGamePostTurnBackupPath, getGameLogPath, getStatusdumpClonePath, safePath } = require("../utilities/path-utilities.js");
 
 var logFilename;
