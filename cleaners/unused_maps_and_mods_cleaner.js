@@ -3,9 +3,8 @@ const fs = require("fs");
 const path = require("path");
 const fsp = require("fs").promises;
 const log = require("../logger.js");
-const configStore = require("../config_store.js");
-const rw = require("../reader_writer.js");
-const { getDominionsMapsPath, getDominionsModsPath } = require("../helper_functions.js");
+const rw = require("../utilities/file-utilities.js");
+const { getDominionsMapsPath, getDominionsModsPath } = require("../utilities/path-utilities.js");
 
 
 module.exports.deleteUnusedMaps = (mapsInUse, gameType, force = false) => _deleteUnusedFilesInDir(mapsInUse, getDominionsMapsPath(gameType), force);
@@ -14,7 +13,7 @@ module.exports.deleteUnusedMods = (modsInUse, gameType, force = false) => _delet
 
 function _deleteUnusedFilesInDir(filesInUse, dirPath, force = false)
 {
-    var relatedFilesInUse = [];
+    let relatedFilesInUse = [];
     
     if (Array.isArray(filesInUse) === false)
         return Promise.reject(new Error(`Expected filesInUse to be an array, got ${typeof filesInUse} instead.`), []);
@@ -43,11 +42,11 @@ function _deleteUnusedFilesInDir(filesInUse, dirPath, force = false)
  */
 function _getListOfRelatedFilesInUse(filesInUse, dirPath)
 {
-    var list = [];
+    let list = [];
 
     return filesInUse.forAllPromises((filename) =>
     {
-        var assetTagssMatch;
+        let assetTagssMatch;
         const filePath = path.resolve(dirPath, filename);
 
         if (fs.existsSync(filePath) === false)
@@ -83,7 +82,7 @@ function _getListOfRelatedFilesInUse(filesInUse, dirPath)
 
 function _deleteUnusedFiles(filePaths, filesInUse, force)
 {
-    var deletedFiles = [];
+    let deletedFiles = [];
     log.cleaner(log.getLeanLevel(), "Total related files to check for cleaning", filePaths.length);
 
     if (filePaths.length <= 0)

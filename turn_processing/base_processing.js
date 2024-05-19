@@ -2,12 +2,10 @@
 const fs = require("fs");
 const path = require("path");
 const fsp = require("fs").promises;
-const safePath = require("../safe_path.js");
-const configStore = require("../config_store.js").loadConfig();
-const HttpRequest = require("../http_request.js");
-const backupScript = require("../backup_script.js");
-const statusDump = require("../dom/status_dump_wrapper.js");
-const { getDominionsSavedgamesPath, getSlaveTmpPath } = require("../helper_functions.js");
+const HttpRequest = require("../network/http_request.js");
+const backupScript = require("../scripts/backup_script.js");
+const statusDump = require("../dominions/status_dump_wrapper.js");
+const { getDominionsSavedgamesPath, getGamePreTurnBackupPath, getGamePostTurnBackupPath, getGameLogPath, getStatusdumpClonePath, safePath } = require("../utilities/path-utilities.js");
 
 var logFilename;
 var writeStream;
@@ -34,7 +32,7 @@ module.exports.preprocessing = async (gameName, gameType) =>
 
         // Parse the current statusdump file for the game
         const statusdumpWrapper = await _fetchStatusdump(gameName, gameType, false);
-        const backupPath = safePath(configStore.dataFolderPath, "backups", gameName, configStore.preHostTurnBackupDirName);
+        const backupPath = getGamePreTurnBackupPath(gameName);
 
         // Run the preprocessing backup
         await backupScript.backupTurn(statusdumpWrapper, backupPath);
@@ -61,7 +59,7 @@ module.exports.postprocessing = async (gameName, gameType) =>
 {
     try
     {
-        _initializeGlobals(gameName);
+        _initializeGlobals(gameName, gameType);
         _logToFile(`###############################################`);
         _logToFile(`${gameName} (${gameType}) - Beginning POSTprocessing of new turn`);
 
@@ -73,7 +71,7 @@ module.exports.postprocessing = async (gameName, gameType) =>
 
         // Parse the current statusdump file for the game
         const statusdumpWrapper = await _fetchStatusdump(gameName, gameType, true);
-        const backupPath = safePath(configStore.dataFolderPath, "backups", gameName, configStore.newTurnsBackupDirName);
+        const backupPath = getGamePostTurnBackupPath(gameName);
 
         // Run the postprocessing backup
         await backupScript.backupTurn(statusdumpWrapper, backupPath);
@@ -118,6 +116,10 @@ async function _fetchStatusdump(gameName, gameType, isPostprocessing)
     {
         statusdumpWrapper = await statusDump.fetchStatusDump(gameName, gameType, clonedStatusdumpPath);
 
+        if (statusdumpWrapper.turnNbr == null) {
+            throw new Error(`Expected integer in postprocessing statusdump's turnNbr; instead got ${statusdumpWrapper.turnNbr}`);
+        }
+
         // Manually increment turn number for the post-turn backup,
         // as the turn number we have is the one from the previous turn
         statusdumpWrapper.turnNbr++;
@@ -153,19 +155,17 @@ async function _removeLeftoverDomCmdFile(gameName, gameType)
     }
 }
 
-function _initializeGlobals(gameName)
+function _initializeGlobals(gameName, gameType)
 {
     const date = new Date();
-    const slaveTmpPath = getSlaveTmpPath();
-
-    logDirpath = safePath(configStore.dataFolderPath, "logs", "games", gameName);
+    logDirpath = getGameLogPath(gameName);
 
     // Create game logging path if it does not exist
     if (fs.existsSync(logDirpath) === false) {
         fs.mkdirSync(logDirpath);
     }
 
-    clonedStatusdumpPath = safePath(slaveTmpPath, gameName);
+    clonedStatusdumpPath = getStatusdumpClonePath(gameName, gameType);
     logFilename = `${date.getDate()}-${date.getMonth() + 1}-${date.getFullYear()}-turn.txt`;
     writeStream = fs.createWriteStream(path.resolve(logDirpath, logFilename), { flags: "a", autoClose: true });
 }
@@ -174,14 +174,14 @@ async function _notifyMaster(gameName, status, data = {})
 {
     try
     {
-        const route = `${configStore.masterIP}/turn_processing`;
+        const route = `${process.env.BOT_SERVER_HOST}/turn_processing`;
 
         _logToFile(`${gameName} - Creating HTTP request to notify master of turn processing = ${status}...`);
-        const httpRequest = new HttpRequest(route, "POST", configStore.masterHttpPort);
+        const httpRequest = new HttpRequest(route, "POST", +process.env.BOT_SERVER_HTTP_PORT);
 
         const httpData = {
             gameName,
-            serverToken: configStore.id,
+            serverToken: process.env.APP_ID,
             status,
             turnNumber: data.turnNumber,
             statusdump: data.statusdump
@@ -192,7 +192,7 @@ async function _notifyMaster(gameName, status, data = {})
 
         // Set HTTP data
         httpRequest.setData(httpData);
-        _logToFile(`${gameName} - Route: ${route} at port ${configStore.masterHttpPort}. Sending HTTP request`);
+        _logToFile(`${gameName} - Route: ${route} at port ${+process.env.BOT_SERVER_HTTP_PORT}. Sending HTTP request`);
 
         // Send and wait for a response
         const res = await httpRequest.send();

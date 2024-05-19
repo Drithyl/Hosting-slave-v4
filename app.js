@@ -1,27 +1,29 @@
 
-require("./helper_functions.js").init();
-const configStore = require("./config_store.js");
+// Load the variables from the .env file into process.env. More information:
+// https://www.npmjs.com/package/dotenv
+// https://nodejs.org/en/learn/command-line/how-to-read-environment-variables-from-nodejs
+require("dotenv").config();
+
+// Add utility methods to base types
+require("./utilities/type-utilities.js").extendTypes();
+
+const { BACKUPS_DIR_PATH } = require('./constants.js');
 
 
-configStore.createConfig()
-.then(() => 
-{
-    configStore.loadConfig();
-    _initializeComponents();
-});
-
+// Initialize all main components of the app
+_initializeComponents();
 
 async function _initializeComponents()
 {
     const fs = require("fs");
     const log = require("./logger.js");
-    const statusStore = require("./game_status_store.js");
+    const statusStore = require("./stores/game_status_store.js");
     const oldFilesCleaner = require("./cleaners/old_files_cleaner.js");
-    const socketWrapper = require("./socket_wrapper.js");
+    const socketWrapper = require("./network/socket_wrapper.js");
 
 
-    if (fs.existsSync(`${configStore.dataFolderPath}/backups`) === false)
-        fs.mkdirSync(`${configStore.dataFolderPath}/backups`);
+    if (fs.existsSync(BACKUPS_DIR_PATH) === false)
+        fs.mkdirSync(BACKUPS_DIR_PATH, { recursive: true });
 
 
     try

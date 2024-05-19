@@ -2,17 +2,15 @@
 const fs = require("fs");
 const path = require("path");
 const stream = require("stream");
-const configStore = require("./config_store.js").loadConfig();
-const assert = require("./asserter.js");
-
-const BASE_LOG_PATH = `${configStore.dataFolderPath}/logs`;
+const assert = require("./utilities/type-utilities.js");
+const { LOGS_DIR_PATH } = require("./constants.js");
 
 const LEAN_LEVEL = 0;
 const NORMAL_LEVEL = 1;
 const VERBOSE_LEVEL = 2;
 const WRITE_ONLY_LEVEL = 99;
 
-var currentLogLevel = configStore.defaultLogLevel;
+var currentLogLevel = +process.env.LOG_LEVEL;
 var isLoggingToConsole = process.env.LOG_TO_CONSOLE ?? true;
 var isLoggingToFile = true;
 
@@ -24,8 +22,8 @@ var errorWriteStream;
 var uploadWriteStream;
 
 
-if (fs.existsSync(BASE_LOG_PATH) === false)
-    fs.mkdirSync(BASE_LOG_PATH);
+if (fs.existsSync(LOGS_DIR_PATH) === false)
+    fs.mkdirSync(LOGS_DIR_PATH);
 
 _updateStreamPaths();
 
@@ -193,7 +191,7 @@ function _updateStreamPaths()
 
 function _getLogPath(date, filename)
 {
-    return path.resolve(BASE_LOG_PATH, `${date.getDate()}-${date.getMonth() + 1}-${date.getFullYear()}-${filename}`);
+    return path.resolve(LOGS_DIR_PATH, `${date.getDate()}-${date.getMonth() + 1}-${date.getFullYear()}-${filename}`);
 }
 
 function _getTimestamp()

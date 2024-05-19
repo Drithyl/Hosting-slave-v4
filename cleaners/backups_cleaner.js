@@ -2,16 +2,14 @@
 const path = require("path");
 const fsp = require("fs").promises;
 const log = require("../logger.js");
-const safePath = require("../safe_path.js");
-const configStore = require("../config_store.js");
-const rw = require("../reader_writer.js");
+const rw = require("../utilities/file-utilities.js");
+const { getGamePostTurnBackupPath, getGamePreTurnBackupPath } = require("../utilities/path-utilities.js");
 
 
 module.exports.deleteAllTurnBackups = async function(gameName)
 {
-    const target = safePath(configStore.dataFolderPath, "backups", gameName);
-    const pathToNewTurnBackups = path.resolve(target, configStore.newTurnsBackupDirName);
-    const pathTPreHostBackups = path.resolve(target, configStore.preHostTurnBackupDirName);
+    const pathToNewTurnBackups = getGamePostTurnBackupPath(gameName);
+    const pathTPreHostBackups = getGamePreTurnBackupPath(gameName);
 
     try
     {
@@ -61,7 +59,7 @@ async function _deleteBackupTurnDirectory(dirPath, turnNbrToClean)
     try
     {
         // Folders of turns at the number given or before will be deleted
-        await rw.deleteDir(dirPath);
+        await fsp.rm(dirPath, { recursive: true });
         log.cleaner(log.getNormalLevel(), `Cleaned backup of turn ${dirTurnNbr}.`);
     }
 

@@ -2,9 +2,6 @@
 *.bat
 *.txt
 
-# Sensitive config data
-config.json
-
 #vscode config
 .vscode/
 
@@ -18,3 +15,10 @@ data/
 tests/
 
 package-lock.json
+
+# dotenv environment variable files
+.env
+.env.development.local
+.env.test.local
+.env.production.local
+.env.local
