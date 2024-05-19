@@ -24,8 +24,8 @@ module.exports.startBackupCleanInterval = () =>
     if (dom6BackupCleaningInterval != null)
         clearInterval(dom6BackupCleaningInterval);
 
-    dom5BackupCleaningInterval = _startDirCleanInterval(dom5BackupsPath, process.env.CLEAN_BACKUPS_OLDER_THAN_DAYS, process.env.CLEAN_BACKUPS_INTERVAL_IN_MS);
-    dom6BackupCleaningInterval = _startDirCleanInterval(dom6BackupsPath, process.env.CLEAN_BACKUPS_OLDER_THAN_DAYS, process.env.CLEAN_BACKUPS_INTERVAL_IN_MS);
+    dom5BackupCleaningInterval = _startDirCleanInterval(dom5BackupsPath, +process.env.CLEAN_BACKUPS_OLDER_THAN_DAYS, +process.env.CLEAN_BACKUPS_INTERVAL_IN_MS);
+    dom6BackupCleaningInterval = _startDirCleanInterval(dom6BackupsPath, +process.env.CLEAN_BACKUPS_OLDER_THAN_DAYS, +process.env.CLEAN_BACKUPS_INTERVAL_IN_MS);
 };
 
 module.exports.startLogCleanInterval = () =>
@@ -33,7 +33,7 @@ module.exports.startLogCleanInterval = () =>
     if (logCleaningInterval != null)
         clearInterval(logCleaningInterval);
 
-    logCleaningInterval = _startDirCleanInterval(LOGS_DIR_PATH, process.env.CLEAN_LOGS_OLDER_THAN_DAYS, process.env.CLEAN_LOGS_INTERVAL_IN_MS);
+    logCleaningInterval = _startDirCleanInterval(LOGS_DIR_PATH, +process.env.CLEAN_LOGS_OLDER_THAN_DAYS, +process.env.CLEAN_LOGS_INTERVAL_IN_MS);
 };
 
 module.exports.startTmpFilesCleanInterval = () =>
@@ -48,10 +48,10 @@ module.exports.startTmpFilesCleanInterval = () =>
         clearInterval(dom6TmpFilesCleaningInterval);
 
     // TODO: Add a name filter so only the directories called dom5_* and their subfiles are removed
-    tmpFilesCleaningInterval = _startDirCleanInterval(dom5TmpPath, process.env.CLEAN_TMP_FILES_OLDER_THAN_DAYS, process.env.CLEAN_TMP_FILES_INTERVAL_IN_MS);
+    tmpFilesCleaningInterval = _startDirCleanInterval(dom5TmpPath, +process.env.CLEAN_TMP_FILES_OLDER_THAN_DAYS, +process.env.CLEAN_TMP_FILES_INTERVAL_IN_MS);
 
     // TODO: Add a name filter so only the directories called dom6_* and their subfiles are removed
-    tmpFilesCleaningInterval = _startDirCleanInterval(dom6TmpPath, process.env.CLEAN_TMP_FILES_OLDER_THAN_DAYS, process.env.CLEAN_TMP_FILES_INTERVAL_IN_MS);
+    tmpFilesCleaningInterval = _startDirCleanInterval(dom6TmpPath, +process.env.CLEAN_TMP_FILES_OLDER_THAN_DAYS, +process.env.CLEAN_TMP_FILES_INTERVAL_IN_MS);
 };
 
 

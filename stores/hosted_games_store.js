@@ -83,7 +83,7 @@ module.exports.requestHosting = async function(gameData)
 
     // Due to the asynchronous code of isOnline above, this variable has to be
     // declared here or it will always be 0 if declared above
-    const delay = process.env.LAUNCH_DELAY_PER_GAME_IN_MS * gameHostRequests.length;
+    const delay = +process.env.LAUNCH_DELAY_PER_GAME_IN_MS * gameHostRequests.length;
 
     gameHostRequests.push(game.getPort());
     _setTimeoutPromise(delay, _host.bind(null, game, gameData));

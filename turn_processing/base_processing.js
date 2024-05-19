@@ -177,7 +177,7 @@ async function _notifyMaster(gameName, status, data = {})
         const route = `${process.env.BOT_SERVER_HOST}/turn_processing`;
 
         _logToFile(`${gameName} - Creating HTTP request to notify master of turn processing = ${status}...`);
-        const httpRequest = new HttpRequest(route, "POST", process.env.BOT_SERVER_HTTP_PORT);
+        const httpRequest = new HttpRequest(route, "POST", +process.env.BOT_SERVER_HTTP_PORT);
 
         const httpData = {
             gameName,
@@ -192,7 +192,7 @@ async function _notifyMaster(gameName, status, data = {})
 
         // Set HTTP data
         httpRequest.setData(httpData);
-        _logToFile(`${gameName} - Route: ${route} at port ${process.env.BOT_SERVER_HTTP_PORT}. Sending HTTP request`);
+        _logToFile(`${gameName} - Route: ${route} at port ${+process.env.BOT_SERVER_HTTP_PORT}. Sending HTTP request`);
 
         // Send and wait for a response
         const res = await httpRequest.send();

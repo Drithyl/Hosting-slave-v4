@@ -19,14 +19,14 @@ module.exports.reservePort = function()
 
 module.exports.findFirstFreePort = function()
 {
-	var port = process.env.GAME_PORT_RANGE_START;
+	var port = +process.env.GAME_PORT_RANGE_START;
 	const usedPorts = gameInterface.getUsedPorts().concat(reservedPorts);
 
 	while (usedPorts.includes(port) === true)
 	{
 		port++;
 
-		if (port > process.env.GAME_PORT_RANGE_END)
+		if (port > +process.env.GAME_PORT_RANGE_END)
 		    return null;
 	}
 

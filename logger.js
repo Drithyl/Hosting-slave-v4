@@ -10,7 +10,7 @@ const NORMAL_LEVEL = 1;
 const VERBOSE_LEVEL = 2;
 const WRITE_ONLY_LEVEL = 99;
 
-var currentLogLevel = process.env.LOG_LEVEL;
+var currentLogLevel = +process.env.LOG_LEVEL;
 var isLoggingToConsole = process.env.LOG_TO_CONSOLE ?? true;
 var isLoggingToFile = true;
 

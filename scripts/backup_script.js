@@ -155,7 +155,7 @@ async function _backupFiles(filenames, sourcePath, targetPath)
 
 async function _cleanUnusedBackups(statusDump)
 {
-    const maxNumberOfBackups = process.env.MAX_TURN_BACKUPS_PER_GAME;
+    const maxNumberOfBackups = +process.env.MAX_TURN_BACKUPS_PER_GAME;
 
     // If turn number is lower than number of backups to keep, no need to clean
     if (statusDump.turnNbr <= maxNumberOfBackups)

@@ -13,7 +13,7 @@ var _shutdownGamesTimeoutId;
 exports.connect = () =>
 {
     log.general(log.getNormalLevel(), "Attempting to connect to the master server...");
-    _wsWrapper = new ClientSocketWrapper(process.env.BOT_SERVER_HOST, process.env.BOT_SERVER_PORT);
+    _wsWrapper = new ClientSocketWrapper(process.env.BOT_SERVER_HOST, +process.env.BOT_SERVER_PORT);
     return Promise.resolve(_createConnection());
 };
 
@@ -44,7 +44,7 @@ function _connectedHandler()
 
     _wsWrapper.emit("SERVER_DATA", {
         id: process.env.APP_ID, 
-        capacity: process.env.MAX_GAMES, 
+        capacity: +process.env.MAX_GAMES, 
         ownerDiscordID: process.env.OWNER_DISCORD_ID
     });
 }

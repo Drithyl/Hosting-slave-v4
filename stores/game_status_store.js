@@ -88,7 +88,7 @@ module.exports.startUpdateCycle = () =>
         return;
 
     _isUpdating = true;
-    setTimeout(_statusUpdateCycle, process.env.GAME_UPDATE_INTERVAL_IN_MS);
+    setTimeout(_statusUpdateCycle, +process.env.GAME_UPDATE_INTERVAL_IN_MS);
 };
 
 module.exports.updateGameCounterStatus = async (gameName, gameType) =>
@@ -137,13 +137,13 @@ async function _statusUpdateCycle()
         const games = await _readAllDominionsGames();
         await Promise.allSettled(games.map((game) => _updateStatus(game.name, game.gameType)));
         log.general(log.getNormalLevel(), `Finished game update cycle in ${Date.now() - startTime}ms`);
-        setTimeout(_statusUpdateCycle, process.env.GAME_UPDATE_INTERVAL_IN_MS);
+        setTimeout(_statusUpdateCycle, +process.env.GAME_UPDATE_INTERVAL_IN_MS);
     }
     
     catch(err)
     {
         log.error(log.getNormalLevel(), `Error during game update cycle`, err);
-        setTimeout(_statusUpdateCycle, process.env.GAME_UPDATE_INTERVAL_IN_MS);
+        setTimeout(_statusUpdateCycle, +process.env.GAME_UPDATE_INTERVAL_IN_MS);
     }
 };
 
