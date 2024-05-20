@@ -88,7 +88,9 @@ async function _startBackupProcess(statusdumpWrapper)
     const backupDirName = `t${statusdumpWrapper.turnNbr}`;
     const backupDirPath = path.resolve(targetBackupDirpath, backupDirName);
     
-    await _createDirectories(backupDirPath);
+    if (fs.existsSync(backupDirPath) === false) {
+        await fsp.mkdir(backupDirPath, { recursive: true });
+    }
 
     _logToFile(`Backup directory created at "${backupDirPath}"`);
     backupFilenames = await fsp.readdir(savedgamesPath);
@@ -114,42 +116,20 @@ async function _cloneStatusdump(gameName, gameType)
     statusDump.cloneStatusDump(gameName, gameType, clonedStatusdumpDirpath);
 }
 
-async function _createDirectories(targetBackupDirpath)
-{
-    var directories = [];
-    var currentPath = path.dirname(targetBackupDirpath);
-
-    while (currentPath !== path.dirname(currentPath))
-    {
-        directories.unshift(currentPath);
-        currentPath = path.dirname(currentPath);
-    }
-
-    const promises = directories.map(async (dir) =>
-    {
-        if (fs.existsSync(dir) === false)
-            await fsp.mkdir(dir);
-    });
-
-    await Promise.allSettled(promises);
-}
-
 async function _backupFiles(filenames, sourcePath, targetPath)
 {
-    const promises = filenames.map(async (filename) =>
-    {
+    for (const filename of filenames) {
         _logToFile(`Checking ${filename}...`);
         
-        if (backupExtensions.test(filename) === false)
-            return _logToFile(`Not a turn file; skipping.`);
+        if (backupExtensions.test(filename) === false) {
+            _logToFile(`Not a turn file; skipping.`);
+            continue;
+        }
 
         _logToFile(`Turn file found, backing up...`);
-
         await fsp.copyFile(path.resolve(sourcePath, filename), path.resolve(targetPath, filename));
         _logToFile(`Turn file backed up.`);
-    });
-
-    await Promise.allSettled(promises);
+    }
 }
 
 async function _cleanUnusedBackups(statusDump)
