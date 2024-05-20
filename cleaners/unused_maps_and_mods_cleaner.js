@@ -3,7 +3,7 @@ const fs = require("fs");
 const path = require("path");
 const fsp = require("fs").promises;
 const log = require("../logger.js");
-const rw = require("../utilities/file-utilities.js");
+const fileUtils = require("../utilities/file-utilities.js");
 const { getDominionsMapsPath, getDominionsModsPath } = require("../utilities/path-utilities.js");
 
 
@@ -22,7 +22,7 @@ function _deleteUnusedFilesInDir(filesInUse, dirPath, force = false)
     .then((files) => 
     {
         relatedFilesInUse = relatedFilesInUse.concat(files);
-        return rw.walkDir(dirPath);
+        return fileUtils.walkDir(dirPath);
     })
     .then((dirFiles) => _deleteUnusedFiles(dirFiles, relatedFilesInUse, force))
     .then((deletedFiles) => 

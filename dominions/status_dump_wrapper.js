@@ -4,7 +4,7 @@ const path = require("path");
 const fsp = require("fs").promises;
 const log = require("../logger.js");
 const assert = require("../utilities/type-utilities.js");
-const rw = require("../utilities/file-utilities.js");
+const fileUtils = require("../utilities/file-utilities.js");
 const NationStatusWrapper = require("./nation_status_wrapper.js");
 const { getDominionsSavedgamesPath } = require("../utilities/path-utilities.js");
 
@@ -80,8 +80,8 @@ function StatusDump(gameName, gameType, originalPath)
         if (this.lastUpdateTimestamp >= statusdumpMTime && force === false)
             return;
 
-        // Otherwise get the most recent statusdump metadata and update this wrapper
-        const rawData = await rw.readStreamToString(_originalPath);
+        // OthefileUtilsise get the most recent statusdump metadata and update this wrapper
+        const rawData = await fileUtils.readStreamToString(_originalPath);
         const _parsedData = _parseDumpData(rawData);
 
         this.lastUpdateTimestamp = statusdumpMTime;

@@ -3,7 +3,7 @@ const fs = require("fs");
 const path = require("path");
 const fsp = require("fs").promises;
 const log = require("../logger.js");
-const rw = require("../utilities/file-utilities.js");
+const fileUtils = require("../utilities/file-utilities.js");
 const gameStore = require("../stores/hosted_games_store.js");
 const gameStatusStore = require("../stores/game_status_store.js");
 const provCountFn = require("./parse_province_count.js");
@@ -20,7 +20,7 @@ const {
 
 module.exports.getModList = function(gameType)
 {
-	return rw.getDirFilenames(getDominionsModsPath(gameType), ".dm")
+	return fileUtils.getDirFilenames(getDominionsModsPath(gameType), ".dm")
 	.then((filenames) => Promise.resolve(filenames))
 	.catch((err) => Promise.reject(err));
 };
@@ -66,14 +66,14 @@ module.exports.getTurnFiles = async function(data)
         if (fs.existsSync(filepath) === false)
             files.turnFiles[nationName] = "File does not exist?";
 
-        files.turnFiles[nationName] = await rw.readFileBuffer(filepath);
+        files.turnFiles[nationName] = await fileUtils.readFileBuffer(filepath);
     });
 
     await Promise.allSettled(promises);
 
 
     if (fs.existsSync(scoresPath) === true)
-        files.scores = await rw.readFileBuffer(scoresPath);
+        files.scores = await fileUtils.readFileBuffer(scoresPath);
 
     return files;
 };
@@ -84,7 +84,7 @@ module.exports.getTurnFile = function(data)
     const nationFilename = data.nationFilename;
     const filePath = path.resolve(getDominionsSavedgamesPath(data.type), gameName, `${nationFilename}.trn`);
 
-    return rw.readFileBuffer(filePath)
+    return fileUtils.readFileBuffer(filePath)
     .then((buffer) => Promise.resolve(buffer))
     .catch((err) => Promise.reject(err));
 };
@@ -94,7 +94,7 @@ module.exports.getScoreFile = function(data)
     const gameName = data.name;
     const filePath = path.resolve(getDominionsSavedgamesPath(data.type), gameName, "scores.html");
 
-    return rw.readFileBuffer(filePath)
+    return fileUtils.readFileBuffer(filePath)
     .then((buffer) => Promise.resolve(buffer))
     .catch((err) => Promise.reject(err));
 };
@@ -184,9 +184,9 @@ module.exports.restart = async function(data)
     // are not deleted by Dominions. It seems that Dominions only
     // considers "clean" .2h new turn files as pretender files
     if (deletePretenders !== true)
-        await rw.keepOnlyFilesWithExt(gameDirPath, [".2h"]);
+        await fileUtils.keepOnlyFilesWithExt(gameDirPath, [".2h"]);
 
-    else await rw.keepOnlyFilesWithExt(gameDirPath);
+    else await fileUtils.keepOnlyFilesWithExt(gameDirPath);
 
     // Force a refresh of the game status and send it to the bot
     await module.exports.refresh(data);

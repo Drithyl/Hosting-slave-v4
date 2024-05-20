@@ -2,7 +2,7 @@
 const fs = require("fs");
 const fsp = fs.promises;
 const log = require("../logger.js");
-const rw = require("../utilities/file-utilities.js");
+const fileUtils = require("../utilities/file-utilities.js");
 const { DOM5_GAME_TYPE_NAME, DOM6_GAME_TYPE_NAME, LOGS_DIR_PATH } = require("../constants.js");
 const { getDominionsDataPath, getDominionsTmpPath, safePath, isSafePathToDeleteOrThrow } = require("../utilities/path-utilities.js");
 
@@ -99,7 +99,7 @@ async function _cleanDirIfOlderThan(dirPath, olderThanTimestamp)
     if (fs.existsSync(dirPath) === false)
         return deletedFiles;
 
-    await rw.walkDir(dirPath, async (filePath, fileStat) =>
+    await fileUtils.walkDir(dirPath, async (filePath, fileStat) =>
     {
         try
         {
@@ -124,7 +124,7 @@ async function _deleteFileIfOlderThan(filePath, fileStat, olderThanTimestamp)
 
     if (fileStat.isDirectory() === true)
     {
-        const isDirEmpty = await rw.isDirEmpty(filePath);
+        const isDirEmpty = await fileUtils.isDirEmpty(filePath);
         if (isDirEmpty === true) await fsp.rmdir(filePath);
         return true;
     }

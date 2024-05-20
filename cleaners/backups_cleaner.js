@@ -2,7 +2,7 @@
 const path = require("path");
 const fsp = require("fs").promises;
 const log = require("../logger.js");
-const rw = require("../utilities/file-utilities.js");
+const fileUtils = require("../utilities/file-utilities.js");
 const { getGamePostTurnBackupPath, getGamePreTurnBackupPath } = require("../utilities/path-utilities.js");
 
 
@@ -28,7 +28,7 @@ module.exports.deleteAllTurnBackups = async function(gameName)
 module.exports.deleteBackupsUpToTurn = async function(dirPath, turnNbrToClean)
 {
     // Get filenames of all saved turn directories in the backup path
-    const subDirNames = await rw.getDirFilenames(dirPath);
+    const subDirNames = await fileUtils.getDirFilenames(dirPath);
     const promises = subDirNames.map(async (subDirName) =>
     {
         // Delete Turn X backup dir if turn number is lower than the cutoff
