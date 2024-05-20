@@ -3,7 +3,6 @@
 const fs = require("fs");
 const path = require("path");
 const fsp = require("fs").promises;
-const rw = require("../utilities/file-utilities.js");
 const cleaner = require("../cleaners/backups_cleaner.js");
 const statusDump = require("../dominions/status_dump_wrapper.js");
 const { getDominionsSavedgamesPath, getStatusdumpClonePath, safePath } = require("../utilities/path-utilities.js");
@@ -52,7 +51,7 @@ module.exports.backupTurn = async (statusdumpWrapper, backupPath) =>
 
 function _initializeGlobals(gameName, gameType)
 {
-    savedgamesPath = getDominionsSavedgamesPath(gameType);
+    savedgamesPath = path.resolve(getDominionsSavedgamesPath(gameType), gameName);
     backupExtensions = new RegExp("(\.2h)|(\.trn)|(ftherlnd)$", "i");
     clonedStatusdumpDirpath = getStatusdumpClonePath(gameName, gameType);
     logDirpath = safePath(GAME_LOGS_DIR_PATH, gameName);
