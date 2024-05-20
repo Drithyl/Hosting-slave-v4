@@ -5,8 +5,7 @@ https://stackoverflow.com/questions/29860354/in-nodejs-how-do-i-check-if-a-port-
 and hexacyanide's answer on Stack Overflow:
 https://stackoverflow.com/questions/19129570/how-can-i-check-if-port-is-busy-in-nodejs/35251815
 */
-
-const log = require("../logger.js");
+const path = require("path");
 const { exec } = require("child_process");
 const tcpPortUsed = require("tcp-port-used");
 
@@ -24,7 +23,8 @@ function _sockuseScript(port)
 {
 	return new Promise((resolve, reject) =>
 	{
-		exec(`sh sockuse.sh ${port}`, (err, stdout, stderr) =>
+		const sockusePath = path.resolve("./scripts/sockuse.sh");
+		exec(`sh "${sockusePath}" ${port}`, (err, stdout, stderr) =>
 		{
 			if (err != null)
 				reject(err);
