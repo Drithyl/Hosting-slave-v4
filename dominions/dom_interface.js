@@ -317,7 +317,7 @@ module.exports.rollback = function(data)
 	.catch((err) => Promise.reject(err));
 };
 
-module.exports.deleteGameSavefiles = function(data)
+module.exports.deleteGameSavefiles = async function(data)
 {
 	const gameName = data.name;
 
@@ -329,17 +329,18 @@ module.exports.deleteGameSavefiles = function(data)
     const backupPath = getGameBackupPath(gameName);
     const logPath = getGameLogPath(gameName);
 
-	return fsp.rm(dirPath, { recursive: true })
-    .then(() => fsp.rm(backupPath, { recursive: true }))
-    .then(() => 
-    {
-        log.general(log.getNormalLevel(), `${gameName}: deleted the savedgames files and their backups.`);
+    if (fs.existsSync(dirPath) === true) {
+        await fsp.rm(dirPath, { recursive: true });
+    }
 
-        // Delete log files, but don't block the resolution of the promise
-        fsp.rm(logPath, { recursive: true });
-        return Promise.resolve();
-    })
-	.catch((err) => Promise.reject(err));
+	if (fs.existsSync(backupPath) === true) {
+        await fsp.rm(backupPath, { recursive: true });
+    }
+    
+    log.general(log.getNormalLevel(), `${gameName}: deleted the savedgames files and their backups.`);
+
+    // Delete log files, but don't block the resolution of the promise
+    fsp.rm(logPath, { recursive: true });
 };
 
 module.exports.getLastHostedTime = function(data)
