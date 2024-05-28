@@ -14,23 +14,16 @@ if (fs.existsSync(TMP_DIR_PATH) === false)
 	fs.mkdirSync(TMP_DIR_PATH);
 
 
-module.exports.getDirFilenames = function(dirPath, extensionFilter = "")
+module.exports.getDirFilenames = async function(dirPath, extensionFilter = "")
 {
-	var readFilenames = [];
-
 	if (fs.existsSync(dirPath) === false)
-		return Promise.reject(new Error(`The directory ${dirPath} was not found on the server.`));
+		throw new Error(`The directory ${dirPath} was not found on the server.`);
 
-	return fsp.readdir(dirPath, "utf8")
-	.then((filenames) =>
+	const filenames = await fsp.readdir(dirPath, "utf8");
+	
+	return filenames.filter((filename) =>
 	{
-		filenames.forEach((filename) =>
-		{
-			if (extensionFilter === "" || path.extname(filename) === extensionFilter)
-                readFilenames.push(filename);
-        });
-        
-        return Promise.resolve(readFilenames);
+		return extensionFilter === "" || path.extname(filename) === extensionFilter;
 	});
 };
 
@@ -70,54 +63,43 @@ module.exports.keepOnlyFilesWithExt = async function(dirPath, extensionFilter)
         else if (extensionFilter.includes(ext) === false)
         	await fsp.unlink(filePath);
     });
-}
+};
 
-module.exports.readDirContents = function(dirPath, extensionFilter)
+module.exports.readDirContents = async function(dirPath, extensionFilter)
 {
     var readFiles = {};
 
 	if (fs.existsSync(dirPath) === false)
-        return Promise.reject(new Error(`Directory ${dirPath} was not found on the server.`));
+        throw new Error(`Directory ${dirPath} was not found on the server.`);
         
-    return exports.getDirFilenames(dirPath, extensionFilter)
-    .then((filenames) =>
-    {
-        return filenames.forAllPromises((filename) => 
-        {
-            return fsp.readFile(path.resolve(dirPath, filename), "utf8")
-            .then((contents) => readFiles[filename] = contents)
-            .catch((err) => Promise.reject(err));
-        });
-    })
-    .then(() => Promise.resolve(readFiles));
+    const filenames = await exports.getDirFilenames(dirPath, extensionFilter);
+
+	for (const filename of filenames) {
+		const contents = await fsp.readFile(path.resolve(dirPath, filename), "utf8");
+		readFiles[filename] = contents;
+	}
+
+	return readFiles;
 };
 
 // Discord only supports attachments of up to 8MB without Nitro
-module.exports = function readFileBuffer(filePath, maxSizeInMB = 8)
-{  
-    var fileSizeInMB;
-
+module.exports.readFileBuffer = async function (filePath, maxSizeInMB = 8)
+{
     if (fs.existsSync(filePath) === false)
-        return Promise.reject(`Path ${filePath} does not exist.`);
+        throw new Error(`Path ${filePath} does not exist.`);
 
-    return fsp.stat(filePath)
-    .then((stats) =>
-    {
-        fileSizeInMB = stats.size / 1000000.0;
+    const stats = await fsp.stat(filePath);
+	const fileSizeInMB = stats.size / 1000000.0;
 
-        if (fileSizeInMB > maxSizeInMB)
-            return Promise.reject(`The turn file weighs ${fileSizeInMB}MB; max file size was set at ${maxSizeInMB}`);
+	if (fileSizeInMB > maxSizeInMB)
+		throw new Error(`The turn file weighs ${fileSizeInMB}MB; max file size was set at ${maxSizeInMB}`);
         
-        return fsp.readFile(filePath);
-    })
-    .then((buffer) =>
-    {
-        log.general(log.getNormalLevel(), `Buffer for ${filePath} successfully read.`);
-        return Promise.resolve(buffer);
-    });
+    const buffer = await fsp.readFile(filePath);
+    log.general(log.getNormalLevel(), `Buffer for ${filePath} successfully read.`);
+	return buffer;
 };
 
-module.exports.readStreamToString = (path) =>
+module.exports.readStreamToString = function (path)
 {
 	const readStream = fs.createReadStream(path);
 	const chunks = [];
@@ -155,29 +137,29 @@ module.exports.walkDir = async function(dir, action)
 			return results;
 
 		// Iterate through all filenames
-		for await (var file of filenames)
+		for (let filename of filenames)
 		{
 			// Get the filename path
-			file = path.resolve(dir, file);
-			const stat = await fsp.stat(file);
+			filepath = path.resolve(dir, filename);
+			const stat = await fsp.stat(filepath);
 
 			// If it's a subdirectory, walk it too,
 			// add its results to current ones, and
 			// apply the action function if any
 			if (stat.isDirectory() === true)
 			{
-				const localResult = await _walk(file);
+				const localResult = await _walk(filepath);
 				results.concat(localResult);
-				results.push(file);
-				await action(file, stat);
+				results.push(filepath);
+				await action(filepath, stat);
 			}
 
 			// If it's a file, just push it to our
 			// list and apply the action function
 			else
 			{
-				results.push(file);
-				await action(file, stat);
+				results.push(filepath);
+				await action(filepath, stat);
 			}
 		}
 
