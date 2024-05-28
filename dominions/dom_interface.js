@@ -170,7 +170,7 @@ module.exports.hasStarted = function(gameName, gameType)
 module.exports.restart = async function(data)
 {
     const gameName = data.name;
-    const deletePretenders = data.deletePretenders;
+    const shouldDeletePretenders = data.shouldDeletePretenders;
     const gameDirPath = path.resolve(getDominionsSavedgamesPath(data.type), gameName);
 
 
@@ -183,7 +183,7 @@ module.exports.restart = async function(data)
     // current turn will NOT be kept as pretenders even if they
     // are not deleted by Dominions. It seems that Dominions only
     // considers "clean" .2h new turn files as pretender files
-    if (deletePretenders !== true)
+    if (shouldDeletePretenders !== true)
         await fileUtils.keepOnlyFilesWithExt(gameDirPath, [".2h"]);
 
     else await fileUtils.keepOnlyFilesWithExt(gameDirPath);
