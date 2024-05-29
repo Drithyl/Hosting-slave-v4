@@ -54,23 +54,21 @@ module.exports.getTurnFiles = async function(data)
     const gameStatus = await gameStatusStore.fetchStatus(gameName, gameType);
     const files = { turnFiles: {} };
 
-    const promises = nationNames.map(async (nationName) =>
-    {
+    for (const nationName of nationNames) {
         const filepath = path.resolve(gameFilesPath, `${nationName}.trn`);
         const status = gameStatus.getNationStatus(nationName);
 
         // AI or dead nations won't have .trn files
         if (status.isHuman === false)
-            return;
+            continue;
 
-        if (fs.existsSync(filepath) === false)
-            files.turnFiles[nationName] = "File does not exist?";
+        if (fs.existsSync(filepath) === false) {
+            log.error(log.getLeanLevel(), `Expected turn file to exist at ${filepath}, but couldn't find it`);
+            continue;
+        }
 
         files.turnFiles[nationName] = await fileUtils.readFileBuffer(filepath);
-    });
-
-    await Promise.allSettled(promises);
-
+    }
 
     if (fs.existsSync(scoresPath) === true)
         files.scores = await fileUtils.readFileBuffer(scoresPath);
@@ -78,15 +76,13 @@ module.exports.getTurnFiles = async function(data)
     return files;
 };
 
-module.exports.getTurnFile = function(data)
+module.exports.getTurnFile = async function(data)
 {
     const gameName = data.name;
     const nationFilename = data.nationFilename;
     const filePath = path.resolve(getDominionsSavedgamesPath(data.type), gameName, `${nationFilename}.trn`);
-
-    return fileUtils.readFileBuffer(filePath)
-    .then((buffer) => Promise.resolve(buffer))
-    .catch((err) => Promise.reject(err));
+    const buffer = await fileUtils.readFileBuffer(filePath);
+    return buffer;
 };
 
 module.exports.getScoreFile = function(data)
