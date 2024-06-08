@@ -17,6 +17,7 @@ const {
     getGameBackupPath,
     getGameLogPath,
 } = require("../utilities/path-utilities.js");
+const DomCmdData = require("./DomCmdData.js");
 
 module.exports.getModList = function(gameType)
 {
@@ -95,40 +96,57 @@ module.exports.getScoreFile = function(data)
     .catch((err) => Promise.reject(err));
 };
 
-// Timer is received in ms but must be written in seconds in domcmd
-// for the current timer, and in minutes for the default timer
-// Always changing both current and default timer is necessary
-// to avoid unwanted default timers being set when games are loaded
 module.exports.changeTimer = function(data)
 {
     const gameName = data.name;
-    const defaultTimer = +data.timer / 60000;
-    const currentTimer = +data.currentTimer * 0.001;
-    const domcmdPath = path.resolve(getDominionsSavedgamesPath(data.type), gameName, "domcmd");
-
-    let timerArguments = "";
-
-    if (isNaN(defaultTimer) === false)
-        timerArguments += `setinterval ${defaultTimer}\n`;
-
-    if (isNaN(currentTimer) === false)
-        timerArguments += `settimeleft ${currentTimer}\n`;
-
-    return fsp.writeFile(domcmdPath, timerArguments)
-	.then(() => Promise.resolve())
-    .catch((err) => Promise.reject(err));
+    const gameType = data.type;
+    const defaultTimer = +data.timer;
+    const currentTimer = +data.currentTimer;
+    
+    // Timer is received in ms. Always changing both current and default timer is necessary
+    // to avoid unwanted default timers being set when games are loaded
+    return new DomCmdData()
+        .setDefaultTurnTimer(defaultTimer)
+        .setTurnTimeLeft(currentTimer)
+        .writeFile(gameName, gameType);
 };
 
 module.exports.forceHost = function(data)
 {
+    const gameName = data.name;
+    const gameType = data.type;
+    const defaultTimer = +data.timer;
+    const currentTimer = 5000;
+
     // Change current timer to 5 seconds, which will make the start countdown begin;
     // while reinforcing the default timer once again (important in case this is a 
     // start after a restart, we don't want to keep old values)
-    const forceHostData = Object.assign(data, { timer: data.timer, currentTimer: 5000 });
+    return new DomCmdData()
+        .setDefaultTurnTimer(defaultTimer)
+        .setTurnTimeLeft(currentTimer)
+        .writeFile(gameName, gameType);
+};
 
-	return exports.changeTimer(forceHostData)
-	.then(() => Promise.resolve())
-    .catch((err) => Promise.reject(err));
+module.exports.changeRequiredAP = function(data)
+{
+    const gameName = data.name;
+    const gameType = data.type;
+    const ap = +data.ap;
+
+    return new DomCmdData()
+        .setAp(ap)
+        .writeFile(gameName, gameType);
+};
+
+module.exports.changeCataclysmTurn = function(data)
+{
+    const gameName = data.name;
+    const gameType = data.type;
+    const cataclysmTurn = +data.cataclysmTurn;
+
+    return new DomCmdData()
+        .setCataclysmTurn(cataclysmTurn)
+        .writeFile(gameName, gameType);
 };
 
 //Set 60 seconds to start the game

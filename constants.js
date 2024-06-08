@@ -23,6 +23,8 @@ const POST_EXEC_BACKUP_DIR_NAME = "post";
 const DOM5_GAME_TYPE_NAME = "dom5";
 const DOM6_GAME_TYPE_NAME = "dom6";
 
+const DOMCMD_FILE_NAME = "domcmd";
+
 
 module.exports = Object.freeze({
     DATA_DIR_NAME,
@@ -39,5 +41,6 @@ module.exports = Object.freeze({
     PRE_EXEC_BACKUP_DIR_NAME,
     POST_EXEC_BACKUP_DIR_NAME,
     DOM5_GAME_TYPE_NAME,
-    DOM6_GAME_TYPE_NAME
+    DOM6_GAME_TYPE_NAME,
+    DOMCMD_FILE_NAME
 });

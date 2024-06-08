@@ -58,6 +58,14 @@ module.exports.getDominionsSavedgamesPath = function(gameType) {
     return path.resolve(module.exports.getDominionsDataPath(gameType), 'savedgames');
 };
 
+module.exports.getGameSavePath = function(gameName, gameType) {
+    return path.resolve(module.exports.getDominionsSavedgamesPath(gameType), gameName);
+};
+
+module.exports.getGameDomCmdPath = function(gameName, gameType) {
+    return path.resolve(module.exports.getGameSavePath(gameName, gameType), constants.DOMCMD_FILE_NAME);
+};
+
 module.exports.getDominionsModsPath = function(gameType) {
     return path.resolve(module.exports.getDominionsDataPath(gameType), 'mods');
 };
