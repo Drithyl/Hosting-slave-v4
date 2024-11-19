@@ -18,6 +18,7 @@ const {
     getGameLogPath,
 } = require("../utilities/path-utilities.js");
 const DomCmdData = require("./DomCmdData.js");
+const { exec } = require("child_process");
 
 module.exports.getModList = function(gameType)
 {
@@ -365,3 +366,34 @@ module.exports.getLastHostedTime = function(data)
     return fsp.stat(ftherlndPath)
     .then((ftherlndStat) => Promise.resolve(ftherlndStat.mtime.getTime()));
 };
+
+module.exports.updateDominionsVersion = function()
+{
+	return new Promise((resolve, reject) =>
+	{
+		const domUpdatePath = path.resolve("./scripts/domupdate.sh");
+		exec(`sh "${domUpdatePath}"`, (err, stdout, stderr) =>
+		{
+			if (err != null)
+            {
+                console.error(err);
+				reject(err);
+            }
+	
+			else if (+stdout == 0)
+			{
+				// Update successful?
+				resolve(true);
+                console.log("Success!");
+			}
+	
+			else 
+            {
+                console.error("domupdate exited with non-zero code: " + stderr);
+                reject(new Error("domupdate exited with non-zero code"));
+            }
+		});
+	});
+};
+
+module.exports.updateDominionsVersion();

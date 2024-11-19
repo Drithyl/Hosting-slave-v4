@@ -1,0 +1,1 @@
+@ShutdownOnFailedCommand 1\n@NoPromptForPassword 1\nforce_install_dir /home/steam/Steam/Dominions6/\nlogin ClockworkHoundsForest\napp_update 2511500 validate\nquit
