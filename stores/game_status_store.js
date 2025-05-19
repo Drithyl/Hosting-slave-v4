@@ -1,5 +1,6 @@
 
-const fsp = require("fs").promises;
+const fs = require("fs");
+const fsp = fs.promises;
 const log = require("../logger.js");
 const GameStatus = require("../dominions/game_status.js");
 const gamesStore = require("./hosted_games_store.js");
@@ -178,13 +179,23 @@ function _sendStatusUpdateToMaster(gameStatus, gameType)
 }
 
 async function _readAllDominionsGames() {
-    const dom5GameNames = await fsp.readdir(DOM5_SAVEDGAMES_PATH);
-    const dom5GameObjects = dom5GameNames.map((name) => { return { name: name, gameType: DOM5_GAME_TYPE_NAME}; } );
+    const allGames = [];
+    const dom5SavedgamesExists = fs.existsSync(DOM5_SAVEDGAMES_PATH);
+    const dom6SavedgamesExists = fs.existsSync(DOM6_SAVEDGAMES_PATH);
 
-    const dom6GameNames = await fsp.readdir(DOM6_SAVEDGAMES_PATH);
-    const dom6GameObjects = dom6GameNames.map((name) => { return { name: name, gameType: DOM6_GAME_TYPE_NAME}; } );
-    
-    return [...dom5GameObjects, ...dom6GameObjects];
+    if (dom5SavedgamesExists === true) {
+        const dom5GameNames = await fsp.readdir(DOM5_SAVEDGAMES_PATH);
+        const dom5GameObjects = dom5GameNames.map((name) => { return { name: name, gameType: DOM5_GAME_TYPE_NAME}; } );
+        allGames.push(...dom5GameObjects);
+    }
+
+    if (dom6SavedgamesExists === true) {
+        const dom6GameNames = await fsp.readdir(DOM6_SAVEDGAMES_PATH);
+        const dom6GameObjects = dom6GameNames.map((name) => { return { name: name, gameType: DOM6_GAME_TYPE_NAME}; } );
+        allGames.push(...dom6GameObjects);
+    }
+
+    return allGames;
 }
 
 function _getWrappersByGameType(gameType) {
