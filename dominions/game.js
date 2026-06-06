@@ -39,21 +39,28 @@ function Game(name, type, port, args)
             _args = newArgs.concat(_addAdditionalArgs(_name, _type));
     };
 
-    this.launchProcess = () => _spawn(_args);
+    this.launchProcess = () => {
+        return _spawn(_args);
+    };
+
     this.launchProcessWithRollbackedTurn = () => _spawn(["--noquickhost", ..._args]);
+
+    this.onGameExit = (eventFn) => {
+        _process.onProcessExit((code, signal) => eventFn);
+    };
 
     function _spawn(args)
     {
         return new Promise((resolve, reject) =>
         {
-            _process = new DominionsProcess(_name, _type, args, (err) =>
+            _process = new DominionsProcess(_name, _type, args, (err, process) =>
             {
                 if (err)
                     return reject(err);
 
                 _isOnline = true;
                 statusStore.updateGameCounterStatus(_name, _type);
-                return resolve();
+                return resolve(process);
             });
     
             _setProcessListeners();

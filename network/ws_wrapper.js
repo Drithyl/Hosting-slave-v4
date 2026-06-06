@@ -17,7 +17,10 @@ exports.connect = () =>
     return Promise.resolve(_createConnection());
 };
 
-module.exports.on = (...args) => _wsWrapper.onMessage(...args);
+module.exports.on = (...args) => {
+    _wsWrapper.onMessage(...args)
+};
+
 module.exports.emit = (...args) => _wsWrapper.emit(...args);
 module.exports.emitPromise = (...args) => _wsWrapper.emitPromise(...args);
 

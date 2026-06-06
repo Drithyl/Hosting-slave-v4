@@ -200,6 +200,7 @@ async function _notifyMaster(gameName, status, data = {})
 
         // Listen for a response
         res.on("data", data => _logToFile(`${gameName} - Response data received: `, data.toString()));
+        console.log(`.on("data") listener count: ${res.listenerCount("data")}`);
     }
 
     catch(err)

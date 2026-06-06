@@ -72,7 +72,7 @@ function DominionsProcess(gameName, gameType, args, onSpawned)
 			await fsp.mkdir(_logDirPath, { recursive: true });
 
 		//_updateStreamPaths();
-		onSpawned();
+		onSpawned(null, this);
 	});
 
 	_instance.on("error", (err) => 
